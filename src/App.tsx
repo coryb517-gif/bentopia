@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
+import Backdrop from './game/Backdrop'
 import BoardView from './game/BoardView'
 import { isSoundOn, setSound } from './game/audio'
+import Mascot, { type Mood } from './game/Mascot'
 import { LEVELS } from './sim/levels'
 import { CHAINS } from './sim/items'
 import type { GameState } from './sim/types'
@@ -18,15 +20,22 @@ function loadStars(): Record<number, number> {
   }
 }
 
+const QUIPS = {
+  dish: ['Masterpiece!', 'Order up!', "Chef's kiss!"],
+  huge: ['INCREDIBLE!', 'What a chain!', 'Wooow!'],
+  big: ['Ooh, nice!', 'Delicious!', 'Look at that!'],
+  small: ['Yum!', 'Nice link!', 'Tasty!', 'Mmm!'],
+}
+
 /** Shows how to make a dish: link 3 of the last step to get the next one. */
 function Recipe({ kind, tier }: { kind: number; tier: number }) {
   const steps = []
   for (let t = 0; t < tier; t++) {
     steps.push(
       <span className="step" key={t}>
-        {[0, 1, 2].map((n) => <img key={n} className="dish" src={svgUrl(kind, t)} alt="" width={24} height={24} />)}
+        {[0, 1, 2].map((n) => <img key={n} className="dish" src={svgUrl(kind, t)} alt="" width={26} height={26} />)}
         <span className="arrow" aria-hidden>→</span>
-        <img className="dish" src={svgUrl(kind, t + 1)} alt="" width={26} height={26} />
+        <img className="dish" src={svgUrl(kind, t + 1)} alt="" width={30} height={30} />
         <span className="sr">Link three {CHAINS[kind].names[t]} to make {CHAINS[kind].names[t + 1]}</span>
       </span>,
     )
@@ -48,7 +57,12 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
 
 export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
-  return <Game />
+  return (
+    <>
+      <Backdrop />
+      <Game />
+    </>
+  )
 }
 
 function Game() {
@@ -61,8 +75,22 @@ function Game() {
   const [preview, setPreview] = useState<{ kind: number; tier: number } | null>(null)
   const [showResult, setShowResult] = useState(false)
   const [sound, setSoundOn] = useState(isSoundOn)
+  const [mood, setMood] = useState<Mood>('idle')
+  const [quip, setQuip] = useState({ text: '', n: 0 })
+  const moodTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const quipCount = useRef(0)
 
   const level = LEVELS[levelIdx]
+
+  const say = useCallback((text: string, m: Mood, ms = 1300) => {
+    clearTimeout(moodTimer.current)
+    setMood(m)
+    setQuip((q) => ({ text, n: q.n + 1 }))
+    moodTimer.current = setTimeout(() => {
+      setMood('idle')
+      setQuip((q) => ({ ...q, text: '' }))
+    }, ms)
+  }, [])
 
   const start = (idx: number) => {
     setLevelIdx(idx)
@@ -72,13 +100,23 @@ function Game() {
     setPreview(null)
     setShowResult(false)
     setScreen('play')
+    say("Let's cook!", 'cheer', 1600)
   }
 
   const onState = useCallback((s: GameState) => setGame(s), [])
 
+  const onMerge = useCallback(
+    (len: number, tier: number) => {
+      const pool = tier >= 2 ? QUIPS.dish : len >= 5 ? QUIPS.huge : len === 4 ? QUIPS.big : QUIPS.small
+      say(pool[quipCount.current++ % pool.length], tier >= 2 || len >= 5 ? 'wow' : 'cheer')
+    },
+    [say],
+  )
+
   useEffect(() => {
     if (!game || game.status === 'playing') return
     if (game.status === 'won') {
+      say('Itadakimasu!', 'wow', 6000)
       setStars((prev) => {
         const next = { ...prev, [game.level.id]: Math.max(prev[game.level.id] ?? 0, game.stars) }
         try {
@@ -88,10 +126,12 @@ function Game() {
         }
         return next
       })
+    } else {
+      say('Oh no! So close...', 'oops', 6000)
     }
     const t = setTimeout(() => setShowResult(true), 800)
     return () => clearTimeout(t)
-  }, [game])
+  }, [game, say])
 
   const unlocked = (i: number) => i === 0 || (stars[LEVELS[i - 1].id] ?? 0) > 0
 
@@ -99,7 +139,7 @@ function Game() {
     return (
       <main className="screen title">
         <div className="floaters" aria-hidden>{[0, 1, 2, 3, 4, 5].map((k) => <img key={k} className={`floater f${k}`} src={svgUrl(k, 2)} alt="" width={84} height={84} />)}</div>
-        <img className="logo" src={svgUrl(0, 2)} alt="" width={170} height={170} />
+        <Mascot mood="cheer" size={190} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
         <button className="btn primary" onClick={() => setScreen('map')}>Play</button>
@@ -117,10 +157,14 @@ function Game() {
           <h2>Chapter 1</h2>
           <span className="coin">★ {total}</span>
         </header>
+        <div className="maphero">
+          <Mascot mood="idle" size={84} />
+          <p className="bubble">Pick an order, chef!</p>
+        </div>
         <ol className="levels">
           {LEVELS.map((l, i) => (
             <li key={l.id}>
-              <button className="level" disabled={!unlocked(i)} onClick={() => start(i)}>
+              <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i)} onClick={() => start(i)}>
                 <span className="num">{unlocked(i) ? l.id : '🔒'}</span>
                 <span className="lname">{l.name}</span>
                 <Stars n={stars[l.id] ?? 0} />
@@ -138,21 +182,11 @@ function Game() {
   return (
     <main className="screen play">
       <header className="hud">
-        <button className="btn ghost" onClick={() => setScreen('map')} aria-label="Leave level">✕</button>
-        <div className="order" aria-label="Order">
-          <ul>
-            {level.order.map((o, idx) => (
-              <li key={idx} className={(game?.progress[idx] ?? 0) >= o.count ? 'done' : ''}>
-                <div className="orow">
-                  <span className="need">Make</span>
-                  <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={40} height={40} />
-                  <span className="oname">{CHAINS[o.kind].names[o.tier]}</span>
-                  <b>{game?.progress[idx] ?? 0}/{o.count}</b>
-                </div>
-                <Recipe kind={o.kind} tier={o.tier} />
-              </li>
-            ))}
-          </ul>
+        <button className="btn ghost round" onClick={() => setScreen('map')} aria-label="Leave level">✕</button>
+        <div className="levelname">Level {level.id}<small>{level.name}</small></div>
+        <div className="mascot-wrap">
+          <Mascot mood={mood} size={84} />
+          {quip.text && <span key={quip.n} className="quip">{quip.text}</span>}
         </div>
         <div className="moves" aria-live="polite">
           <b>{game?.movesLeft ?? level.moves}</b>
@@ -160,15 +194,30 @@ function Game() {
         </div>
       </header>
 
+      <section className="order" aria-label="Order">
+        <ul>
+          {level.order.map((o, idx) => (
+            <li key={idx} className={(game?.progress[idx] ?? 0) >= o.count ? 'done' : ''}>
+              <div className="orow">
+                <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={38} height={38} />
+                <span className="oname"><span className="need">Make</span>{CHAINS[o.kind].names[o.tier]}</span>
+                <b>{game?.progress[idx] ?? 0}/{o.count}</b>
+              </div>
+              <Recipe kind={o.kind} tier={o.tier} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <div className="preview" aria-live="polite">
         {preview ? (
-          <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={26} height={26} /> {CHAINS[preview.kind].names[preview.tier]}</>
+          <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={28} height={28} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>Level {level.id}: {level.name}</>
+          <>Link 3+ matching dishes</>
         )}
       </div>
 
-      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} />
+      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} />
 
       <footer className="foot">
         <button
@@ -186,6 +235,7 @@ function Game() {
       {showResult && status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
           <div className="card">
+            <Mascot mood={status === 'won' ? 'wow' : 'oops'} size={130} />
             {status === 'won' ? (
               <>
                 <h2>Order up!</h2>

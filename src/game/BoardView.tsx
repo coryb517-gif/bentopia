@@ -12,6 +12,8 @@ interface Props {
   onState: (s: GameState) => void
   /** The tile the current chain would produce, or null when no valid chain is selected. */
   onPreview: (t: { kind: number; tier: number } | null) => void
+  /** Fired after each committed chain with its length and the tier it produced. */
+  onMerge?: (len: number, tier: number) => void
 }
 
 interface Sprite {
@@ -37,10 +39,10 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge }: Props) {
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview })
-  cb.current = { onState, onPreview }
+  const cb = useRef({ onState, onPreview, onMerge })
+  cb.current = { onState, onPreview, onMerge }
 
   useEffect(() => {
     const el = host.current!
@@ -185,10 +187,16 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
         }
       })
 
+      let rings: { x: number; y: number; t: number; color: number }[] = []
       app.ticker.add((tk) => {
         fx.clear()
-        if (!particles.length) return
         const dt = tk.deltaMS / 16.7
+        rings = rings.filter((r) => r.t < 1)
+        for (const r of rings) {
+          r.t += 0.045 * dt
+          fx.circle(r.x, r.y, cell * (0.3 + r.t * 1.5)).stroke({ width: cell * 0.12 * (1 - r.t), color: r.color, alpha: 1 - r.t })
+        }
+        if (!particles.length) return
         particles = particles.filter((p) => p.life > 0)
         for (const p of particles) {
           p.x += p.vx * dt
@@ -202,6 +210,12 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
       const burst = (cellIdx: number, tier: number) => {
         if (reduce) return
         const c = center(cellIdx)
+        rings.push({ x: c.x, y: c.y, t: 0, color: tier >= 2 ? 0xffd23a : 0xffffff })
+        if (tier >= 2) {
+          el.classList.remove('shake')
+          void el.offsetWidth
+          el.classList.add('shake')
+        }
         const n = tier >= 2 ? 34 : 18
         for (let i = 0; i < n; i++) {
           const a = Math.random() * Math.PI * 2
@@ -262,9 +276,11 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
       const commit = () => {
         const next = commitChain(state, path)
         if (next === state) return
+        const chainLen = path.length
         path = []
         state = next
         clackSound()
+        if (next.last) cb.current.onMerge?.(chainLen, next.cells[next.last.toCell]?.tier ?? 1)
         placeSprites(true, state.last?.resultId)
         if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)
         drawPath()
