@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { coinSound } from './audio'
 import Room from './Room'
 import {
-  allItems, BUILD, buildStorey, buyUpgrade, decorScore, expandStorey, hasStorey, itemDef, levelOf, nextExpansion, nextUpgrade, seatTotal, sizeOf,
+  allItems, BUILD, buildStorey, DEFAULT_NAME, NAME_WORDS, restaurantName, buyUpgrade, decorScore, expandStorey, hasStorey, itemDef, levelOf, nextExpansion, nextUpgrade, seatTotal, sizeOf,
   STOREY_IDS, STOREY_NAMES, storeyOf, storeyView, tipCapHours, tipsPerHour, UPGRADES, upgradeLevel, type Restaurant, type StoreyId, type UpgradeId,
 } from './restaurant'
 
@@ -61,6 +61,27 @@ export default function Build({ r, setR, coins, spend, onBack, onGoto }: Props) 
         <div><b>{seats}</b><small>Seats</small></div>
         <div><b>{Math.round(tipsPerHour(score, seats, menu))}</b><small>Tips / hr</small></div>
       </section>
+
+      <h3 className="sect">Your sign</h3>
+      <div className="upgrade">
+        <p className="signpreview">{restaurantName(r)[0]}<small>{restaurantName(r)[1].toUpperCase()}</small></p>
+        <div className="namepick">
+          {([0, 1, 2] as const).map((slot) => (
+            <select
+              key={slot}
+              aria-label={['Adjective', 'Food', 'Place'][slot]}
+              value={(r.name ?? DEFAULT_NAME)[slot]}
+              onChange={(e) => {
+                const next: [number, number, number] = [...(r.name ?? DEFAULT_NAME)] as [number, number, number]
+                next[slot] = Number(e.target.value)
+                setR({ ...r, name: next })
+              }}
+            >
+              {NAME_WORDS[slot].map((w, i) => <option key={w} value={i}>{w}</option>)}
+            </select>
+          ))}
+        </div>
+      </div>
 
       <h3 className="sect">Your building</h3>
       <div className="storeycards">

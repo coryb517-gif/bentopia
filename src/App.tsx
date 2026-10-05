@@ -3,6 +3,7 @@ import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
+import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
 import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
@@ -12,7 +13,9 @@ import Build from './game/Build'
 import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
 import Hub from './game/Hub'
+import Town from './game/Town'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
+import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
@@ -21,7 +24,7 @@ import { CHAINS, recipeFor } from './sim/items'
 import type { GameState } from './sim/types'
 import './App.css'
 
-type Screen = 'title' | 'hub' | 'decorate' | 'build' | 'map' | 'play'
+type Screen = 'title' | 'hub' | 'decorate' | 'build' | 'town' | 'map' | 'play'
 
 const CHAPTERS = [
   { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
@@ -123,6 +126,7 @@ export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
   const hero = new URLSearchParams(location.search).has('hero')
   if (new URLSearchParams(location.search).has('room')) return <><Backdrop /><RoomLab /></>
+  if (new URLSearchParams(location.search).has('exterior')) return <><Backdrop /><ExteriorLab /></>
   return (
     <>
       <Backdrop />
@@ -149,6 +153,7 @@ function Game() {
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
   const [intro, setIntro] = useState(false)
   const [storey, setStorey] = useState<StoreyId>('ground')
+  const [hubView, setHubView] = useState<ViewId>('outside')
   const starsRef = useRef(stars)
   starsRef.current = stars
   const [mood, setMood] = useState<Mood>('idle')
@@ -355,11 +360,13 @@ function Game() {
         }}
         onDecorate={() => {
           setTut((t) => (t.step === 'hub' ? { ...t, step: 'decorate' } : t))
+          if (hubView !== 'outside') setStorey(hubView)
           setScreen('decorate')
         }}
-        storey={storey}
-        onStorey={setStorey}
+        view={hubView}
+        onView={setHubView}
         onBuild={() => setScreen('build')}
+        onTown={() => setScreen('town')}
         next={(() => {
           const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
           return { id: l.id, name: l.name, chapter: l.id <= 10 ? 1 : 2 }
@@ -395,6 +402,9 @@ function Game() {
         onBuild={() => setScreen('build')}
       />
     )
+  }
+  if (screen === 'town') {
+    return withCoach(<Town r={restaurant} onBack={() => setScreen('hub')} />)
   }
   if (screen === 'build') {
     return withCoach(

@@ -9,7 +9,7 @@ import {
 } from './restaurant'
 import { WALL_ART } from './wall'
 
-const floorArt = (t: ItemType) => DECOR[t as FloorItem | RugItem]
+export const floorArt = (t: ItemType) => DECOR[t as FloorItem | RugItem]
 
 const WALL_H = 124
 const SLAB = 14
@@ -25,7 +25,7 @@ export function phaseOf(d: Date = new Date()): Phase {
   return 'night'
 }
 
-const SKY: Record<Phase, { stops: [string, string, string]; far: string; ambient: string; ambientA: number; shaft: string; shaftA: number; glow: number }> = {
+export const SKY: Record<Phase, { stops: [string, string, string]; far: string; ambient: string; ambientA: number; shaft: string; shaftA: number; glow: number }> = {
   dawn: { stops: ['#5b4a9a', '#e58fb0', '#ffd9a0'], far: '#5a4a80', ambient: '#ff9ab0', ambientA: 0.1, shaft: '#ffd6e0', shaftA: 0.3, glow: 0.6 },
   day: { stops: ['#5fb4f0', '#a6dcff', '#fff1c8'], far: '#7d93bd', ambient: '#ffffff', ambientA: 0, shaft: '#fff2b0', shaftA: 0.34, glow: 0.3 },
   dusk: { stops: ['#3a2a86', '#c0508a', '#ffb070'], far: '#3a1f5a', ambient: '#ff8a5a', ambientA: 0.13, shaft: '#ffb070', shaftA: 0.3, glow: 0.85 },
@@ -88,7 +88,7 @@ const hash = (a: number, b: number) => {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }
 
-function floorTile(floor: FloorId, gx: number, gy: number): ReactNode {
+export function floorTile(floor: FloorId, gx: number, gy: number): ReactNode {
   const pts = [P(gx, gy), P(gx + 1, gy), P(gx + 1, gy + 1), P(gx, gy + 1)].map((p) => p.join(',')).join(' ')
   const alt = (gx + gy) % 2 === 0
   const n = hash(gx, gy)

@@ -13,7 +13,7 @@ const MAX = 3.2
  * Pinch, drag and wheel zoom for a big room. Taps still pass through to whatever is underneath;
  * only a real drag pans, and that drag is swallowed so it does not place or select things.
  */
-export default function ZoomPan({ children, resetKey, className = '' }: { children: ReactNode; resetKey?: string | number; className?: string }) {
+export default function ZoomPan({ children, resetKey, className = '', startScale = 1 }: { children: ReactNode; resetKey?: string | number; className?: string; startScale?: number }) {
   const box = useRef<HTMLDivElement>(null)
   const [t, setT] = useState<T>({ s: 1, x: 0, y: 0 })
   const tRef = useRef(t)
@@ -39,7 +39,16 @@ export default function ZoomPan({ children, resetKey, className = '' }: { childr
     setT(clamp({ s: ns, x: cx - (cx - cur.x) * k, y: cy - (cy - cur.y) * k }))
   }
 
-  useEffect(() => setT({ s: 1, x: 0, y: 0 }), [resetKey])
+  /** The resting view: fitted, or zoomed in on the centre for big maps. */
+  const home = (): T => {
+    const el = box.current
+    const s = Math.max(MIN, startScale)
+    if (!el || s <= MIN) return { s: 1, x: 0, y: 0 }
+    return { s, x: -(s - 1) * el.clientWidth * 0.5, y: -(s - 1) * el.clientHeight * 0.5 }
+  }
+
+  useEffect(() => setT(home()), [resetKey])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = box.current
@@ -102,7 +111,7 @@ export default function ZoomPan({ children, resetKey, className = '' }: { childr
     if (pointers.current.size === 0) gesture.current = null
   }
 
-  const fit = () => setT({ s: 1, x: 0, y: 0 })
+  const fit = () => setT(home())
   const center = () => ({ cx: (box.current?.clientWidth ?? 0) / 2, cy: (box.current?.clientHeight ?? 0) / 2 })
 
   return (
@@ -125,7 +134,7 @@ export default function ZoomPan({ children, resetKey, className = '' }: { childr
       <div className="zp-tools" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
         <button aria-label="Zoom in" onClick={() => { const c = center(); zoomAt(t.s * 1.4, c.cx, c.cy) }}>+</button>
         <button aria-label="Zoom out" onClick={() => { const c = center(); zoomAt(t.s / 1.4, c.cx, c.cy) }}>−</button>
-        {t.s > 1.01 && <button aria-label="Fit room" onClick={fit}>⤢</button>}
+        {Math.abs(t.s - Math.max(1, startScale)) > 0.01 && <button aria-label="Fit room" onClick={fit}>⤢</button>}
       </div>
     </div>
   )

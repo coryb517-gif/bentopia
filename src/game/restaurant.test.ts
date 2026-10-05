@@ -291,3 +291,23 @@ describe('loading older saves', () => {
     }
   })
 })
+
+import { DEFAULT_NAME, NAME_WORDS, restaurantName } from './restaurant'
+
+describe('restaurant name', () => {
+  it('is built from word lists only, with a friendly default', () => {
+    expect(restaurantName(newRestaurant(0))).toEqual(['Lucky Bento', 'House'])
+    const r = { ...newRestaurant(0), name: [3, 1, 4] as [number, number, number] }
+    expect(restaurantName(r)).toEqual(['Midnight Ramen', 'Stall'])
+    expect(NAME_WORDS.every((list) => list.length === 8)).toBe(true)
+    expect(DEFAULT_NAME).toEqual([0, 4, 0])
+  })
+
+  it('survives a corrupt saved name', () => {
+    const r = { ...newRestaurant(0), name: [99, -1, 7] as [number, number, number] }
+    const [top, bottom] = restaurantName(r)
+    expect(top).toContain('Lucky')
+    expect(top).toContain('Bento')
+    expect(bottom).toBe('Shop')
+  })
+})

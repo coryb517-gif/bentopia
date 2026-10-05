@@ -3,10 +3,11 @@ import { type Pref } from './audio'
 import CustomerPortrait, { customerFor } from './Customers'
 import Hearts from './Hearts'
 import Mascot from './Mascot'
+import Exterior from './Exterior'
 import Room from './Room'
-import StoreyTabs from './StoreyTabs'
+import StoreyTabs, { type ViewId } from './StoreyTabs'
 import ZoomPan from './ZoomPan'
-import { decorScore, levelOf, levelProgress, restaurantLevel, seatTotal, sizeOf, storeyView, tipsPerHour, upgradeLevel, type Restaurant, type StoreyId } from './restaurant'
+import { decorScore, levelOf, levelProgress, restaurantLevel, seatTotal, sizeOf, storeyView, tipsPerHour, upgradeLevel, type Restaurant } from './restaurant'
 
 interface Props {
   r: Restaurant
@@ -16,9 +17,10 @@ interface Props {
   onCollect: () => void
   onPlay: () => void
   onDecorate: () => void
-  storey: StoreyId
-  onStorey: (id: StoreyId) => void
+  view: ViewId
+  onView: (id: ViewId) => void
   onBuild: () => void
+  onTown: () => void
   /** The next level to play, for the Continue card. */
   next: { id: number; name: string; chapter: number }
   onContinue: () => void
@@ -41,7 +43,7 @@ const ICONS = {
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, storey, onStorey, onBuild, next, onContinue, prefs, onPref }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref }: Props) {
   const [sheet, setSheet] = useState<'settings' | 'pantry' | 'market' | null>(null)
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
   const score = decorScore(r)
@@ -65,10 +67,10 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
         </div>
       </header>
 
-      <StoreyTabs r={r} active={storey} onPick={onStorey} onLocked={onBuild} />
+      <StoreyTabs r={r} outside active={view} onPick={onView} onLocked={onBuild} />
 
       <div className="stage hubstage">
-        <ZoomPan resetKey={storey}><Room r={storeyView(r, storey)} grid={sizeOf(r, storey)} storey={storey} /></ZoomPan>
+        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} />}</ZoomPan>
         {tips > 0 && (
           <button className="tips" onClick={onCollect}>
             <i className="coinicon" /> Collect tips <b>+{tips}</b>
@@ -97,7 +99,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
           <span>{out ? 'Resting' : 'Play'}</span>
         </button>
-        <button onClick={() => setSheet('market')}>{ICONS.market}<span>Market</span></button>
+        <button data-coach="town" onClick={onTown}>{ICONS.market}<span>Town</span></button>
         <button onClick={() => setSheet('settings')}>{ICONS.settings}<span>Settings</span></button>
       </nav>
 

@@ -493,3 +493,40 @@ h1, h2 { font-family: var(--font-title); font-weight: 400; margin: 0; }
 .rlevel small { line-height: 1.25; }
 
 .tips { left: 8px; right: auto; top: 8px; bottom: auto; z-index: 5; }
+
+.exterior { display: block; width: 100%; height: auto; }
+.silbob { animation: silbob 3.4s ease-in-out infinite; }
+@keyframes silbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.4px); } }
+
+/* Town */
+.town { padding-bottom: 14px; gap: 8px; }
+.townstage { flex: 1; min-height: 0; margin: 0 -12px; }
+.townstage .zp { height: 100%; min-height: 360px; }
+.townmap { display: block; width: 100%; height: auto; }
+.townsheet { padding: 12px 14px; border-radius: 22px; background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(12px); display: grid; gap: 8px; }
+.ts-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.townsheet h3 { margin: 0; font-size: 1.05rem; }
+.townsheet h3 small { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+.townsheet p { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); }
+.townsheet .stars { font-size: 0.95rem; letter-spacing: 1px; color: var(--gold); white-space: nowrap; }
+.townsheet .dim { color: rgba(255, 255, 255, 0.2); }
+.townsheet .btn { min-height: 42px; }
+.walker { animation: stroll 14s linear infinite; }
+@keyframes stroll { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)); opacity: 0; } }
+.pin { animation: pinbob 1.4s ease-in-out infinite; }
+@keyframes pinbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.ripple2 { animation: ripple2 4s ease-in-out infinite; }
+@keyframes ripple2 { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.6; } }
+.storeys { gap: 4px; flex-wrap: nowrap; }
+.storey { padding: 6px 10px; font-size: 0.74rem; gap: 4px; flex: none; }
+.storey small { font-size: 0.58rem; }
+
+.townstage { display: flex; align-items: center; }
+.townstage .zp { width: 100%; }
+
+.townstage .zp { height: min(64vh, 560px); }
+.namepick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.namepick select { font: inherit; font-weight: 700; font-size: 0.85rem; min-height: 42px; padding: 0 8px; border-radius: 14px; color: #fff; background: var(--glass); border: 1px solid var(--glass-edge); }
+.namepick select option { color: #2a0f2e; }
+.signpreview { text-align: center; margin: 0; font-family: var(--font-title); font-size: 1.2rem; color: var(--gold); text-shadow: 0 0 14px rgba(255, 194, 51, 0.6); }
+.signpreview small { display: block; font-family: var(--font-ui); font-size: 0.7rem; letter-spacing: 0.14em; color: var(--muted); text-shadow: none; }

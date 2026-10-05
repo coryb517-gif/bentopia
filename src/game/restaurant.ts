@@ -188,6 +188,8 @@ export interface Restaurant {
   upstairs?: Storey
   rooftop?: Storey
   upgrades?: Upgrades
+  /** Name picked from word lists: no free text, so nothing to moderate. */
+  name?: [number, number, number]
   nextId: number
   /** When tips were last collected (ms). */
   tipsAt: number
@@ -236,6 +238,21 @@ export function setProgress(r: Restaurant): { set: StyleSet; count: number; rate
     const nextTier = SET_TIERS.find((t) => count < t.count)
     return { set: s.id, count, rate: setBonusRate(count), next: nextTier?.count ?? null }
   })
+}
+
+// ---------- Name ----------
+export const NAME_WORDS: [string[], string[], string[]] = [
+  ['Lucky', 'Cozy', 'Golden', 'Midnight', 'Sleepy', 'Happy', 'Little', 'Grand'],
+  ['Sushi', 'Ramen', 'Tofu', 'Mochi', 'Bento', 'Tempura', 'Miso', 'Matcha'],
+  ['House', 'Kitchen', 'Corner', 'Garden', 'Stall', 'Table', 'Den', 'Shop'],
+]
+
+export const DEFAULT_NAME: [number, number, number] = [0, 4, 0]
+
+/** Restaurant name as [top line, bottom line] for the sign. */
+export function restaurantName(r: Restaurant): [string, string] {
+  const [a, b, c] = r.name ?? DEFAULT_NAME
+  return [`${NAME_WORDS[0][a] ?? 'Lucky'} ${NAME_WORDS[1][b] ?? 'Bento'}`, NAME_WORDS[2][c] ?? 'House']
 }
 
 // ---------- Storeys ----------

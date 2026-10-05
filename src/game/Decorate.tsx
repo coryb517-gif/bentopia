@@ -222,7 +222,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
         <span className="coin"><Coin />{coins}</span>
       </header>
 
-      <StoreyTabs r={root} active={storey} onPick={(id) => { setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={onBuild} />
+      <StoreyTabs r={root} active={storey} onPick={(id) => { if (id === 'outside') return; setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={onBuild} />
 
       <div className="stage">
         <ZoomPan resetKey={storey}>
