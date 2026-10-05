@@ -5,6 +5,7 @@ import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
 import BoardView from './game/BoardView'
 import { isSoundOn, setSound } from './game/audio'
+import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Mascot, { type Mood } from './game/Mascot'
 import { LEVELS } from './sim/levels'
 import { CHAINS } from './sim/items'
@@ -79,10 +80,13 @@ function Game() {
   const [sound, setSoundOn] = useState(isSoundOn)
   const [mood, setMood] = useState<Mood>('idle')
   const [quip, setQuip] = useState({ text: '', n: 0 })
+  const [flash, setFlash] = useState(false)
+  const prevDone = useRef(0)
   const moodTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const quipCount = useRef(0)
 
   const level = LEVELS[levelIdx]
+  const customer = customerFor(level.id)
 
   const say = useCallback((text: string, m: Mood, ms = 1300) => {
     clearTimeout(moodTimer.current)
@@ -135,6 +139,21 @@ function Game() {
     return () => clearTimeout(t)
   }, [game, say])
 
+  // The customer perks up whenever one line of their order is completed.
+  useEffect(() => {
+    if (!game) {
+      prevDone.current = 0
+      return
+    }
+    const done = game.level.order.filter((o, i) => game.progress[i] >= o.count).length
+    if (done > prevDone.current && game.status === 'playing') {
+      setFlash(true)
+      const t = setTimeout(() => setFlash(false), 1600)
+      prevDone.current = done
+      return () => clearTimeout(t)
+    }
+    prevDone.current = done
+  }, [game])
   const unlocked = (i: number) => i === 0 || (stars[LEVELS[i - 1].id] ?? 0) > 0
 
   if (screen === 'title') {
@@ -179,6 +198,8 @@ function Game() {
   }
 
   const status = game?.status ?? 'playing'
+  const custMood: CustomerMood = status === 'won' ? 'happy' : status === 'lost' ? 'sad' : flash ? 'happy' : 'idle'
+  const custLine = status === 'won' ? customer.win : status === 'lost' ? customer.lose : customer.ask
   const hasNext = levelIdx + 1 < LEVELS.length
 
   return (
@@ -195,6 +216,11 @@ function Game() {
           <small>moves</small>
         </div>
       </header>
+
+      <div className="customer-row">
+        <CustomerPortrait customer={customer} mood={custMood} size={66} />
+        <p className="ask" key={custMood}><b>{customer.name}</b>{custLine}</p>
+      </div>
 
       <section className="order" aria-label="Order">
         <ul>
@@ -237,7 +263,8 @@ function Game() {
       {showResult && status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
           <div className="card">
-            <Mascot mood={status === 'won' ? 'wow' : 'oops'} size={130} />
+            <CustomerPortrait customer={customer} mood={status === 'won' ? 'happy' : 'sad'} size={120} />
+            <p className="ask solo"><b>{customer.name}</b>{custLine}</p>
             {status === 'won' ? (
               <>
                 <h2>Order up!</h2>
