@@ -1,7 +1,7 @@
 import Room, { DecorPreview } from './Room'
 import { ITEMS, newRestaurant, type Restaurant } from './restaurant'
 
-const full: Restaurant = {
+export const full: Restaurant = {
   ...newRestaurant(0),
   floor: 'tatami',
   wall: 'cream',
