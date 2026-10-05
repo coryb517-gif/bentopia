@@ -3,17 +3,22 @@ import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
+import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
 import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
-import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, formatCountdown, levelReward, loadWallet, loseHeart, MAX_HEARTS, msToNextHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
+import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
+import Decorate from './game/Decorate'
+import Hub from './game/Hub'
+import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued } from './game/restaurant'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
+import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
 import { LEVELS } from './sim/levels'
 import { CHAINS, recipeFor } from './sim/items'
 import type { GameState } from './sim/types'
 import './App.css'
 
-type Screen = 'title' | 'map' | 'play'
+type Screen = 'title' | 'hub' | 'decorate' | 'map' | 'play'
 
 const CHAPTERS = [
   { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
@@ -69,20 +74,6 @@ function Recipe({ kind, tier }: { kind: number; tier: number }) {
   return <div className="recipe">{steps}</div>
 }
 
-function Hearts({ wallet, now }: { wallet: { hearts: number; regenAt: number | null }; now: number }) {
-  const wait = wallet.hearts < MAX_HEARTS && wallet.regenAt !== null ? formatCountdown(msToNextHeart(wallet as never, now)) : null
-  return (
-    <span className="hearts" aria-label={`${wallet.hearts} of ${MAX_HEARTS} hearts`}>
-      {Array.from({ length: MAX_HEARTS }, (_, i) => (
-        <svg key={i} viewBox="0 0 24 22" width="18" height="17" className={i < wallet.hearts ? 'heart on' : 'heart'}>
-          <path d="M12 21C4 14.5 1.5 11 1.5 7.2 1.5 4 4 2 6.8 2 9 2 11 3.2 12 5.2 13 3.2 15 2 17.2 2 20 2 22.5 4 22.5 7.2 22.5 11 20 14.5 12 21Z" />
-        </svg>
-      ))}
-      {wait && <small className="regen">{wait}</small>}
-    </span>
-  )
-}
-
 /** Counts up to a value with a ticking coin sound. */
 function CountUp({ to }: { to: number }) {
   const [n, setN] = useState(0)
@@ -120,6 +111,7 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
 export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
   const hero = new URLSearchParams(location.search).has('hero')
+  if (new URLSearchParams(location.search).has('room')) return <><Backdrop /><RoomLab /></>
   return (
     <>
       <Backdrop />
@@ -142,6 +134,7 @@ function Game() {
   const [now, setNow] = useState(() => Date.now())
   const [reward, setReward] = useState<number | null>(null)
   const [grant, setGrant] = useState({ id: 0, n: 0 })
+  const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const starsRef = useRef(stars)
   starsRef.current = stars
   const [mood, setMood] = useState<Mood>('idle')
@@ -163,6 +156,15 @@ function Game() {
     return () => clearInterval(id)
   }, [])
   useEffect(() => saveWallet(wallet), [wallet])
+  useEffect(() => saveRestaurant(restaurant), [restaurant])
+  const tips = tipsAccrued(restaurant, now)
+
+  const collect = () => {
+    if (tips <= 0) return
+    setWallet((w) => earn(w, tips))
+    setRestaurant((x) => collectTips(x, Date.now()))
+    coinSound(2)
+  }
 
   const togglePref = (k: Pref) => {
     const on = !prefs[k]
@@ -254,17 +256,55 @@ function Game() {
         <Mascot mood="cheer" size={190} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
-        <button className="btn primary" onClick={() => { startMusic(); setScreen('map') }}>Play</button>
+        <button className="btn primary" onClick={() => { startMusic(); setScreen('hub') }}>Play</button>
         <p className="fine">Link 3 or more matching dishes. Drag, or tap one at a time.</p>
       </main>
     )
   }
 
+  if (screen === 'hub') {
+    return (
+      <Hub
+        r={restaurant}
+        wallet={wallet}
+        now={now}
+        tips={tips}
+        onCollect={collect}
+        onPlay={() => setScreen('map')}
+        onDecorate={() => setScreen('decorate')}
+        next={(() => {
+          const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
+          return { id: l.id, name: l.name, chapter: l.id <= 10 ? 1 : 2 }
+        })()}
+        onContinue={() => start(LEVELS.findIndex((x) => !(stars[x.id] > 0)) >= 0 ? LEVELS.findIndex((x) => !(stars[x.id] > 0)) : LEVELS.length - 1)}
+        prefs={prefs}
+        onPref={togglePref}
+      />
+    )
+  }
+
+  if (screen === 'decorate') {
+    return (
+      <Decorate
+        r={restaurant}
+        setR={setRestaurant}
+        coins={wallet.coins}
+        spend={(n) => {
+          const paid = spend(wallet, n)
+          if (!paid) return false
+          setWallet(paid)
+          return true
+        }}
+        earn={(n) => setWallet((w) => earn(w, n))}
+        onDone={() => setScreen('hub')}
+      />
+    )
+  }
   if (screen === 'map') {
     return (
       <main className="screen map">
         <header className="bar">
-          <button className="btn ghost" onClick={() => setScreen('title')}>Back</button>
+          <button className="btn ghost" onClick={() => setScreen('hub')}>Back</button>
           <h2>Levels</h2>
           <span className="spacer" />
         </header>

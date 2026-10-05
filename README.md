@@ -16,7 +16,9 @@ Phase 1 (Board) is done and Phase 2 is under way:
 - Coins (earned per clear, 40% on replays), hearts (5 max, one back every 30 minutes, lost on a failed level) and a "+5 moves for 50 coins" rescue. These live in localStorage for now and become a server ledger in Phase 3.
 - Synthesised audio with separate Music, Sound and Haptics toggles.
 
-Still to come: the restaurant hub and decorating, accounts and the server economy, crates and tokens (see the spec).
+- **Restaurant hub:** an isometric night-market restaurant with 14 placeable items, 4 floors and 4 wall themes, seated customers, tips that accrue while you are away, and a restaurant level (decor score) that grows the room and unlocks items.
+
+Still to come: accounts and the server economy, crates and tokens, the Night Market (see the spec).
 
 ## Develop
 
