@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: var(--rice);
+  background: radial-gradient(circle at 50% -10%, #fffaf0 0, #ffedd2 50%, #ffdcc2 100%) fixed;
   color: var(--ink);
   font-family: var(--font-ui);
   -webkit-tap-highlight-color: transparent;
@@ -121,3 +121,40 @@ h1, h2 { font-family: var(--font-title); font-weight: 400; margin: 0; }
 .dish { display: inline-block; vertical-align: middle; flex: none; }
 .preview .dish { margin: 0 4px; }
 .title .logo { width: 170px; height: 170px; filter: drop-shadow(0 8px 10px rgba(59, 36, 23, 0.3)); }
+
+/* Order ticket */
+.order { align-items: flex-start; }
+.order ul { flex: 1; gap: 6px; }
+.order li { display: grid; gap: 4px; }
+.orow { display: flex; align-items: center; gap: 8px; }
+.need { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #8a6a3a; }
+.recipe { display: flex; flex-wrap: wrap; gap: 4px 8px; padding-left: 2px; }
+.step { display: inline-flex; align-items: center; gap: 1px; background: rgba(217, 176, 122, 0.22); border-radius: 12px; padding: 2px 8px 2px 4px; }
+.step .arrow { margin: 0 6px 0 4px; font-weight: 800; color: #7fa650; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.order li.done .recipe { display: none; }
+/* Backdrop: faint seigaiha waves */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    radial-gradient(circle at 50% 100%, transparent 38%, rgba(217, 176, 122, 0.55) 39% 41%, transparent 42% 56%, rgba(217, 176, 122, 0.5) 57% 59%, transparent 60%) 0 0 / 56px 28px;
+}
+
+/* Title floaters */
+.title { position: relative; overflow: hidden; background: none; }
+.floaters { position: absolute; inset: 0; pointer-events: none; }
+.floater { position: absolute; filter: drop-shadow(0 8px 8px rgba(59, 36, 23, 0.25)); animation: bob 4.6s ease-in-out infinite; }
+.f0 { left: 6%; top: 10%; width: 108px; animation-delay: -0.5s; }
+.f1 { right: 7%; top: 14%; width: 98px; animation-delay: -1.7s; }
+.f2 { left: 3%; top: 48%; width: 92px; animation-delay: -2.6s; }
+.f3 { right: 4%; top: 50%; width: 104px; animation-delay: -3.1s; }
+.f4 { left: 10%; bottom: 8%; width: 100px; animation-delay: -1.1s; }
+.f5 { right: 11%; bottom: 7%; width: 96px; animation-delay: -2.2s; }
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-14px) rotate(4deg); } }
+.title > * { position: relative; }
+.title > .floaters { position: absolute; }

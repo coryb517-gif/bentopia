@@ -20,7 +20,22 @@ interface Sprite {
   ty: number
   ts: number
   dying: boolean
+  pop: number
+  phase: number
+  fs: number
 }
+
+interface Particle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  r: number
+  color: number
+}
+
+const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
 export default function BoardView({ level, seed, onState, onPreview }: Props) {
   const host = useRef<HTMLDivElement>(null)
@@ -64,7 +79,9 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
       const boardSprite = new PixiSprite()
       const lines = new Graphics()
       const tiles = new Container()
-      app.stage.addChild(boardSprite, tiles, lines)
+      const fx = new Graphics()
+      app.stage.addChild(boardSprite, tiles, lines, fx)
+      let particles: Particle[] = []
       cb.current.onState(state)
 
       const center = (i: number) => ({ x: pad + ((i % SIZE) + 0.5) * cell, y: pad + (Math.floor(i / SIZE) + 0.5) * cell })
@@ -110,10 +127,11 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
           let sp = sprites.get(t.id)
           if (!sp) {
             const node = makeNode(t)
-            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false }
+            const fs = (node.children[0] as PixiSprite).scale.x
+            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs }
             node.x = p.x
-            node.y = spawnFromAbove ? -cell * (1 + Math.random() * 2) : p.y
-            node.scale.set(t.id === popId ? 0.4 : 1)
+            node.y = spawnFromAbove && t.id !== popId ? -cell * (1 + Math.random() * 2) : p.y
+            node.scale.set(t.id === popId ? 0.5 : 1)
             sprites.set(t.id, sp)
           }
           sp.tx = p.x
@@ -145,11 +163,21 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
 
       app.ticker.add((tk) => {
         const k = reduce ? 1 : 1 - Math.exp(-tk.deltaMS * 0.018)
+        const now = performance.now() / 650
         for (const [id, sp] of sprites) {
           sp.node.x += (sp.tx - sp.node.x) * k
           sp.node.y += (sp.ty - sp.node.y) * k
           const s = sp.node.scale.x + (sp.ts - sp.node.scale.x) * k
           sp.node.scale.set(s)
+          const face = sp.node.children[0] as PixiSprite
+          if (!reduce && !sp.dying) {
+            // Gentle idle bob, each tile on its own phase.
+            face.y = Math.sin(now + sp.phase) * cell * 0.018
+            if (sp.pop > 0) {
+              sp.pop = Math.max(0, sp.pop - tk.deltaMS / 320)
+              face.scale.set(sp.fs * (1 + 0.32 * Math.sin(Math.PI * sp.pop)))
+            }
+          }
           if (sp.dying && s < 0.06) {
             sp.node.destroy({ children: true })
             sprites.delete(id)
@@ -157,13 +185,53 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
         }
       })
 
+      app.ticker.add((tk) => {
+        fx.clear()
+        if (!particles.length) return
+        const dt = tk.deltaMS / 16.7
+        particles = particles.filter((p) => p.life > 0)
+        for (const p of particles) {
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          p.vy += 0.16 * dt
+          p.life -= 0.022 * dt
+          fx.circle(p.x, p.y, p.r * Math.max(p.life, 0)).fill({ color: p.color, alpha: Math.min(1, p.life * 1.6) })
+        }
+      })
+
+      const burst = (cellIdx: number, tier: number) => {
+        if (reduce) return
+        const c = center(cellIdx)
+        const n = tier >= 2 ? 34 : 18
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2
+          const v = (1.5 + Math.random() * 3.2) * (cell / 60)
+          particles.push({
+            x: c.x,
+            y: c.y,
+            vx: Math.cos(a) * v,
+            vy: Math.sin(a) * v - 1.2,
+            life: 1,
+            r: cell * (0.05 + Math.random() * 0.07),
+            color: BURST[i % BURST.length],
+          })
+        }
+      }
+
       const drawPath = () => {
         lines.clear()
         if (path.length > 1) {
           const pts = path.map(center)
           lines.moveTo(pts[0].x, pts[0].y)
           for (const p of pts.slice(1)) lines.lineTo(p.x, p.y)
-          lines.stroke({ width: cell * 0.14, color: 0xf2a0a8, cap: 'round', join: 'round', alpha: 0.9 })
+          lines.stroke({ width: cell * 0.26, color: 0xf2a0a8, cap: 'round', join: 'round', alpha: 0.28 })
+          lines.moveTo(pts[0].x, pts[0].y)
+          for (const p of pts.slice(1)) lines.lineTo(p.x, p.y)
+          lines.stroke({ width: cell * 0.11, color: 0xff6f91, cap: 'round', join: 'round', alpha: 0.95 })
+        }
+        for (const i of path) {
+          const p = center(i)
+          lines.circle(p.x, p.y, cell * 0.48).stroke({ width: Math.max(2, cell * 0.06), color: 0xff6f91, alpha: 0.9 })
         }
         const t0 = path.length ? state.cells[path[0]] : null
         cb.current.onPreview(t0 && isValidChain(state, path) ? { kind: t0.kind, tier: t0.tier + 1 } : null)
@@ -198,6 +266,7 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
         state = next
         clackSound()
         placeSprites(true, state.last?.resultId)
+        if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)
         drawPath()
         cb.current.onState(state)
         if (state.status === 'won') winSound()

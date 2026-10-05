@@ -18,6 +18,22 @@ function loadStars(): Record<number, number> {
   }
 }
 
+/** Shows how to make a dish: link 3 of the last step to get the next one. */
+function Recipe({ kind, tier }: { kind: number; tier: number }) {
+  const steps = []
+  for (let t = 0; t < tier; t++) {
+    steps.push(
+      <span className="step" key={t}>
+        {[0, 1, 2].map((n) => <img key={n} className="dish" src={svgUrl(kind, t)} alt="" width={24} height={24} />)}
+        <span className="arrow" aria-hidden>→</span>
+        <img className="dish" src={svgUrl(kind, t + 1)} alt="" width={26} height={26} />
+        <span className="sr">Link three {CHAINS[kind].names[t]} to make {CHAINS[kind].names[t + 1]}</span>
+      </span>,
+    )
+  }
+  return <div className="recipe">{steps}</div>
+}
+
 function Stars({ n, big }: { n: number; big?: boolean }) {
   return (
     <span className={big ? 'stars big' : 'stars'} aria-label={`${n} of 3 stars`}>
@@ -82,6 +98,7 @@ function Game() {
   if (screen === 'title') {
     return (
       <main className="screen title">
+        <div className="floaters" aria-hidden>{[0, 1, 2, 3, 4, 5].map((k) => <img key={k} className={`floater f${k}`} src={svgUrl(k, 2)} alt="" width={84} height={84} />)}</div>
         <img className="logo" src={svgUrl(0, 2)} alt="" width={170} height={170} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
@@ -123,13 +140,16 @@ function Game() {
       <header className="hud">
         <button className="btn ghost" onClick={() => setScreen('map')} aria-label="Leave level">✕</button>
         <div className="order" aria-label="Order">
-          <span className="customer" aria-hidden>🧑‍🍳</span>
           <ul>
             {level.order.map((o, idx) => (
               <li key={idx} className={(game?.progress[idx] ?? 0) >= o.count ? 'done' : ''}>
-                <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={32} height={32} />
-                <span className="oname">{CHAINS[o.kind].names[o.tier]}</span>
-                <b>{game?.progress[idx] ?? 0}/{o.count}</b>
+                <div className="orow">
+                  <span className="need">Make</span>
+                  <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={40} height={40} />
+                  <span className="oname">{CHAINS[o.kind].names[o.tier]}</span>
+                  <b>{game?.progress[idx] ?? 0}/{o.count}</b>
+                </div>
+                <Recipe kind={o.kind} tier={o.tier} />
               </li>
             ))}
           </ul>

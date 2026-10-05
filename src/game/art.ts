@@ -194,9 +194,53 @@ const items: Record<string, () => string> = {
 export const CHAIN_COUNT = 6
 export const TIERS = 3
 
+/** Kawaii face: wide-set shiny eyes, blush, tiny smile. */
+function face(cx: number, cy: number, s: number): string {
+  const eye = (x: number) =>
+    `<ellipse cx="${x}" cy="${cy}" rx="${2.7 * s}" ry="${3.5 * s}" fill="#2a1a14"/>` +
+    `<circle cx="${x - 0.9 * s}" cy="${cy - 1.3 * s}" r="${1.05 * s}" fill="#fff"/>`
+  const blush = (x: number) => `<ellipse cx="${x}" cy="${cy + 4.6 * s}" rx="${3.6 * s}" ry="${2.1 * s}" fill="#ff7d96" opacity="0.55"/>`
+  return (
+    blush(cx - 13 * s) + blush(cx + 13 * s) + eye(cx - 8 * s) + eye(cx + 8 * s) +
+    `<path d="M${cx - 3 * s} ${cy + 4.2 * s}q${3 * s} ${3.4 * s} ${6 * s} 0" fill="none" stroke="#2a1a14" stroke-width="${1.7 * s}" stroke-linecap="round"/>`
+  )
+}
+
+// [cx, cy, scale, rotation, pivotX, pivotY]: where each dish wears its face.
+const FACES: Record<string, number[]> = {
+  '0-0': [50, 36, 1],
+  '0-1': [50, 53, 0.85],
+  '0-2': [33, 52, 0.7],
+  '1-1': [50, 43, 0.9],
+  '2-0': [50, 50, 0.85, -32, 50, 50],
+  '2-2': [50, 74, 0.85],
+  '3-0': [50, 56, 1.15],
+  '3-2': [50, 77, 0.85],
+  '4-1': [52, 54, 1],
+  '5-0': [50, 36, 0.8, -32, 50, 46],
+  '5-1': [52, 48, 0.55],
+  '5-2': [50, 30, 0.8],
+}
+
+const sparkle = (x: number, y: number, r: number) =>
+  `<path d="M${x} ${y - r}Q${x + r * 0.18} ${y - r * 0.18} ${x + r} ${y}Q${x + r * 0.18} ${y + r * 0.18} ${x} ${y + r}Q${x - r * 0.18} ${y + r * 0.18} ${x - r} ${y}Q${x - r * 0.18} ${y - r * 0.18} ${x} ${y - r}Z" fill="#fff" stroke="#ffc233" stroke-width="1.2"/>`
+
 export function svgFor(kind: number, tier: number): string {
   uid = 0
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${items[`${kind}-${tier}`]()}</svg>`
+  const key = `${kind}-${tier}`
+  const f = FACES[key]
+  let body = items[key]()
+  if (f) {
+    const [cx, cy, s, rot, px, py] = f
+    const g = face(cx, cy, s)
+    body += rot !== undefined ? `<g transform="rotate(${rot} ${px} ${py})">${g}</g>` : g
+  }
+  // Fish keeps its own eye; give it a blush and a smile instead.
+  if (key === '1-0') body += `<ellipse cx="29" cy="57" rx="4" ry="2.4" fill="#ff7d96" opacity="0.6"/><path d="M17 56q3 3 6 0" fill="none" stroke="#2a1a14" stroke-width="1.8" stroke-linecap="round"/>`
+  if (key === '4-0') body += `<ellipse cx="80" cy="36" rx="3.4" ry="2" fill="#ff5a73" opacity="0.5"/>`
+  // Finished dishes glitter.
+  if (tier === 2) body += sparkle(86, 16, 9) + sparkle(14, 22, 6)
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${body}</svg>`
 }
 
 export function svgUrl(kind: number, tier: number): string {

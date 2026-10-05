@@ -25,6 +25,9 @@ function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, outer: numb
   ctx.closePath()
 }
 
+/** Pastel plate tint per ingredient so the board has color and kinds read at a glance. */
+const TINTS = [['#f4f7ff', '#cddcff'], ['#f0fbfb', '#bfe8ee'], ['#f5fcea', '#cfeaa6'], ['#fffbe6', '#ffe49a'], ['#fff3ee', '#ffcbb4'], ['#fffbe0', '#ffe27a']]
+
 /** Logical canvas size of a tile texture relative to the plate diameter. */
 export const TILE_PAD = 1.14
 
@@ -43,13 +46,8 @@ export function tileCanvas(kind: number, tier: number, plate: number, dpr: numbe
   ctx.shadowBlur = plate * 0.1
   ctx.shadowOffsetY = plate * 0.055
   const body = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r)
-  if (tier === 2) {
-    body.addColorStop(0, '#fffbe8')
-    body.addColorStop(1, '#fbe4a6')
-  } else {
-    body.addColorStop(0, '#fffefa')
-    body.addColorStop(1, '#efe2c6')
-  }
+  body.addColorStop(0, tier === 2 ? '#fffdf2' : TINTS[kind][0])
+  body.addColorStop(1, tier === 2 ? '#fbe0a0' : TINTS[kind][1])
   ctx.fillStyle = body
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
