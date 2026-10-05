@@ -211,6 +211,14 @@ export function canExtend(s: GameState, path: number[], cell: number): boolean {
   return recipeCouldInclude(tiles as Tile[])
 }
 
+/** Continue a lost game with extra moves (the "+5 moves" rescue). Leaves a playable board. */
+export function grantMoves(prev: GameState, n: number): GameState {
+  if (prev.status !== 'lost') return prev
+  const s: GameState = { ...prev, cells: [...prev.cells], status: 'playing', movesLeft: prev.movesLeft + n, last: null }
+  ensureLinkable(s)
+  return s
+}
+
 /** Returns the next state, or the same state if the chain is invalid or the game is over. */
 export function commitChain(prev: GameState, path: number[]): GameState {
   const out = prev.status === 'playing' ? chainOutcome(prev, path) : null

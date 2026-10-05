@@ -4,7 +4,8 @@ import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
 import BoardView from './game/BoardView'
-import { isSoundOn, setSound } from './game/audio'
+import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
+import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, formatCountdown, levelReward, loadWallet, loseHeart, MAX_HEARTS, msToNextHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Mascot, { type Mood } from './game/Mascot'
 import { LEVELS } from './sim/levels'
@@ -68,6 +69,42 @@ function Recipe({ kind, tier }: { kind: number; tier: number }) {
   return <div className="recipe">{steps}</div>
 }
 
+function Hearts({ wallet, now }: { wallet: { hearts: number; regenAt: number | null }; now: number }) {
+  const wait = wallet.hearts < MAX_HEARTS && wallet.regenAt !== null ? formatCountdown(msToNextHeart(wallet as never, now)) : null
+  return (
+    <span className="hearts" aria-label={`${wallet.hearts} of ${MAX_HEARTS} hearts`}>
+      {Array.from({ length: MAX_HEARTS }, (_, i) => (
+        <svg key={i} viewBox="0 0 24 22" width="18" height="17" className={i < wallet.hearts ? 'heart on' : 'heart'}>
+          <path d="M12 21C4 14.5 1.5 11 1.5 7.2 1.5 4 4 2 6.8 2 9 2 11 3.2 12 5.2 13 3.2 15 2 17.2 2 20 2 22.5 4 22.5 7.2 22.5 11 20 14.5 12 21Z" />
+        </svg>
+      ))}
+      {wait && <small className="regen">{wait}</small>}
+    </span>
+  )
+}
+
+/** Counts up to a value with a ticking coin sound. */
+function CountUp({ to }: { to: number }) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const start = performance.now()
+    const dur = Math.min(1400, 300 + to * 18)
+    let raf = 0
+    let last = 0
+    const step = (t: number) => {
+      const p = Math.min(1, (t - start) / dur)
+      const v = Math.round(to * (1 - (1 - p) * (1 - p)))
+      if (v !== last) coinSound(v)
+      last = v
+      setN(v)
+      if (p < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [to])
+  return <b>{n}</b>
+}
+
 function Stars({ n, big }: { n: number; big?: boolean }) {
   return (
     <span className={big ? 'stars big' : 'stars'} aria-label={`${n} of 3 stars`}>
@@ -100,7 +137,13 @@ function Game() {
   const [game, setGame] = useState<GameState | null>(null)
   const [preview, setPreview] = useState<{ kind: number; tier: number } | null>(null)
   const [showResult, setShowResult] = useState(false)
-  const [sound, setSoundOn] = useState(isSoundOn)
+  const [prefs, setPrefs] = useState<Record<Pref, boolean>>(() => ({ sound: getPref('sound'), music: getPref('music'), haptics: getPref('haptics') }))
+  const [wallet, setWallet] = useState(() => tick(loadWallet(), Date.now()))
+  const [now, setNow] = useState(() => Date.now())
+  const [reward, setReward] = useState<number | null>(null)
+  const [grant, setGrant] = useState({ id: 0, n: 0 })
+  const starsRef = useRef(stars)
+  starsRef.current = stars
   const [mood, setMood] = useState<Mood>('idle')
   const [quip, setQuip] = useState({ text: '', n: 0 })
   const [flash, setFlash] = useState(false)
@@ -109,6 +152,23 @@ function Game() {
   const quipCount = useRef(0)
 
   const level = LEVELS[levelIdx]
+  const outOfHearts = wallet.hearts <= 0
+
+  // One clock drives heart regeneration and the countdown, and the wallet is saved on every change.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now())
+      setWallet((w) => tick(w, Date.now()))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+  useEffect(() => saveWallet(wallet), [wallet])
+
+  const togglePref = (k: Pref) => {
+    const on = !prefs[k]
+    setPref(k, on)
+    setPrefs((p) => ({ ...p, [k]: on }))
+  }
   const customer = customerFor(level.id)
 
   const say = useCallback((text: string, m: Mood, ms = 1300) => {
@@ -122,6 +182,9 @@ function Game() {
   }, [])
 
   const start = (idx: number) => {
+    if (wallet.hearts <= 0) return
+    startMusic()
+    setReward(null)
     setLevelIdx(idx)
     setSeed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
     setAttempt((a) => a + 1)
@@ -147,6 +210,9 @@ function Game() {
     if (!game || game.status === 'playing') return
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
+      const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0))
+      setReward(coins)
+      setWallet((w) => earn(w, coins))
       setStars((prev) => {
         const next = { ...prev, [game.level.id]: Math.max(prev[game.level.id] ?? 0, game.stars) }
         try {
@@ -158,6 +224,7 @@ function Game() {
       })
     } else {
       say('Oh no! So close...', 'oops', 6000)
+      setWallet((w) => loseHeart(w, Date.now()))
     }
     const t = setTimeout(() => setShowResult(true), 800)
     return () => clearTimeout(t)
@@ -187,24 +254,24 @@ function Game() {
         <Mascot mood="cheer" size={190} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
-        <button className="btn primary" onClick={() => setScreen('map')}>Play</button>
+        <button className="btn primary" onClick={() => { startMusic(); setScreen('map') }}>Play</button>
         <p className="fine">Link 3 or more matching dishes. Drag, or tap one at a time.</p>
       </main>
     )
   }
 
   if (screen === 'map') {
-    const total = Object.values(stars).reduce((a, b) => a + b, 0)
     return (
       <main className="screen map">
         <header className="bar">
           <button className="btn ghost" onClick={() => setScreen('title')}>Back</button>
           <h2>Levels</h2>
-          <span className="coin">★ {total}</span>
+          <span className="spacer" />
         </header>
+        <div className="wallet"><Hearts wallet={wallet} now={now} /><span className="coin"><i className="coinicon" />{wallet.coins}</span></div>
         <div className="maphero">
           <Mascot mood="idle" size={84} />
-          <p className="bubble">Pick an order, chef!</p>
+          <p className="bubble">{outOfHearts ? 'Rest a moment, chef...' : 'Pick an order, chef!'}</p>
         </div>
         {CHAPTERS.map((ch) => (
           <section key={ch.title} className="chapter">
@@ -214,7 +281,7 @@ function Game() {
                 const i = l.id - 1
                 return (
                   <li key={l.id}>
-                    <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i)} onClick={() => start(i)}>
+                    <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i) || outOfHearts} onClick={() => start(i)}>
                       <span className="num">{unlocked(i) ? l.id : '🔒'}</span>
                       <span className="lname">{l.name}</span>
                       <Stars n={stars[l.id] ?? 0} />
@@ -277,19 +344,15 @@ function Game() {
         )}
       </div>
 
-      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} />
+      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} grant={grant} />
 
       <footer className="foot">
-        <button
-          className="btn ghost"
-          onClick={() => {
-            setSound(!sound)
-            setSoundOn(!sound)
-          }}
-        >
-          Sound {sound ? 'on' : 'off'}
-        </button>
-        <button className="btn ghost" onClick={() => start(levelIdx)}>Restart level</button>
+        {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
+          <button key={k} className={`chip${prefs[k] ? ' on' : ''}`} aria-pressed={prefs[k]} onClick={() => togglePref(k)}>
+            {k === 'music' ? 'Music' : k === 'sound' ? 'Sound' : 'Haptics'}
+          </button>
+        ))}
+        <button className="chip" onClick={() => start(levelIdx)} aria-label="Restart level">Restart</button>
       </footer>
 
       {showResult && status !== 'playing' && (
@@ -302,6 +365,7 @@ function Game() {
                 <h2>Order up!</h2>
                 <Stars n={game!.stars} big />
                 <p>{game!.movesLeft} moves to spare</p>
+                {reward !== null && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
                 <div className="actions">
                   {hasNext && <button className="btn primary" onClick={() => start(levelIdx + 1)}>Play level {level.id + 1}</button>}
                   <button className="btn" onClick={() => start(levelIdx)}>Play level {level.id} again</button>
@@ -312,8 +376,24 @@ function Game() {
               <>
                 <h2>Out of moves</h2>
                 <p>The customer will wait. Give level {level.id} another go.</p>
+                <Hearts wallet={wallet} now={now} />
+                {wallet.coins >= EXTRA_MOVES_COST && (
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      const paid = spend(wallet, EXTRA_MOVES_COST)
+                      if (!paid) return
+                      setWallet(refundHeart(paid))
+                      setShowResult(false)
+                      setGrant((g) => ({ id: g.id + 1, n: EXTRA_MOVES }))
+                      say('Back in the kitchen!', 'cheer')
+                    }}
+                  >
+                    +{EXTRA_MOVES} moves for <i className="coinicon" />{EXTRA_MOVES_COST}
+                  </button>
+                )}
                 <div className="actions">
-                  <button className="btn primary" onClick={() => start(levelIdx)}>Play level {level.id} again</button>
+                  <button className="btn" disabled={outOfHearts} onClick={() => start(levelIdx)}>{outOfHearts ? 'Out of hearts' : `Play level ${level.id} again`}</button>
                   <button className="btn ghost" onClick={() => setScreen('map')}>Level map</button>
                 </div>
               </>

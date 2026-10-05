@@ -13,7 +13,10 @@ Phase 1 (Board) is done and Phase 2 is under way:
 - 20 levels, six customers with reactions, a mascot, a hand-built vector art set (22 dishes), glass-orb tiles on a lacquer board.
 - Tests include a greedy bot that must be able to clear every level.
 
-Still to come: coins, hearts, audio and haptics polish, the restaurant hub, accounts and the server economy (see the spec).
+- Coins (earned per clear, 40% on replays), hearts (5 max, one back every 30 minutes, lost on a failed level) and a "+5 moves for 50 coins" rescue. These live in localStorage for now and become a server ledger in Phase 3.
+- Synthesised audio with separate Music, Sound and Haptics toggles.
+
+Still to come: the restaurant hub and decorating, accounts and the server economy, crates and tokens (see the spec).
 
 ## Develop
 

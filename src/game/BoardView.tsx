@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, newGame, SIZE } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, newGame, SIZE } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { clackSound, loseSound, popSound, winSound } from './audio'
@@ -14,6 +14,9 @@ interface Props {
   onPreview: (t: { kind: number; tier: number } | null) => void
   /** Fired after each committed chain with its length and the tier it produced. */
   onMerge?: (len: number, tier: number) => void
+  /** Bump id to give a lost game 
+ more moves. */
+  grant?: { id: number; n: number }
 }
 
 interface Sprite {
@@ -39,7 +42,8 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, grant }: Props) {
+  const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
   const cb = useRef({ onState, onPreview, onMerge })
   cb.current = { onState, onPreview, onMerge }
@@ -278,7 +282,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge }: 
         const chainLen = path.length
         path = []
         state = next
-        clackSound()
+        clackSound(next.cells[next.last?.toCell ?? 0]?.tier ?? 1)
         if (next.last) cb.current.onMerge?.(chainLen, next.cells[next.last.toCell]?.tier ?? 1)
         placeSprites(true, state.last?.resultId)
         if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)
@@ -334,6 +338,14 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge }: 
         }
         // A lone tapped tile stays selected so the player can tap the rest of the chain.
       }
+      grantRef.current = (n) => {
+        state = grantMoves(state, n)
+        path = []
+        placeSprites(false)
+        drawPath()
+        cb.current.onState(state)
+      }
+
       app.canvas.addEventListener('pointerdown', down)
       app.canvas.addEventListener('pointermove', move)
       app.canvas.addEventListener('pointerup', up)
@@ -365,6 +377,11 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge }: 
       if (inited) app.destroy(true, { children: true })
     }
   }, [level, seed])
+
+  useEffect(() => {
+    if (grant) grantRef.current?.(grant.n)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grant?.id])
 
   return <div ref={host} className="board-host" />
 }

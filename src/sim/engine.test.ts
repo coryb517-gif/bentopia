@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canExtend, chainOutcome, commitChain, hasLink, isValidChain, newGame } from './engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, hasLink, isValidChain, newGame } from './engine'
 import { LEVELS } from './levels'
 
 /** Greedy bot: commit the first connected run of 3 it finds. */
@@ -118,5 +118,17 @@ describe('mixed recipes', () => {
   it('counts a mixed trio as a legal move when checking for deadlock', () => {
     const s = setup([0, 1, 3])
     expect(hasLink(s)).toBe(true)
+  })
+})
+
+describe('rescue moves', () => {
+  it('gives a lost game more moves and a playable board, and ignores games still in progress', () => {
+    const s = newGame(LEVELS[0], 5)
+    expect(grantMoves(s, 5)).toBe(s)
+    const lost = { ...s, status: 'lost' as const, movesLeft: 0 }
+    const back = grantMoves(lost, 5)
+    expect(back.status).toBe('playing')
+    expect(back.movesLeft).toBe(5)
+    expect(hasLink(back)).toBe(true)
   })
 })
