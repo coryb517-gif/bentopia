@@ -84,9 +84,9 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
       </section>
 
       <nav className="dock" aria-label="Main">
-        <button onClick={onDecorate}>{ICONS.decorate}<span>Decorate</span></button>
+        <button data-coach="decorate" onClick={onDecorate}>{ICONS.decorate}<span>Decorate</span></button>
         <button onClick={() => setSheet('pantry')}>{ICONS.pantry}<span>Pantry</span></button>
-        <button className="playbtn" onClick={onPlay} disabled={out} aria-label="Play">
+        <button className="playbtn" data-coach="play" onClick={onPlay} disabled={out} aria-label="Play">
           <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
           <span>{out ? 'Resting' : 'Play'}</span>
         </button>

@@ -14,6 +14,8 @@ interface Props {
   spend: (n: number) => boolean
   earn: (n: number) => void
   onDone: () => void
+  /** Called after a purchase is placed (used by the tutorial). */
+  onBought?: () => void
 }
 
 type Tab = 'furniture' | 'floors' | 'walls'
@@ -34,7 +36,7 @@ const WALL_SWATCH: Record<WallId, string> = {
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r, setR, coins, spend, earn, onDone }: Props) {
+export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought }: Props) {
   const [tab, setTab] = useState<Tab>('furniture')
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -86,6 +88,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone }: Props)
       if (!spend(itemDef(g.type).price)) return say('Not enough coins')
       coinSound(3)
       commit(placeItem(r, g.type, g.gx, g.gy))
+      onBought?.()
     } else if (g.ignoreId) {
       commit(moveItem(r, g.ignoreId, g.gx, g.gy))
     }
@@ -133,7 +136,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone }: Props)
   return (
     <main className="screen decorate">
       <header className="bar">
-        <button className="btn ghost" onClick={onDone}>Done</button>
+        <button className="btn ghost" data-coach="done" onClick={onDone}>Done</button>
         <h2>Decorate</h2>
         <span className="coin"><Coin />{coins}</span>
       </header>
@@ -159,7 +162,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone }: Props)
               <small>{okSpot ? 'Tap the tile again, or press Place' : 'Tap a free tile'}</small>
             </div>
             <button className="btn" onClick={() => setPlacing(null)}>Cancel</button>
-            <button className="btn primary" disabled={!okSpot} onClick={confirm}>
+            <button className="btn primary" data-coach="place" disabled={!okSpot} onClick={confirm}>
               {placing.shop ? <>Place <Coin />{cost}</> : 'Move here'}
             </button>
           </div>
@@ -188,7 +191,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone }: Props)
                 ITEMS.map((def) => {
                   const locked = def.unlock > level
                   return (
-                    <button key={def.type} className={`shopcard${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`} onClick={() => startShop(def.type)}>
+                    <button key={def.type} data-coach={`card-${def.type}`} className={`shopcard${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`} onClick={() => startShop(def.type)}>
                       <DecorPreview type={def.type} size={78} />
                       <span className="nm">{def.name}</span>
                       <span className="pr">{locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>

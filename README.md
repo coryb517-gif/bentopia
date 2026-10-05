@@ -18,6 +18,8 @@ Phase 1 (Board) is done and Phase 2 is under way:
 
 - **Restaurant hub:** an isometric night-market restaurant with 14 placeable items, 4 floors and 4 wall themes, seated customers, tips that accrue while you are away, and a restaurant level (decor score) that grows the room and unlocks items.
 
+- **First-time tutorial:** a mascot intro, an animated finger on the real board, a guided first trip to Decorate, and a one-time callout on the first mixed recipe. Replay it with `/?tutorial`. The idle hint (a finger tracing a good chain after 9 seconds) is on for everyone.
+
 Still to come: accounts and the server economy, crates and tokens, the Night Market (see the spec).
 
 ## Develop

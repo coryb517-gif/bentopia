@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, grantMoves, newGame, SIZE } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, newGame, SIZE, suggestChain } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { clackSound, loseSound, popSound, winSound } from './audio'
@@ -17,6 +17,8 @@ interface Props {
   /** Bump id to give a lost game 
  more moves. */
   grant?: { id: number; n: number }
+  /** Show a finger tracing a good chain: always (tutorial), after a few idle seconds, or never. */
+  hint?: 'off' | 'auto' | 'always'
 }
 
 interface Sprite {
@@ -42,11 +44,11 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, grant }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, grant, hint }: Props) {
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview, onMerge })
-  cb.current = { onState, onPreview, onMerge }
+  const cb = useRef({ onState, onPreview, onMerge, hint })
+  cb.current = { onState, onPreview, onMerge, hint }
 
   useEffect(() => {
     const el = host.current!
@@ -86,7 +88,11 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
       const lines = new Graphics()
       const tiles = new Container()
       const fx = new Graphics()
-      app.stage.addChild(boardSprite, tiles, lines, fx)
+      const hintG = new Graphics()
+      app.stage.addChild(boardSprite, tiles, lines, hintG, fx)
+      let lastInput = performance.now()
+      let hintPath: number[] | null = null
+      let hintFor: GameState | null = null
       let particles: Particle[] = []
       cb.current.onState(state)
 
@@ -280,6 +286,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
         const next = commitChain(state, path)
         if (next === state) return
         const chainLen = path.length
+        lastInput = performance.now()
         path = []
         state = next
         clackSound(next.cells[next.last?.toCell ?? 0]?.tier ?? 1)
@@ -304,6 +311,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
       }
 
       const down = (e: PointerEvent) => {
+        lastInput = performance.now()
         if (state.status !== 'playing') return
         const i = cellAt(e, false)
         if (i === null) return
@@ -338,6 +346,38 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
         }
         // A lone tapped tile stays selected so the player can tap the rest of the chain.
       }
+      // A finger tracing a good chain, for the tutorial and for players who pause for a while.
+      app.ticker.add(() => {
+        hintG.clear()
+        const mode = cb.current.hint ?? 'off'
+        if (mode === 'off' || dragging || path.length || state.status !== 'playing') return
+        const t = performance.now()
+        if (mode === 'auto' && t - lastInput < 9000) return
+        if (hintFor !== state) {
+          hintFor = state
+          hintPath = suggestChain(state)
+        }
+        if (!hintPath) return
+        const pts = hintPath.map(center)
+        const pulse = 0.5 + 0.5 * Math.sin(t / 260)
+        for (const p of pts) {
+          hintG.circle(p.x, p.y, cell * (0.43 + 0.05 * pulse)).stroke({ width: cell * 0.07, color: 0x6dffc0, alpha: 0.5 + 0.45 * pulse })
+        }
+        const cycle = 2800
+        const f = Math.min(1, ((t % cycle) / cycle) / 0.75)
+        const pos = f * (pts.length - 1)
+        const i = Math.min(pts.length - 2, Math.floor(pos))
+        const k = pos - i
+        const fxp = pts[i].x + (pts[i + 1].x - pts[i].x) * k
+        const fyp = pts[i].y + (pts[i + 1].y - pts[i].y) * k
+        hintG.moveTo(pts[0].x, pts[0].y)
+        for (let j = 1; j <= i; j++) hintG.lineTo(pts[j].x, pts[j].y)
+        hintG.lineTo(fxp, fyp)
+        hintG.stroke({ width: cell * 0.12, color: 0xff6f91, cap: 'round', join: 'round', alpha: 0.85 })
+        hintG.circle(fxp, fyp, cell * 0.3).fill({ color: 0xffffff, alpha: 0.28 })
+        hintG.circle(fxp, fyp, cell * 0.17).fill({ color: 0xffffff, alpha: 0.95 })
+        hintG.circle(fxp, fyp, cell * 0.17).stroke({ width: 2, color: 0xff6f91 })
+      })
       grantRef.current = (n) => {
         state = grantMoves(state, n)
         path = []

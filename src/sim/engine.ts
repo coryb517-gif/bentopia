@@ -211,6 +211,43 @@ export function canExtend(s: GameState, path: number[], cell: number): boolean {
   return recipeCouldInclude(tiles as Tile[])
 }
 
+/** Outputs (and the ingredients for them) that the order still needs, as "kind.tier" keys. */
+function neededKeys(s: GameState): Set<string> {
+  const w = new Set<string>()
+  s.level.order.forEach((o, i) => {
+    if (s.progress[i] >= o.count) return
+    w.add(`${o.kind}.${o.tier}`)
+    const r = RECIPES.find((x) => x.out.kind === o.kind && x.out.tier === o.tier)
+    if (r) r.inputs.forEach((inp) => w.add(`${inp.kind}.${inp.tier}`))
+    else if (o.tier === 2) w.add(`${o.kind}.1`)
+  })
+  return w
+}
+
+/** A good three-tile chain to show a player: one that advances the order if possible. */
+export function suggestChain(s: GameState): number[] | null {
+  if (s.status !== 'playing') return null
+  const want = neededKeys(s)
+  let best: number[] | null = null
+  let bestScore = -1
+  for (let a = 0; a < CELLS; a++) {
+    if (!s.cells[a]) continue
+    for (const b of neighbors(a)) {
+      for (const c of neighbors(b)) {
+        if (c === a) continue
+        const out = chainOutcome(s, [a, b, c])
+        if (!out) continue
+        const score = (want.has(`${out.kind}.${out.tier}`) ? 10 : 0) + out.tier
+        if (score > bestScore) {
+          bestScore = score
+          best = [a, b, c]
+        }
+      }
+    }
+  }
+  return best
+}
+
 /** Continue a lost game with extra moves (the "+5 moves" rescue). Leaves a playable board. */
 export function grantMoves(prev: GameState, n: number): GameState {
   if (prev.status !== 'lost') return prev

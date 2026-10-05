@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
@@ -7,7 +7,9 @@ import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
 import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
 import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
+import Coach from './game/Coach'
 import Decorate from './game/Decorate'
+import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
 import Hub from './game/Hub'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued } from './game/restaurant'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
@@ -24,6 +26,14 @@ const CHAPTERS = [
   { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
   { title: 'Chapter 2', sub: 'Mix it up', from: 11, to: 20 },
 ]
+
+function hasProgress(): boolean {
+  try {
+    return Object.keys(JSON.parse(localStorage.getItem('bentopia.stars') ?? '{}')).length > 0 || localStorage.getItem('bentopia.wallet') !== null
+  } catch {
+    return false
+  }
+}
 
 function loadStars(): Record<number, number> {
   try {
@@ -135,6 +145,8 @@ function Game() {
   const [reward, setReward] = useState<number | null>(null)
   const [grant, setGrant] = useState({ id: 0, n: 0 })
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
+  const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
+  const [intro, setIntro] = useState(false)
   const starsRef = useRef(stars)
   starsRef.current = stars
   const [mood, setMood] = useState<Mood>('idle')
@@ -157,6 +169,7 @@ function Game() {
   }, [])
   useEffect(() => saveWallet(wallet), [wallet])
   useEffect(() => saveRestaurant(restaurant), [restaurant])
+  useEffect(() => saveTutorial(tut), [tut])
   const tips = tipsAccrued(restaurant, now)
 
   const collect = () => {
@@ -204,6 +217,7 @@ function Game() {
     (len: number, tier: number) => {
       const pool = tier >= 2 ? QUIPS.dish : len >= 5 ? QUIPS.huge : len === 4 ? QUIPS.big : QUIPS.small
       say(pool[quipCount.current++ % pool.length], tier >= 2 || len >= 5 ? 'wow' : 'cheer')
+      setTut((t) => (t.step === 'link' ? { ...t, step: 'merged' } : t.step === 'merged' ? { ...t, step: 'play' } : t))
     },
     [say],
   )
@@ -212,6 +226,7 @@ function Game() {
     if (!game || game.status === 'playing') return
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
+      if (game.level.id === 1) setTut((t) => (inLevelOne(t.step) ? { ...t, step: 'win' } : t))
       const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0))
       setReward(coins)
       setWallet((w) => earn(w, coins))
@@ -249,29 +264,97 @@ function Game() {
   }, [game])
   const unlocked = (i: number) => i === 0 || (stars[LEVELS[i - 1].id] ?? 0) > 0
 
+  // The first-merge callout covers the top of the board, so it clears itself.
+  useEffect(() => {
+    if (tut.step !== 'merged') return
+    const id = setTimeout(() => setTut((t) => (t.step === 'merged' ? { ...t, step: 'play' } : t)), 4500)
+    return () => clearTimeout(id)
+  }, [tut.step])
+
+  const skipTutorial = () => {
+    setTut({ step: 'done', mixedSeen: true })
+    setIntro(false)
+  }
+
+  const playFromTitle = () => {
+    startMusic()
+    if (tut.step === 'intro') return setIntro(true)
+    if (tut.step === 'link' || tut.step === 'merged' || tut.step === 'play') return start(0)
+    setScreen('hub')
+  }
+
+  const finishTutorialWin = () => {
+    setWallet((w) => earn(w, TUTORIAL_GIFT))
+    setTut((t) => ({ ...t, step: 'hub' }))
+    setScreen('hub')
+    say('Welcome to your restaurant!', 'cheer', 3000)
+  }
+
+  const level0Mixed = LEVELS[levelIdx].order.some((o) => recipeFor(o.kind, o.tier))
+  let coachEl: ReactNode = null
+  if (screen === 'title' && intro) {
+    coachEl = (
+      <Coach
+        text="Hi, I'm Bento-kun! Customers order dishes and you cook them by linking matching food. Let's make your first order together."
+        dismissLabel="Let's cook!"
+        onDismiss={() => {
+          setIntro(false)
+          setTut((t) => ({ ...t, step: 'link' }))
+          start(0)
+        }}
+        onSkip={skipTutorial}
+      />
+    )
+  } else if (screen === 'play' && tut.step === 'link') {
+    coachEl = <Coach target=".board-host" side="below" dim={false} text="Drag across 3 matching dishes to link them. Follow the finger!" onSkip={skipTutorial} />
+  } else if (screen === 'play' && tut.step === 'merged') {
+    coachEl = <Coach target=".order" side="below" dim={false} text="Brilliant! 3 rice became an onigiri. Now make 3 onigiri to fill the order." dismissLabel="Got it" onDismiss={() => setTut((t) => ({ ...t, step: 'play' }))} onSkip={skipTutorial} />
+  } else if (screen === 'hub' && tut.step === 'hub') {
+    coachEl = <Coach target='[data-coach="decorate"]' side="above" text="This is your restaurant! Tap Decorate to make it yours." onSkip={skipTutorial} />
+  } else if (screen === 'decorate' && tut.step === 'decorate') {
+    coachEl = <Coach target='[data-coach="place"], [data-coach="card-lamp"]' side="above" text="Tap the paper lantern to buy it, then press Place. It lights up the room!" onSkip={skipTutorial} />
+  } else if (screen === 'decorate' && tut.step === 'placed') {
+    coachEl = <Coach target='[data-coach="done"]' side="below" text="Beautiful! Tap Done to head back." onSkip={skipTutorial} />
+  } else if (screen === 'hub' && tut.step === 'back') {
+    coachEl = <Coach target='[data-coach="play"]' side="above" text="Customers are waiting. Tap Play for your next order!" onSkip={skipTutorial} />
+  } else if (screen === 'play' && tut.step === 'done' && !tut.mixedSeen && level0Mixed) {
+    coachEl = <Coach target=".order li .recipe" side="below" text="New trick! Link one of each ingredient, in any order, to make this dish." dismissLabel="Got it" onDismiss={() => setTut((t) => ({ ...t, mixedSeen: true }))} />
+  }
+  const withCoach = (x: ReactNode) => (
+    <>
+      {x}
+      {coachEl}
+    </>
+  )
   if (screen === 'title') {
-    return (
+    return withCoach(
       <main className="screen title">
         <div className="floaters" aria-hidden>{[0, 1, 2, 3, 4, 5].map((k) => <img key={k} className={`floater f${k}`} src={svgUrl(k, 2)} alt="" width={84} height={84} />)}</div>
         <Mascot mood="cheer" size={190} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
-        <button className="btn primary" onClick={() => { startMusic(); setScreen('hub') }}>Play</button>
+        <button className="btn primary" onClick={playFromTitle}>Play</button>
         <p className="fine">Link 3 or more matching dishes. Drag, or tap one at a time.</p>
       </main>
     )
   }
 
   if (screen === 'hub') {
-    return (
+    return withCoach(
       <Hub
         r={restaurant}
         wallet={wallet}
         now={now}
         tips={tips}
         onCollect={collect}
-        onPlay={() => setScreen('map')}
-        onDecorate={() => setScreen('decorate')}
+        onPlay={() => {
+          setTut((t) => (t.step === 'back' ? { ...t, step: 'done' } : t))
+          setScreen('map')
+        }}
+        onDecorate={() => {
+          setTut((t) => (t.step === 'hub' ? { ...t, step: 'decorate' } : t))
+          setScreen('decorate')
+        }}
         next={(() => {
           const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
           return { id: l.id, name: l.name, chapter: l.id <= 10 ? 1 : 2 }
@@ -284,7 +367,7 @@ function Game() {
   }
 
   if (screen === 'decorate') {
-    return (
+    return withCoach(
       <Decorate
         r={restaurant}
         setR={setRestaurant}
@@ -296,12 +379,16 @@ function Game() {
           return true
         }}
         earn={(n) => setWallet((w) => earn(w, n))}
-        onDone={() => setScreen('hub')}
+        onDone={() => {
+          setTut((t) => (t.step === 'placed' || t.step === 'decorate' ? { ...t, step: 'back' } : t))
+          setScreen('hub')
+        }}
+        onBought={() => setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))}
       />
     )
   }
   if (screen === 'map') {
-    return (
+    return withCoach(
       <main className="screen map">
         <header className="bar">
           <button className="btn ghost" onClick={() => setScreen('hub')}>Back</button>
@@ -341,7 +428,7 @@ function Game() {
   const custLine = status === 'won' ? customer.win : status === 'lost' ? customer.lose : customer.ask
   const hasNext = levelIdx + 1 < LEVELS.length
 
-  return (
+  return withCoach(
     <main className="screen play">
       <header className="hud">
         <button className="btn ghost round" onClick={() => setScreen('map')} aria-label="Leave level">✕</button>
@@ -384,7 +471,7 @@ function Game() {
         )}
       </div>
 
-      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} grant={grant} />
+      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} />
 
       <footer className="foot">
         {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
@@ -407,9 +494,15 @@ function Game() {
                 <p>{game!.movesLeft} moves to spare</p>
                 {reward !== null && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
                 <div className="actions">
-                  {hasNext && <button className="btn primary" onClick={() => start(levelIdx + 1)}>Play level {level.id + 1}</button>}
-                  <button className="btn" onClick={() => start(levelIdx)}>Play level {level.id} again</button>
-                  <button className="btn ghost" onClick={() => setScreen('map')}>Level map</button>
+                  {tut.step === 'win' ? (
+                    <button className="btn primary" onClick={finishTutorialWin}>See your restaurant</button>
+                  ) : (
+                    <>
+                      {hasNext && <button className="btn primary" onClick={() => start(levelIdx + 1)}>Play level {level.id + 1}</button>}
+                      <button className="btn" onClick={() => start(levelIdx)}>Play level {level.id} again</button>
+                      <button className="btn ghost" onClick={() => setScreen('map')}>Level map</button>
+                    </>
+                  )}
                 </div>
               </>
             ) : (

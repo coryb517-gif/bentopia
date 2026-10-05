@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canExtend, chainOutcome, commitChain, grantMoves, hasLink, isValidChain, newGame } from './engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, hasLink, isValidChain, newGame, suggestChain } from './engine'
 import { LEVELS } from './levels'
 
 /** Greedy bot: commit the first connected run of 3 it finds. */
@@ -130,5 +130,28 @@ describe('rescue moves', () => {
     expect(back.status).toBe('playing')
     expect(back.movesLeft).toBe(5)
     expect(hasLink(back)).toBe(true)
+  })
+})
+
+describe('hints', () => {
+  it('suggests a valid chain that makes what the order needs', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const s = newGame(LEVELS[0], seed)
+      const path = suggestChain(s)!
+      expect(path).toHaveLength(3)
+      // Level 1 asks for Onigiri, so the hint should link rice.
+      expect(chainOutcome(s, path)).toEqual({ kind: 0, tier: 1 })
+    }
+  })
+
+  it('suggests a mixed trio when that is what the order needs', () => {
+    const s = newGame(LEVELS[10], 3)
+    ;[0, 1, 3].forEach((kind, i) => (s.cells[i] = { id: 900 + i, kind, tier: 1 }))
+    expect(chainOutcome(s, suggestChain(s)!)).toEqual({ kind: 6, tier: 2 })
+  })
+
+  it('gives nothing once the game is over', () => {
+    const s = newGame(LEVELS[0], 1)
+    expect(suggestChain({ ...s, status: 'won' })).toBeNull()
   })
 })
