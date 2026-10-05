@@ -8,10 +8,11 @@ import BoardView from './game/BoardView'
 import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
 import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import Coach from './game/Coach'
+import Build from './game/Build'
 import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
 import Hub from './game/Hub'
-import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued } from './game/restaurant'
+import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
@@ -20,7 +21,7 @@ import { CHAINS, recipeFor } from './sim/items'
 import type { GameState } from './sim/types'
 import './App.css'
 
-type Screen = 'title' | 'hub' | 'decorate' | 'map' | 'play'
+type Screen = 'title' | 'hub' | 'decorate' | 'build' | 'map' | 'play'
 
 const CHAPTERS = [
   { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
@@ -147,6 +148,7 @@ function Game() {
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
   const [intro, setIntro] = useState(false)
+  const [storey, setStorey] = useState<StoreyId>('ground')
   const starsRef = useRef(stars)
   starsRef.current = stars
   const [mood, setMood] = useState<Mood>('idle')
@@ -355,6 +357,9 @@ function Game() {
           setTut((t) => (t.step === 'hub' ? { ...t, step: 'decorate' } : t))
           setScreen('decorate')
         }}
+        storey={storey}
+        onStorey={setStorey}
+        onBuild={() => setScreen('build')}
         next={(() => {
           const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
           return { id: l.id, name: l.name, chapter: l.id <= 10 ? 1 : 2 }
@@ -385,7 +390,30 @@ function Game() {
         }}
         onBought={() => setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))}
         initialTab={tut.step === 'decorate' ? 'lights' : 'seating'}
+        storey={storey}
+        onStorey={setStorey}
+        onBuild={() => setScreen('build')}
       />
+    )
+  }
+  if (screen === 'build') {
+    return withCoach(
+      <Build
+        r={restaurant}
+        setR={setRestaurant}
+        coins={wallet.coins}
+        spend={(n) => {
+          const paid = spend(wallet, n)
+          if (!paid) return false
+          setWallet(paid)
+          return true
+        }}
+        onBack={() => setScreen('hub')}
+        onGoto={(id) => {
+          setStorey(id)
+          setScreen('decorate')
+        }}
+      />,
     )
   }
   if (screen === 'map') {

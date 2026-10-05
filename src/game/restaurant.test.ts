@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canPlace, collectTips, decorScore, footprint, gridSize, ITEMS, levelOf, levelProgress, moveItem, newRestaurant, placeItem, withPeak,
+  canPlace, collectTips, decorScore, footprint, gridSize, ITEMS, levelOf, levelProgress, moveItem, newRestaurant, placeItem, withPeak, seatTotal, tipCapHours, tipsPerHour,
   removeItem, restaurantLevel, seats, sellValue, tipsAccrued,
 } from './restaurant'
 
@@ -78,10 +78,10 @@ describe('customers and tips', () => {
 
   it('accrues tips by the hour, capped, and resets on collect', () => {
     const r = newRestaurant(0)
-    const perHour = 5 + decorScore(r) * 0.15
+    const perHour = tipsPerHour(decorScore(r), seatTotal(r))
     expect(tipsAccrued(r, 0)).toBe(0)
     expect(tipsAccrued(r, HOUR)).toBe(Math.floor(perHour))
-    expect(tipsAccrued(r, 100 * HOUR)).toBe(Math.floor(6 * perHour))
+    expect(tipsAccrued(r, 100 * HOUR)).toBe(Math.floor(tipCapHours() * perHour))
     expect(tipsAccrued(collectTips(r, 10 * HOUR), 10 * HOUR)).toBe(0)
   })
 })
@@ -183,5 +183,111 @@ describe('style sets', () => {
     const prog = setProgress(r).find((s) => s.set === 'zen')!
     expect(prog.count).toBe(3)
     expect(prog.next).toBe(5)
+  })
+})
+
+import {
+  allItems, applyStorey, BUILD, buildStorey, buyUpgrade, EXPAND, expandStorey, hasStorey, nextExpansion, nextUpgrade, sizeOf, storeys, storeyView,
+  SIZE_STEPS, UPGRADES, upgradeLevel,
+} from './restaurant'
+
+describe('growing the building', () => {
+  it('starts small and grows one step at a time with rising prices', () => {
+    let r = newRestaurant(0)
+    expect(sizeOf(r, 'ground')).toBe(5)
+    expect(nextExpansion(r, 'ground')).toEqual({ size: 6, ...EXPAND[6] })
+    const costs: number[] = []
+    while (nextExpansion(r, 'ground')) {
+      costs.push(nextExpansion(r, 'ground')!.cost)
+      r = expandStorey(r, 'ground')
+    }
+    expect(sizeOf(r, 'ground')).toBe(10)
+    expect(costs).toEqual([...costs].sort((a, b) => a - b))
+    expect(nextExpansion(r, 'ground')).toBeNull()
+    expect(SIZE_STEPS.ground.at(-1)).toBe(10)
+  })
+
+  it('adds an upstairs lounge and a rooftop that start empty with sensible themes', () => {
+    let r = newRestaurant(0)
+    expect(hasStorey(r, 'upstairs')).toBe(false)
+    r = buildStorey(buildStorey(r, 'upstairs'), 'rooftop')
+    expect(hasStorey(r, 'upstairs')).toBe(true)
+    expect(r.upstairs).toMatchObject({ items: [], size: 5, floor: 'wood' })
+    expect(r.rooftop).toMatchObject({ items: [], size: 5, floor: 'deck' })
+    expect(buildStorey(r, 'upstairs')).toBe(r)
+    expect(BUILD.rooftop.cost).toBeGreaterThan(BUILD.upstairs.cost)
+    expect(storeys(r).map((s) => s.id)).toEqual(['ground', 'upstairs', 'rooftop'])
+    expect(expandStorey(r, 'rooftop').rooftop!.size).toBe(6)
+  })
+
+  it('edits one storey through a view without touching the others', () => {
+    let r = buildStorey(newRestaurant(0), 'upstairs')
+    const view = storeyView(r, 'upstairs')
+    expect(view.items).toEqual([])
+    const edited = placeItem(view, 'booth', 0, 0)
+    r = applyStorey(r, 'upstairs', edited)
+    expect(r.upstairs!.items).toHaveLength(1)
+    expect(r.items).toHaveLength(4) // ground floor unchanged
+    expect(r.nextId).toBe(edited.nextId) // ids stay unique across floors
+    expect(allItems(r)).toHaveLength(5)
+  })
+
+  it('counts items and set bonuses across every storey', () => {
+    let r = buildStorey(newRestaurant(0), 'rooftop')
+    const before = decorScore(r)
+    r = applyStorey(r, 'rooftop', placeItem(storeyView(r, 'rooftop'), 'sakura', 0, 0))
+    expect(decorScore(r)).toBeGreaterThan(before)
+    // Bonsai on the ground floor plus a sakura on the roof: both Zen, counted together.
+    expect(allItems(r).filter((p) => p.type === 'bonsai' || p.type === 'sakura')).toHaveLength(2)
+  })
+
+  it('more seats and upgrades earn more tips, and a bigger jar holds more', () => {
+    const r = newRestaurant(0)
+    expect(tipsPerHour(100, 10)).toBeGreaterThan(tipsPerHour(100, 4))
+    expect(tipsPerHour(100, 4, 3)).toBeGreaterThan(tipsPerHour(100, 4, 0))
+    expect(tipCapHours(3)).toBe(12)
+    expect(seatTotal(r)).toBe(3)
+  })
+
+  it('upgrades step up in price and stop at the last tier', () => {
+    let r = newRestaurant(0)
+    for (const k of ['register', 'menu'] as const) {
+      const prices = UPGRADES[k].steps.map((s) => s.cost)
+      expect(prices).toEqual([...prices].sort((a, b) => a - b))
+    }
+    expect(upgradeLevel(r, 'menu')).toBe(0)
+    r = buyUpgrade(r, 'menu')
+    expect(upgradeLevel(r, 'menu')).toBe(1)
+    expect(upgradeLevel(r, 'register')).toBe(0)
+    r = buyUpgrade(buyUpgrade(r, 'menu'), 'menu')
+    expect(nextUpgrade(r, 'menu')).toBeNull()
+    expect(nextUpgrade(r, 'register')).toEqual(UPGRADES.register.steps[0])
+  })
+})
+
+import { loadRestaurant } from './restaurant'
+
+describe('loading older saves', () => {
+  it('keeps the room size players already had, and defaults new players to 5', () => {
+    const store = new Map<string, string>()
+    ;(globalThis as unknown as { localStorage: Storage }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    } as Storage
+    try {
+      expect(loadRestaurant(0).size).toBe(5)
+      // A save from before expansions: level-6 players had an 8x8 room.
+      const old = { ...newRestaurant(0), peak: 6 } as Partial<Restaurant>
+      delete old.size
+      store.set('bentopia.restaurant', JSON.stringify(old))
+      expect(loadRestaurant(0).size).toBe(gridSize(6))
+      store.set('bentopia.restaurant', JSON.stringify({ ...newRestaurant(0), size: 7 }))
+      expect(loadRestaurant(0).size).toBe(7)
+      // Unknown items from other versions are dropped, upper floors are kept.
+      store.set('bentopia.restaurant', JSON.stringify({ ...newRestaurant(0), upstairs: { items: [{ id: 9, type: 'nope', gx: 0, gy: 0 }, { id: 10, type: 'booth', gx: 0, gy: 0 }], size: 6 } }))
+      expect(loadRestaurant(0).upstairs?.items.map((p) => p.type)).toEqual(['booth'])
+    } finally {
+      delete (globalThis as Partial<{ localStorage: unknown }>).localStorage
+    }
   })
 })

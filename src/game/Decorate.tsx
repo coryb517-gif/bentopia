@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { coinSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
+import StoreyTabs from './StoreyTabs'
+import ZoomPan from './ZoomPan'
 import {
-  canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, gridSize, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall,
+  applyStorey, canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall, sizeOf, storeyView, type StoreyId,
   rarityOf, removeItem, sellValue, SET_TIERS, setBonusRate, setProgress, SETS, WALLS, withPeak,
   type Category, type FloorId, type ItemType, type Restaurant, type WallId, type WallSide,
 } from './restaurant'
@@ -21,6 +23,10 @@ interface Props {
   onBought?: () => void
   /** Which shop tab to open first. */
   initialTab?: DecorTab
+  storey: StoreyId
+  onStorey: (id: StoreyId) => void
+  /** The player tapped a floor that is not built yet. */
+  onBuild: () => void
 }
 
 type WallGhost = { type: ItemType; side: WallSide; slot: number; ignoreId?: number }
@@ -31,6 +37,8 @@ const FLOOR_SWATCH: Record<FloorId, string> = {
   tatami: 'linear-gradient(135deg, #b9d17a, #98b45c)',
   stone: 'linear-gradient(135deg, #9998b2, #7b7a96)',
   checker: 'conic-gradient(#d9473f 25%, #fff0d8 0 50%, #d9473f 0 75%, #fff0d8 0) 0 0 / 50% 50%',
+  deck: 'repeating-linear-gradient(0deg, #b8956a 0 7px, #8a6a46 7px 9px)',
+  grass: 'linear-gradient(135deg, #7fcf5a, #5fb046)',
 }
 const WALL_SWATCH: Record<WallId, string> = {
   cream: 'linear-gradient(135deg, #f6e8cf, #e8d5b2)',
@@ -42,7 +50,9 @@ const SET_COLOR: Record<string, string> = { izakaya: '#ffb347', sushibar: '#7fe6
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought, initialTab = 'seating' }: Props) {
+export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', storey, onStorey, onBuild }: Props) {
+  const r = storeyView(root, storey)
+  const setR = (next: Restaurant) => setRoot(applyStorey(root, storey, next))
   const [tab, setTab] = useState<DecorTab>(initialTab)
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -50,10 +60,11 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
   const [levelUp, setLevelUp] = useState<number | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const level = levelOf(r)
-  const grid = gridSize(level)
+  const level = levelOf(root)
+  const grid = sizeOf(root, storey)
+  const rooftop = storey === 'rooftop'
   const selected = selectedId ? r.items.find((p) => p.id === selectedId) : null
-  const sets = setProgress(r)
+  const sets = setProgress(root)
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
@@ -65,10 +76,10 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
 
   /** Apply a new restaurant and celebrate if it crossed a level. */
   const commit = (next: Restaurant) => {
-    const before = levelOf(r)
-    const grown = withPeak(next)
+    const before = levelOf(root)
+    const grown = withPeak(applyStorey(root, storey, next))
     const after = grown.peak ?? 1
-    setR(grown)
+    setRoot(grown)
     if (after > before) setLevelUp(after)
   }
 
@@ -199,7 +210,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
     return SET_TIERS.some((t) => count + 1 === t.count)
   }
 
-  const tabs: { id: DecorTab; name: string }[] = [...CATEGORIES, { id: 'floors', name: 'Floors' }, { id: 'paint', name: 'Paint' }]
+  const tabs: { id: DecorTab; name: string }[] = [...CATEGORIES.filter((c) => !(rooftop && c.id === 'wall')), { id: 'floors', name: 'Floors' }, ...(rooftop ? [] : [{ id: 'paint' as DecorTab, name: 'Paint' }])]
   const shown = ITEMS.filter((i) => i.category === tab)
   void fixedSlots
 
@@ -211,8 +222,12 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
         <span className="coin"><Coin />{coins}</span>
       </header>
 
+      <StoreyTabs r={root} active={storey} onPick={(id) => { setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={onBuild} />
+
       <div className="stage">
+        <ZoomPan resetKey={storey}>
         <Room
+          storey={storey}
           r={r}
           grid={grid}
           placing={placing?.ghost ?? null}
@@ -223,6 +238,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
           onItem={(id) => setSelectedId(id)}
           onHover={(gx, gy) => placing?.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, gx, gy } })}
         />
+        </ZoomPan>
         {toast && <p className="toast" key={toast}>{toast}</p>}
       </div>
 
@@ -322,8 +338,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
             <Mascot mood="wow" size={120} />
             <h2>Level {levelUp}!</h2>
             <p>
-              Your restaurant is getting famous.
-              {gridSize(levelUp) > gridSize(levelUp - 1) ? ` The room grew to ${gridSize(levelUp)} by ${gridSize(levelUp)} tiles.` : ''}
+              Your restaurant is getting famous. New expansions and upgrades are ready in the Build menu.
             </p>
             {ITEMS.some((i) => i.unlock === levelUp) && (
               <p className="newitems">

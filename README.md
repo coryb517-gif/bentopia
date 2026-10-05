@@ -16,7 +16,8 @@ Phase 1 (Board) is done and Phase 2 is under way:
 - Coins (earned per clear, 40% on replays), hearts (5 max, one back every 30 minutes, lost on a failed level) and a "+5 moves for 50 coins" rescue. These live in localStorage for now and become a server ledger in Phase 3.
 - Synthesised audio with separate Music, Sound and Haptics toggles.
 
-- **Restaurant hub:** an isometric night-market restaurant with 47 items across 7 shop categories (furniture, kitchen, decor, garden, lights, wall decor, rugs), 4 floors and 4 paint colors, rotation, rugs under furniture, wall slots, five collectible style sets with bonuses, and rarity tiers. Diners come and go and leave tips, a chef works behind the counter, and the window follows the player's clock (dawn, day, dusk, night). A restaurant level (decor score) grows the room from 5x5 up to 8x8 and unlocks items.
+- **Restaurant hub:** an isometric night-market restaurant with 47 items across 7 shop categories (furniture, kitchen, decor, garden, lights, wall decor, rugs), 4 floors and 4 paint colors, rotation, rugs under furniture, wall slots, five collectible style sets with bonuses, and rarity tiers. Diners come and go and leave tips, a chef works behind the counter, and the window follows the player's clock (dawn, day, dusk, night). A restaurant level (decor score) unlocks items and expansions.
+- **Growing the building:** buy more floor space (up to 10x10), build an upstairs lounge and an open-air rooftop terrace, and buy upgrades (a cash register for a bigger tip jar, a menu board for higher tips). More seats mean more customers and more tips. Big rooms zoom and pan (pinch, drag, wheel).
 
 - **First-time tutorial:** a mascot intro, an animated finger on the real board, a guided first trip to Decorate, and a one-time callout on the first mixed recipe. Replay it with `/?tutorial`. The idle hint (a finger tracing a good chain after 9 seconds) is on for everyone.
 

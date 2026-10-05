@@ -124,7 +124,7 @@ export function rarityOf(price: number): Rarity {
   return price >= 400 ? 'legendary' : price >= 220 ? 'epic' : price >= 100 ? 'rare' : 'common'
 }
 
-export type FloorId = 'wood' | 'tatami' | 'stone' | 'checker'
+export type FloorId = 'wood' | 'tatami' | 'stone' | 'checker' | 'deck' | 'grass'
 export type WallId = 'cream' | 'indigo' | 'matcha' | 'sakura'
 
 export const FLOORS: { id: FloorId; name: string; price: number }[] = [
@@ -132,6 +132,8 @@ export const FLOORS: { id: FloorId; name: string; price: number }[] = [
   { id: 'tatami', name: 'Tatami', price: 80 },
   { id: 'stone', name: 'Slate stone', price: 100 },
   { id: 'checker', name: 'Red checker', price: 150 },
+  { id: 'deck', name: 'Weathered deck', price: 90 },
+  { id: 'grass', name: 'Garden lawn', price: 120 },
 ]
 
 export const WALLS: { id: WallId; name: string; price: number }[] = [
@@ -155,12 +157,37 @@ export interface Placed {
   wall?: WallSide
 }
 
+export type StoreyId = 'ground' | 'upstairs' | 'rooftop'
+
+/** One storey of the building. The ground floor lives at the top level of Restaurant for save compatibility. */
+export interface Storey {
+  floor: FloorId
+  wall: WallId
+  ownedFloors: FloorId[]
+  ownedWalls: WallId[]
+  items: Placed[]
+  /** Tiles per side. */
+  size: number
+}
+
+export interface Upgrades {
+  /** Cash register: tips keep piling up for longer before they stop. */
+  register: number
+  /** Menu board: more tips per hour. */
+  menu: number
+}
+
 export interface Restaurant {
   floor: FloorId
   wall: WallId
   ownedFloors: FloorId[]
   ownedWalls: WallId[]
   items: Placed[]
+  /** Ground-floor size in tiles per side. */
+  size?: number
+  upstairs?: Storey
+  rooftop?: Storey
+  upgrades?: Upgrades
   nextId: number
   /** When tips were last collected (ms). */
   tipsAt: number
@@ -179,6 +206,7 @@ export const newRestaurant = (now: number): Restaurant => ({
     { id: 3, type: 'lamp', gx: 0, gy: 0 },
     { id: 4, type: 'bonsai', gx: 4, gy: 4 },
   ],
+  size: 5,
   nextId: 5,
   tipsAt: now,
 })
@@ -204,21 +232,158 @@ export function setBonusRate(count: number): number {
 /** Count and bonus per style set, for the restaurant's current items. */
 export function setProgress(r: Restaurant): { set: StyleSet; count: number; rate: number; next: number | null }[] {
   return SETS.map((s) => {
-    const count = r.items.filter((p) => itemDef(p.type).set === s.id).length
+    const count = allItems(r).filter((p) => itemDef(p.type).set === s.id).length
     const nextTier = SET_TIERS.find((t) => count < t.count)
     return { set: s.id, count, rate: setBonusRate(count), next: nextTier?.count ?? null }
   })
 }
 
+// ---------- Storeys ----------
+export const STOREY_IDS: StoreyId[] = ['ground', 'upstairs', 'rooftop']
+export const STOREY_NAMES: Record<StoreyId, string> = { ground: 'Ground floor', upstairs: 'Upstairs lounge', rooftop: 'Rooftop terrace' }
+
+/** The ground floor as a Storey (it is stored inline on Restaurant). */
+const groundStorey = (r: Restaurant): Storey => ({
+  floor: r.floor, wall: r.wall, ownedFloors: r.ownedFloors, ownedWalls: r.ownedWalls, items: r.items, size: r.size ?? 5,
+})
+
+export function storeyOf(r: Restaurant, id: StoreyId): Storey | undefined {
+  return id === 'ground' ? groundStorey(r) : r[id]
+}
+
+export const hasStorey = (r: Restaurant, id: StoreyId) => storeyOf(r, id) !== undefined
+
+/** Storeys that exist, ground first. */
+export const storeys = (r: Restaurant): { id: StoreyId; s: Storey }[] =>
+  STOREY_IDS.flatMap((id) => {
+    const s = storeyOf(r, id)
+    return s ? [{ id, s }] : []
+  })
+
+export const allItems = (r: Restaurant): Placed[] => storeys(r).flatMap((x) => x.s.items)
+
+export const sizeOf = (r: Restaurant, id: StoreyId) => storeyOf(r, id)?.size ?? 5
+
+/**
+ * One storey as a Restaurant, so placement, selling and rendering can work on any floor with the same code.
+ * Counters (peak, upgrades, tips) stay on the building.
+ */
+export function storeyView(r: Restaurant, id: StoreyId): Restaurant {
+  if (id === 'ground') return r
+  const s = r[id]
+  if (!s) return r
+  return { ...r, floor: s.floor, wall: s.wall, ownedFloors: s.ownedFloors, ownedWalls: s.ownedWalls, items: s.items, size: s.size }
+}
+
+/** Write an edited view of a storey back into the building. */
+export function applyStorey(r: Restaurant, id: StoreyId, view: Restaurant): Restaurant {
+  const common = { nextId: view.nextId, peak: view.peak ?? r.peak }
+  if (id === 'ground') {
+    return { ...r, ...common, floor: view.floor, wall: view.wall, ownedFloors: view.ownedFloors, ownedWalls: view.ownedWalls, items: view.items }
+  }
+  const s = r[id]
+  if (!s) return r
+  return { ...r, ...common, [id]: { ...s, floor: view.floor, wall: view.wall, ownedFloors: view.ownedFloors, ownedWalls: view.ownedWalls, items: view.items } }
+}
+
 export function decorScore(r: Restaurant): number {
+  const items = allItems(r)
   let total = 0
   for (const s of SETS) {
-    const mine = r.items.filter((p) => itemDef(p.type).set === s.id)
+    const mine = items.filter((p) => itemDef(p.type).set === s.id)
     const base = mine.reduce((sum, p) => sum + itemDef(p.type).value, 0)
     total += base * (1 + setBonusRate(mine.length))
   }
-  return Math.round(total) + (r.floor !== 'wood' ? 12 : 0) + (r.wall !== 'cream' ? 12 : 0)
+  let themes = 0
+  for (const { id, s } of storeys(r)) {
+    if (s.floor !== 'wood') themes += 12
+    if (id !== 'rooftop' && s.wall !== 'cream') themes += 12
+  }
+  return Math.round(total) + themes
 }
+
+// ---------- Growing the building ----------
+export const SIZE_STEPS: Record<StoreyId, number[]> = {
+  ground: [5, 6, 7, 8, 9, 10],
+  upstairs: [5, 6, 7, 8],
+  rooftop: [5, 6, 7, 8],
+}
+
+/** Price and restaurant level needed to grow a room to this many tiles per side. */
+export const EXPAND: Record<number, { cost: number; level: number }> = {
+  6: { cost: 300, level: 2 },
+  7: { cost: 600, level: 3 },
+  8: { cost: 1100, level: 4 },
+  9: { cost: 1800, level: 5 },
+  10: { cost: 2800, level: 6 },
+}
+
+export const BUILD: Record<'upstairs' | 'rooftop', { cost: number; level: number; blurb: string }> = {
+  upstairs: { cost: 1500, level: 3, blurb: 'A cosy lounge above the shop. More seats, more tips.' },
+  rooftop: { cost: 3000, level: 5, blurb: 'An open-air terrace under the lanterns and the city lights.' },
+}
+
+export function nextExpansion(r: Restaurant, id: StoreyId): { size: number; cost: number; level: number } | null {
+  const cur = sizeOf(r, id)
+  const next = SIZE_STEPS[id].find((n) => n > cur)
+  return next ? { size: next, ...EXPAND[next] } : null
+}
+
+export function expandStorey(r: Restaurant, id: StoreyId): Restaurant {
+  const ex = nextExpansion(r, id)
+  if (!ex) return r
+  if (id === 'ground') return { ...r, size: ex.size }
+  const s = r[id]
+  return s ? { ...r, [id]: { ...s, size: ex.size } } : r
+}
+
+const emptyStorey = (id: StoreyId): Storey => ({
+  floor: id === 'rooftop' ? 'deck' : 'wood',
+  wall: 'cream',
+  ownedFloors: id === 'rooftop' ? ['deck'] : ['wood'],
+  ownedWalls: ['cream'],
+  items: [],
+  size: 5,
+})
+
+export function buildStorey(r: Restaurant, id: 'upstairs' | 'rooftop'): Restaurant {
+  return r[id] ? r : { ...r, [id]: emptyStorey(id) }
+}
+
+// ---------- Upgrades ----------
+export type UpgradeId = 'register' | 'menu'
+
+export const UPGRADES: Record<UpgradeId, { name: string; blurb: string; steps: { cost: number; level: number; label: string }[] }> = {
+  register: {
+    name: 'Cash register',
+    blurb: 'Tips keep piling up for longer before the jar is full.',
+    steps: [
+      { cost: 200, level: 2, label: '8 hours' },
+      { cost: 500, level: 3, label: '10 hours' },
+      { cost: 1000, level: 5, label: '12 hours' },
+    ],
+  },
+  menu: {
+    name: 'Menu board',
+    blurb: 'A better menu means bigger tips every hour.',
+    steps: [
+      { cost: 250, level: 2, label: '+15% tips' },
+      { cost: 600, level: 4, label: '+30% tips' },
+      { cost: 1200, level: 6, label: '+45% tips' },
+    ],
+  },
+}
+
+export const upgradeLevel = (r: Restaurant, k: UpgradeId) => r.upgrades?.[k] ?? 0
+
+export function nextUpgrade(r: Restaurant, k: UpgradeId) {
+  return UPGRADES[k].steps[upgradeLevel(r, k)] ?? null
+}
+
+export const buyUpgrade = (r: Restaurant, k: UpgradeId): Restaurant => ({
+  ...r,
+  upgrades: { register: upgradeLevel(r, 'register'), menu: upgradeLevel(r, 'menu'), [k]: upgradeLevel(r, k) + 1 },
+})
 
 /** 1 to MAX_LEVEL. */
 export function restaurantLevel(score: number): number {
@@ -336,14 +501,19 @@ export function seats(r: Restaurant): { itemId: number; gx: number; gy: number; 
   return out
 }
 
+/** All seats in the building: more seats mean more customers and more tips. */
+export const seatTotal = (r: Restaurant): number => allItems(r).reduce((n, p) => n + itemDef(p.type).seats, 0)
+
 // ---------- Tips ----------
-const TIP_CAP_HOURS = 6
-/** Coins per hour grow with decor, so a nicer restaurant earns more while you are away. */
-export const tipsPerHour = (score: number) => 5 + score * 0.15
+/** Coins per hour grow with decor and seats, and with the menu board upgrade. */
+export const tipsPerHour = (score: number, seatCount = 0, menu = 0) => (5 + score * 0.06 + seatCount * 1.5) * (1 + 0.15 * menu)
+
+/** How many hours of tips the jar holds. */
+export const tipCapHours = (register = 0) => 6 + 2 * register
 
 export function tipsAccrued(r: Restaurant, now: number): number {
-  const hours = Math.min(TIP_CAP_HOURS, Math.max(0, now - r.tipsAt) / 3_600_000)
-  return Math.floor(hours * tipsPerHour(decorScore(r)))
+  const hours = Math.min(tipCapHours(upgradeLevel(r, 'register')), Math.max(0, now - r.tipsAt) / 3_600_000)
+  return Math.floor(hours * tipsPerHour(decorScore(r), seatTotal(r), upgradeLevel(r, 'menu')))
 }
 
 export const collectTips = (r: Restaurant, now: number): Restaurant => ({ ...r, tipsAt: now })
@@ -356,7 +526,14 @@ export function loadRestaurant(now: number): Restaurant {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null')
     if (raw && Array.isArray(raw.items) && typeof raw.nextId === 'number') {
       const known = new Set(ITEMS.map((i) => i.type))
-      return { ...newRestaurant(now), ...raw, items: raw.items.filter((p: Placed) => known.has(p.type)) }
+      const clean = (items: Placed[]) => items.filter((p) => known.has(p.type))
+      const merged: Restaurant = { ...newRestaurant(now), ...raw, items: clean(raw.items) }
+      for (const id of ['upstairs', 'rooftop'] as const) {
+        if (raw[id] && Array.isArray(raw[id].items)) merged[id] = { ...emptyStorey(id), ...raw[id], items: clean(raw[id].items) }
+      }
+      // Older saves sized the room by level; keep their space.
+      if (typeof raw.size !== 'number') merged.size = gridSize(Math.max(raw.peak ?? 1, restaurantLevel(decorScore(merged))))
+      return merged
     }
   } catch {
     /* storage unavailable or corrupt */
