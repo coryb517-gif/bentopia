@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
+import Hero from './game/Hero'
 import BoardView from './game/BoardView'
 import { isSoundOn, setSound } from './game/audio'
 import Mascot, { type Mood } from './game/Mascot'
@@ -57,10 +58,11 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
 
 export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
+  const hero = new URLSearchParams(location.search).has('hero')
   return (
     <>
       <Backdrop />
-      <Game />
+      {hero ? <Hero /> : <Game />}
     </>
   )
 }
