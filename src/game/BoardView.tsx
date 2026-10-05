@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { Application, Container, Graphics, Text } from 'pixi.js'
+import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
 import { canExtend, commitChain, isValidChain, newGame, SIZE } from '../sim/engine'
-import { CHAINS } from '../sim/items'
 import type { GameState, LevelDef, Tile } from '../sim/types'
+import { loadAllArt } from './art'
 import { clackSound, loseSound, popSound, winSound } from './audio'
+import { boardCanvas, boardGeometry, tileCanvas, TILE_PAD } from './render'
 
 interface Props {
   level: LevelDef
@@ -21,8 +22,6 @@ interface Sprite {
   dying: boolean
 }
 
-const RIM = [0x8a6a3a, 0x7fa650, 0xffb23e]
-
 export default function BoardView({ level, seed, onState, onPreview }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const cb = useRef({ onState, onPreview })
@@ -38,6 +37,8 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
     void (async () => {
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       let size = Math.min(el.clientWidth || 360, 560)
+      const dpr = Math.min(window.devicePixelRatio || 1, 3)
+      await loadAllArt()
       await app.init({
         width: size,
         height: size,
@@ -58,43 +59,43 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
       let state = newGame(level, seed)
       let path: number[] = []
       let dragging = false
-      let cell = size / SIZE
+      let { pad, cell } = boardGeometry(size)
       const sprites = new Map<number, Sprite>()
-      const bg = new Graphics()
+      const boardSprite = new PixiSprite()
       const lines = new Graphics()
       const tiles = new Container()
-      app.stage.addChild(bg, tiles, lines)
+      app.stage.addChild(boardSprite, tiles, lines)
       cb.current.onState(state)
 
-      const center = (i: number) => ({ x: (i % SIZE + 0.5) * cell, y: (Math.floor(i / SIZE) + 0.5) * cell })
+      const center = (i: number) => ({ x: pad + ((i % SIZE) + 0.5) * cell, y: pad + (Math.floor(i / SIZE) + 0.5) * cell })
+
+      // Textures are drawn at the current size and cached per dish.
+      let textures = new Map<string, Texture>()
+      const textureFor = (kind: number, tier: number) => {
+        const key = `${kind}-${tier}`
+        let tex = textures.get(key)
+        if (!tex) {
+          tex = Texture.from(tileCanvas(kind, tier, cell * 0.94, dpr))
+          textures.set(key, tex)
+        }
+        return tex
+      }
 
       const drawBg = () => {
-        bg.clear()
-        bg.roundRect(0, 0, size, size, cell * 0.35).fill(0xd9b07a)
-        for (let i = 0; i < SIZE * SIZE; i++) {
-          if (state.blocked[i]) continue
-          const p = center(i)
-          const pad = cell * 0.06
-          bg.roundRect(p.x - cell / 2 + pad, p.y - cell / 2 + pad, cell - pad * 2, cell - pad * 2, cell * 0.2).fill(0xc29a63)
-        }
-        for (let i = 0; i < SIZE * SIZE; i++) {
-          if (!state.blocked[i]) continue
-          const p = center(i)
-          bg.roundRect(p.x - cell / 2, p.y - cell / 2, cell, cell, cell * 0.2).fill(0x5a3a1c)
-        }
+        boardSprite.texture?.destroy(true)
+        boardSprite.texture = Texture.from(boardCanvas(state.blocked, size, dpr))
+        boardSprite.width = size
+        boardSprite.height = size
+        for (const tex of textures.values()) tex.destroy(true)
+        textures = new Map()
       }
 
       const makeNode = (t: Tile) => {
         const node = new Container()
-        const r = cell * 0.42
-        const g = new Graphics()
-        g.circle(0, 0, r).fill(0xfffdf7).stroke({ width: Math.max(2, cell * (t.tier ? 0.07 : 0.03)), color: RIM[t.tier] })
-        // Shape badges so tier never relies on color alone: dot = crafted, star = dish.
-        if (t.tier === 1) g.circle(r * 0.7, -r * 0.7, cell * 0.08).fill(0x7fa650)
-        if (t.tier === 2) g.star(r * 0.7, -r * 0.7, 5, cell * 0.14, cell * 0.06).fill(0xffb23e).stroke({ width: 1, color: 0x2b2f5c })
-        const label = new Text({ text: CHAINS[t.kind].emoji[t.tier], style: { fontSize: cell * 0.56 } })
-        label.anchor.set(0.5)
-        node.addChild(g, label)
+        const face = new PixiSprite(textureFor(t.kind, t.tier))
+        face.anchor.set(0.5)
+        face.width = face.height = cell * 0.94 * TILE_PAD
+        node.addChild(face)
         tiles.addChild(node)
         return node
       }
@@ -177,8 +178,8 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
         const rect = app.canvas.getBoundingClientRect()
         const x = ((e.clientX - rect.left) / rect.width) * size
         const y = ((e.clientY - rect.top) / rect.height) * size
-        const c = Math.floor(x / cell)
-        const r = Math.floor(y / cell)
+        const c = Math.floor((x - pad) / cell)
+        const r = Math.floor((y - pad) / cell)
         if (c < 0 || r < 0 || c >= SIZE || r >= SIZE) return null
         const i = r * SIZE + c
         if (state.blocked[i]) return null
@@ -258,7 +259,7 @@ export default function BoardView({ level, seed, onState, onPreview }: Props) {
         const next = Math.min(el.clientWidth || size, 560)
         if (Math.abs(next - size) < 2) return
         size = next
-        cell = size / SIZE
+        ;({ pad, cell } = boardGeometry(size))
         app.renderer.resize(size, size)
         rebuild()
         drawPath()

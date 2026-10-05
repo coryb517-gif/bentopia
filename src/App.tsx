@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import ArtGallery from './game/ArtGallery'
+import { svgUrl } from './game/art'
 import BoardView from './game/BoardView'
 import { isSoundOn, setSound } from './game/audio'
 import { LEVELS } from './sim/levels'
@@ -29,6 +31,11 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
 }
 
 export default function App() {
+  if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
+  return <Game />
+}
+
+function Game() {
   const [screen, setScreen] = useState<Screen>('title')
   const [levelIdx, setLevelIdx] = useState(0)
   const [attempt, setAttempt] = useState(0)
@@ -75,7 +82,7 @@ export default function App() {
   if (screen === 'title') {
     return (
       <main className="screen title">
-        <div className="logo" aria-hidden>🍱</div>
+        <img className="logo" src={svgUrl(0, 2)} alt="" width={170} height={170} />
         <h1>Bentopia</h1>
         <p className="tag">Sushi Merge</p>
         <button className="btn primary" onClick={() => setScreen('map')}>Play</button>
@@ -120,7 +127,7 @@ export default function App() {
           <ul>
             {level.order.map((o, idx) => (
               <li key={idx} className={(game?.progress[idx] ?? 0) >= o.count ? 'done' : ''}>
-                <span aria-hidden>{CHAINS[o.kind].emoji[o.tier]}</span>
+                <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={32} height={32} />
                 <span className="oname">{CHAINS[o.kind].names[o.tier]}</span>
                 <b>{game?.progress[idx] ?? 0}/{o.count}</b>
               </li>
@@ -135,7 +142,7 @@ export default function App() {
 
       <div className="preview" aria-live="polite">
         {preview ? (
-          <>Release to make {CHAINS[preview.kind].emoji[preview.tier]} {CHAINS[preview.kind].names[preview.tier]}</>
+          <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={26} height={26} /> {CHAINS[preview.kind].names[preview.tier]}</>
         ) : (
           <>Level {level.id}: {level.name}</>
         )}

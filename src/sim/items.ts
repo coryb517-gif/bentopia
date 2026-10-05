@@ -7,7 +7,7 @@ export interface Chain {
 export const CHAINS: Chain[] = [
   { names: ['Rice', 'Onigiri', 'Bento box'], emoji: ['🍚', '🍙', '🍱'] },
   { names: ['Fish', 'Nigiri', 'Sashimi plate'], emoji: ['🐟', '🍣', '🍥'] },
-  { names: ['Cucumber', 'Salad', 'Hot pot'], emoji: ['🥒', '🥗', '🍲'] },
+  { names: ['Cucumber', 'Kappa maki', 'Hot pot'], emoji: ['🥒', '🍙', '🍲'] },
   { names: ['Egg', 'Tamago', 'Ramen'], emoji: ['🥚', '🍳', '🍜'] },
   { names: ['Shrimp', 'Tempura', 'Katsu curry'], emoji: ['🦐', '🍤', '🍛'] },
   { names: ['Corn', 'Skewer', 'Rice cracker'], emoji: ['🌽', '🍢', '🍘'] },
