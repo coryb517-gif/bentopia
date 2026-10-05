@@ -1,4 +1,4 @@
-﻿# Bentopia: Sushi Merge
+# Bentopia: Sushi Merge
 
 A cozy link-and-merge puzzle game. Craft Japanese dishes on an 8x8 bento box grid, fill customer orders, and (later phases) build a restaurant and visit the Night Market.
 

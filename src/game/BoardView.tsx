@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import { canExtend, commitChain, isValidChain, newGame, SIZE } from '../sim/engine'
 import { CHAINS } from '../sim/items'

@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { commitChain, hasLink, isValidChain, newGame } from './engine'
 import { LEVELS } from './levels'
 
