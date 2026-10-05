@@ -5,8 +5,8 @@ import { full } from './RoomLab'
 export default function Hero() {
   return (
     <main style={{ position: 'relative', zIndex: 1, width: 1536, height: 1024, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', right: -10, top: 150, width: 1000 }}>
-        <Room r={full} grid={7} />
+      <div style={{ position: 'absolute', right: 110, top: 100, width: 1000 }}>
+        <Room r={full} grid={8} live={false} phase="night" />
       </div>
     </main>
   )

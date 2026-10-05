@@ -58,7 +58,7 @@ export const FaceX = ({ x, y, z = 0, children }: { x: number; y: number; z?: num
   return <g transform={`matrix(-1 0.5 0 -1 ${sx} ${sy})`}>{children}</g>
 }
 
-const blob = (cx: number, cy: number, r: number, base: string, shade: string, key?: string | number) => (
+export const blob = (cx: number, cy: number, r: number, base: string, shade: string, key?: string | number) => (
   <g key={key}>
     <circle cx={cx} cy={cy} r={r} fill={shade} stroke={OL} strokeWidth={OW} />
     <circle cx={cx - r * 0.18} cy={cy - r * 0.2} r={r * 0.78} fill={base} />
@@ -66,11 +66,11 @@ const blob = (cx: number, cy: number, r: number, base: string, shade: string, ke
   </g>
 )
 
-const WOOD: Tri = ['#eac48c', '#c99a5c', '#a5763f']
-const RED: Tri = ['#e4574a', '#b92d3e', '#8f1f38']
-const DARK: Tri = ['#4b3a63', '#33264a', '#271c3a']
-const STONE: Tri = ['#d5d1da', '#a9a3b4', '#8a8498']
-const GOLD: Tri = ['#ffe58a', '#f0b232', '#c8841a']
+export const WOOD: Tri = ['#eac48c', '#c99a5c', '#a5763f']
+export const RED: Tri = ['#e4574a', '#b92d3e', '#8f1f38']
+export const DARK: Tri = ['#4b3a63', '#33264a', '#271c3a']
+export const STONE: Tri = ['#d5d1da', '#a9a3b4', '#8a8498']
+export const GOLD: Tri = ['#ffe58a', '#f0b232', '#c8841a']
 
 export interface DecorArt {
   /** The item itself, in tile-local grid coordinates. */
@@ -81,11 +81,11 @@ export interface DecorArt {
   view: string
 }
 
-const steam = (x: number, y: number, d = 0) => (
+export const steam = (x: number, y: number, d = 0) => (
   <path className="steam" style={{ animationDelay: `${d}s` }} d={`M${x} ${y}q-4 -6 0 -11t0 -11`} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.7" />
 )
 
-export const DECOR: Record<ItemType, DecorArt> = {
+export const DECOR_BASE: Partial<Record<ItemType, DecorArt>> = {
   table: {
     view: '-36 -36 72 76',
     art: () => (

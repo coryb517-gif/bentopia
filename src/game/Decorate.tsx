@@ -3,9 +3,12 @@ import { coinSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
 import {
-  canPlace, FLOORS, gridSize, ITEMS, itemDef, levelOf, moveItem, placeItem, removeItem, sellValue, withPeak,
-  WALLS, type FloorId, type ItemType, type Restaurant, type WallId,
+  canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, gridSize, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall,
+  rarityOf, removeItem, sellValue, SET_TIERS, setBonusRate, setProgress, SETS, WALLS, withPeak,
+  type Category, type FloorId, type ItemType, type Restaurant, type WallId, type WallSide,
 } from './restaurant'
+
+export type DecorTab = Category | 'floors' | 'paint'
 
 interface Props {
   r: Restaurant
@@ -16,10 +19,12 @@ interface Props {
   onDone: () => void
   /** Called after a purchase is placed (used by the tutorial). */
   onBought?: () => void
+  /** Which shop tab to open first. */
+  initialTab?: DecorTab
 }
 
-type Tab = 'furniture' | 'floors' | 'walls'
-type Placing = { ghost: Ghost; shop: boolean }
+type WallGhost = { type: ItemType; side: WallSide; slot: number; ignoreId?: number }
+type Placing = { ghost?: Ghost; wall?: WallGhost; shop: boolean }
 
 const FLOOR_SWATCH: Record<FloorId, string> = {
   wood: 'linear-gradient(135deg, #ebc790, #d9b078)',
@@ -33,11 +38,12 @@ const WALL_SWATCH: Record<WallId, string> = {
   matcha: 'linear-gradient(135deg, #a9d083, #8fb86b)',
   sakura: 'linear-gradient(135deg, #ffd6e2, #f3b8cb)',
 }
+const SET_COLOR: Record<string, string> = { izakaya: '#ffb347', sushibar: '#7fe6ff', zen: '#6dffc0', shrine: '#ff7a8a', neon: '#d29bff' }
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought }: Props) {
-  const [tab, setTab] = useState<Tab>('furniture')
+export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought, initialTab = 'seating' }: Props) {
+  const [tab, setTab] = useState<DecorTab>(initialTab)
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
@@ -47,6 +53,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
   const level = levelOf(r)
   const grid = gridSize(level)
   const selected = selectedId ? r.items.find((p) => p.id === selectedId) : null
+  const sets = setProgress(r)
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
@@ -70,41 +77,79 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
     return null
   }
 
+  const firstFreeWall = (type: ItemType): { side: WallSide; slot: number } | null => {
+    for (const side of ['R', 'L'] as WallSide[]) {
+      for (let slot = 0; slot < grid; slot++) if (canPlaceWall(r, type, side, slot, grid)) return { side, slot }
+    }
+    return null
+  }
+
   const startShop = (type: ItemType) => {
     const def = itemDef(type)
     if (def.unlock > level) return say(`Unlocks at restaurant level ${def.unlock}`)
     if (coins < def.price) return say(`You need ${def.price - coins} more coins`)
-    const spot = firstFree(type)
-    if (!spot) return say('No room left. Sell something or level up!')
     setSelectedId(null)
+    if (def.layer === 'wall') {
+      const spot = firstFreeWall(type)
+      if (!spot) return say('The walls are full. Sell something or level up!')
+      return setPlacing({ wall: { type, ...spot }, shop: true })
+    }
+    const spot = firstFree(type)
+    if (!spot) return say(def.layer === 'rug' ? 'No room for a rug there' : 'No room left. Sell something or level up!')
     setPlacing({ ghost: { type, gx: spot[0], gy: spot[1] }, shop: true })
   }
 
   const confirm = () => {
     if (!placing) return
-    const g = placing.ghost
-    if (!canPlace(r, g.type, g.gx, g.gy, grid, g.ignoreId, g.flip)) return say('Pick a free tile')
-    if (placing.shop) {
-      if (!spend(itemDef(g.type).price)) return say('Not enough coins')
-      coinSound(3)
-      commit(placeItem(r, g.type, g.gx, g.gy, g.flip))
-      onBought?.()
-    } else if (g.ignoreId) {
-      commit(moveItem(r, g.ignoreId, g.gx, g.gy, g.flip))
+    if (placing.ghost) {
+      const g = placing.ghost
+      if (!canPlace(r, g.type, g.gx, g.gy, grid, g.ignoreId, g.flip)) return say('Pick a free tile')
+      if (placing.shop) {
+        if (!spend(itemDef(g.type).price)) return say('Not enough coins')
+        coinSound(3)
+        commit(placeItem(r, g.type, g.gx, g.gy, g.flip))
+        onBought?.()
+      } else if (g.ignoreId) {
+        commit(moveItem(r, g.ignoreId, g.gx, g.gy, g.flip))
+      }
+    } else if (placing.wall) {
+      const w = placing.wall
+      if (!canPlaceWall(r, w.type, w.side, w.slot, grid, w.ignoreId)) return say('Pick a free spot on the wall')
+      if (placing.shop) {
+        if (!spend(itemDef(w.type).price)) return say('Not enough coins')
+        coinSound(3)
+        commit(placeWall(r, w.type, w.side, w.slot))
+        onBought?.()
+      } else if (w.ignoreId) {
+        commit(moveWall(r, w.ignoreId, w.side, w.slot))
+      }
     }
     setPlacing(null)
   }
 
   const onTile = (gx: number, gy: number) => {
     if (!placing) return setSelectedId(null)
+    if (!placing.ghost) return
     const g = placing.ghost
     if (g.gx === gx && g.gy === gy && canPlace(r, g.type, gx, gy, grid, g.ignoreId, g.flip)) return confirm()
     setPlacing({ ...placing, ghost: { ...g, gx, gy } })
   }
 
+  const onWall = (side: WallSide, slot: number) => {
+    if (!placing?.wall) return
+    const w = placing.wall
+    if (w.side === side && w.slot === slot && canPlaceWall(r, w.type, side, slot, grid, w.ignoreId)) return confirm()
+    setPlacing({ ...placing, wall: { ...w, side, slot } })
+  }
+
   const startMove = () => {
     if (!selected) return
-    setPlacing({ ghost: { type: selected.type, gx: selected.gx, gy: selected.gy, ignoreId: selected.id, flip: selected.flip }, shop: false })
+    const def = itemDef(selected.type)
+    if (def.layer === 'wall') {
+      setPlacing({ wall: { type: selected.type, side: selected.wall ?? 'R', slot: selected.gx, ignoreId: selected.id }, shop: false })
+    } else {
+      setPlacing({ ghost: { type: selected.type, gx: selected.gx, gy: selected.gy, ignoreId: selected.id, flip: selected.flip }, shop: false })
+    }
   }
 
   const rotateSelected = () => {
@@ -137,8 +182,26 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
     commit(next)
   }
 
-  const cost = placing?.shop ? itemDef(placing.ghost.type).price : 0
-  const okSpot = placing ? canPlace(r, placing.ghost.type, placing.ghost.gx, placing.ghost.gy, grid, placing.ghost.ignoreId, placing.ghost.flip) : false
+  const placingType = placing?.ghost?.type ?? placing?.wall?.type
+  const cost = placing?.shop && placingType ? itemDef(placingType).price : 0
+  const okSpot = placing?.ghost
+    ? canPlace(r, placing.ghost.type, placing.ghost.gx, placing.ghost.gy, grid, placing.ghost.ignoreId, placing.ghost.flip)
+    : placing?.wall
+      ? canPlaceWall(r, placing.wall.type, placing.wall.side, placing.wall.slot, grid, placing.wall.ignoreId)
+      : false
+  const isWallPlacing = !!placing?.wall
+  const canRotate = !!placing?.ghost && itemDef(placing.ghost.type).layer !== 'wall'
+
+  /** Does buying this item complete the next collection tier for its set? */
+  const completesTier = (type: ItemType) => {
+    const set = itemDef(type).set
+    const count = sets.find((s) => s.set === set)?.count ?? 0
+    return SET_TIERS.some((t) => count + 1 === t.count)
+  }
+
+  const tabs: { id: DecorTab; name: string }[] = [...CATEGORIES, { id: 'floors', name: 'Floors' }, { id: 'paint', name: 'Paint' }]
+  const shown = ITEMS.filter((i) => i.category === tab)
+  void fixedSlots
 
   return (
     <main className="screen decorate">
@@ -153,22 +216,26 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
           r={r}
           grid={grid}
           placing={placing?.ghost ?? null}
+          wallGhost={placing?.wall ?? null}
           selectedId={selectedId}
           onTile={onTile}
+          onWall={onWall}
           onItem={(id) => setSelectedId(id)}
-          onHover={(gx, gy) => placing && setPlacing({ ...placing, ghost: { ...placing.ghost, gx, gy } })}
+          onHover={(gx, gy) => placing?.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, gx, gy } })}
         />
         {toast && <p className="toast" key={toast}>{toast}</p>}
       </div>
 
       <section className="sheet" aria-label="Decorate controls">
-        {placing ? (
+        {placing && placingType ? (
           <div className="placebar">
             <div>
-              <b>{itemDef(placing.ghost.type).name}</b>
-              <small>{okSpot ? 'Tap the tile again, or press Place' : 'Tap a free tile'}</small>
+              <b>{itemDef(placingType).name}</b>
+              <small>{okSpot ? (isWallPlacing ? 'Tap the same spot again, or press Place' : 'Tap the tile again, or press Place') : isWallPlacing ? 'Tap a free spot on a wall' : 'Tap a free tile'}</small>
             </div>
-            <button className="btn" onClick={() => setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })}>Rotate</button>
+            {canRotate && (
+              <button className="btn" onClick={() => placing.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })}>Rotate</button>
+            )}
             <button className="btn ghost" onClick={() => setPlacing(null)}>Cancel</button>
             <button className="btn primary" data-coach="place" disabled={!okSpot} onClick={confirm}>
               {placing.shop ? <>Place <Coin />{cost}</> : 'Move here'}
@@ -181,29 +248,49 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
               <small>{itemDef(selected.type).blurb}</small>
             </div>
             <button className="btn" onClick={startMove}>Move</button>
-            <button className="btn" onClick={rotateSelected}>Rotate</button>
+            {itemDef(selected.type).layer !== 'wall' && <button className="btn" onClick={rotateSelected}>Rotate</button>}
             <button className="btn" onClick={sell}>Sell <Coin />{sellValue(selected.type)}</button>
             <button className="btn ghost" onClick={() => setSelectedId(null)}>Close</button>
           </div>
         ) : (
           <>
             <div className="tabs" role="tablist">
-              {(['furniture', 'floors', 'walls'] as Tab[]).map((t) => (
-                <button key={t} role="tab" aria-selected={tab === t} className={`tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
-                  {t === 'furniture' ? 'Furniture' : t === 'floors' ? 'Floors' : 'Walls'}
+              {tabs.map((t) => (
+                <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
+                  {t.name}
                 </button>
               ))}
-              <span className="rlv">Level {level}</span>
             </div>
-            <div className="cards">
-              {tab === 'furniture' &&
-                ITEMS.map((def) => {
-                  const locked = def.unlock > level
+            {tab !== 'floors' && tab !== 'paint' && (
+              <div className="setrow" aria-label="Collections">
+                {SETS.map((s) => {
+                  const p = sets.find((x) => x.set === s.id)!
                   return (
-                    <button key={def.type} data-coach={`card-${def.type}`} className={`shopcard${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`} onClick={() => startShop(def.type)}>
+                    <span key={s.id} className={`setpill${p.rate > 0 ? ' on' : ''}`} style={{ ['--sc' as string]: SET_COLOR[s.id] }} title={s.blurb}>
+                      <i />{s.name} {p.count}{p.next ? `/${p.next}` : ''}{p.rate > 0 && <b>+{Math.round(setBonusRate(p.count) * 100)}%</b>}
+                    </span>
+                  )
+                })}
+                <span className="rlv">Level {level}</span>
+              </div>
+            )}
+            <div className="cards">
+              {tab !== 'floors' && tab !== 'paint' &&
+                shown.map((def) => {
+                  const locked = def.unlock > level
+                  const rar = rarityOf(def.price)
+                  return (
+                    <button
+                      key={def.type}
+                      data-coach={`card-${def.type}`}
+                      className={`shopcard r-${rar}${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`}
+                      onClick={() => startShop(def.type)}
+                    >
+                      <i className="setdot" style={{ background: SET_COLOR[def.set] }} aria-hidden />
                       <DecorPreview type={def.type} size={78} />
                       <span className="nm">{def.name}</span>
                       <span className="pr">{locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>
+                      {!locked && completesTier(def.type) && <em className="tierup">Set bonus!</em>}
                       {locked && <i className="lock" aria-hidden>🔒</i>}
                     </button>
                   )
@@ -216,7 +303,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
                     <span className="pr">{r.floor === f.id ? 'Equipped' : r.ownedFloors.includes(f.id) ? 'Use' : <><Coin />{f.price}</>}</span>
                   </button>
                 ))}
-              {tab === 'walls' &&
+              {tab === 'paint' &&
                 WALLS.map((w) => (
                   <button key={w.id} className={`shopcard theme${r.wall === w.id ? ' equipped' : ''}`} onClick={() => pickTheme('wall', w.id, w.price)}>
                     <span className="swatch" style={{ background: WALL_SWATCH[w.id] }} />

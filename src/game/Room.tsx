@@ -1,8 +1,15 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import CustomerPortrait, { CUSTOMERS } from './Customers'
-import { Box, DECOR, OL, P } from './iso'
+import { DECOR } from './decor'
+import { Box, OL, P } from './iso'
 import Mascot from './Mascot'
-import { canPlace, footprint, itemDef, seats, type FloorId, type ItemType, type Restaurant, type WallId } from './restaurant'
+import {
+  canPlace, canPlaceWall, fixedSlots, footprint, itemDef, seats, type FloorId, type FloorItem, type ItemType, type Restaurant, type RugItem,
+  type WallId, type WallSide,
+} from './restaurant'
+import { WALL_ART } from './wall'
+
+const floorArt = (t: ItemType) => DECOR[t as FloorItem | RugItem]
 
 const WALL_H = 124
 const SLAB = 14
@@ -54,7 +61,17 @@ export function RoomDefs({ phase = 'night' }: { phase?: Phase }) {
 
 /** One catalogue item on its own, for shop cards. */
 export function DecorPreview({ type, size = 84 }: { type: ItemType; size?: number }) {
-  const d = DECOR[type]
+  if (itemDef(type).layer === 'wall') {
+    const wa = WALL_ART[type as keyof typeof WALL_ART]
+    const [, , w, h] = wa.view.split(' ').map(Number)
+    return (
+      <svg viewBox={wa.view} width={size * (w / h)} height={size} aria-hidden>
+        <RoomDefs />
+        <g transform="scale(1 -1)">{wa.draw()}</g>
+      </svg>
+    )
+  }
+  const d = floorArt(type)
   const [, , w, h] = d.view.split(' ').map(Number)
   return (
     <svg viewBox={d.view} width={size * (w / h)} height={size} aria-hidden>
@@ -256,6 +273,9 @@ export interface RoomProps {
   grid: number
   /** Show the tile grid and block item taps (placing mode). */
   placing?: Ghost | null
+  /** Placing a wall item: free wall slots light up and can be tapped. */
+  wallGhost?: { type: ItemType; side: WallSide; slot: number; ignoreId?: number } | null
+  onWall?: (side: WallSide, slot: number) => void
   selectedId?: number | null
   onTile?: (gx: number, gy: number) => void
   onItem?: (id: number) => void
@@ -279,20 +299,27 @@ function seatSpot(r: Restaurant, s: Seat): { x: number; y: number; z: number; ke
   let ly = 0.5
   let z = 24
   let adj = 0.4
-  if (it.type === 'table') {
+  if (it.type === 'table' || it.type === 'kotatsu') {
     lx = s.slot === 0 ? 0.06 : 0.94
-    z = 14
+    z = it.type === 'kotatsu' ? 12 : 14
     adj = s.slot === 0 ? -0.8 : 0.4
   } else if (it.type === 'counter') {
     lx = 0.5 + s.slot
     ly = 1.18
     z = 18
+  } else if (it.type === 'bench') {
+    lx = 0.5 + s.slot
+    z = 20
+  } else if (it.type === 'booth') {
+    lx = 0.38 + s.slot * 0.62
+    ly = 0.42
+    z = 20
   }
   if (it.flip) [lx, ly] = [ly, lx]
   return { x: it.gx + lx, y: it.gy + ly, z, key: it.gx + it.gy + fw + fd + adj }
 }
 
-export default function Room({ r, grid, placing, selectedId, onTile, onItem, onHover, phase: forced, live = true }: RoomProps) {
+export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, onTile, onItem, onHover, phase: forced, live = true }: RoomProps) {
   const svg = useRef<SVGSVGElement>(null)
   const [phase, setPhase] = useState<Phase>(() => forced ?? phaseOf())
   useEffect(() => {
@@ -368,7 +395,10 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
   }
 
   const drawables: { key: number; node: ReactNode }[] = []
-  r.items.forEach((p) => {
+  const floorItems = r.items.filter((p) => itemDef(p.type).layer === 'floor')
+  const rugs = r.items.filter((p) => itemDef(p.type).layer === 'rug')
+  const wallItems = r.items.filter((p) => itemDef(p.type).layer === 'wall')
+  floorItems.forEach((p) => {
     const def = itemDef(p.type)
     const base = p.gx + p.gy + def.w + def.d
     const [sx, sy] = P(p.gx, p.gy)
@@ -385,7 +415,7 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
             onItem(p.id)
           }}
         >
-          {DECOR[p.type].art()}
+          {floorArt(p.type).art()}
         </g>
       ),
     })
@@ -485,11 +515,82 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
         <linearGradient id="floorSheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.14" /><stop offset="0.6" stopColor="#fff" stopOpacity="0" /></linearGradient>
       </defs>
       <Walls N={grid} wall={r.wall} phase={phase} glow={sky.glow} />
+      {/* wall decor hangs on the wall slots */}
+      {(['L', 'R'] as WallSide[]).map((side) => {
+        const [ox, oy] = P(0, 0)
+        const matrix = side === 'L' ? `matrix(-1 0.5 0 -1 ${ox} ${oy})` : `matrix(1 0.5 0 -1 ${ox} ${oy})`
+        const mirror = side === 'L' ? ' scale(-1 1)' : ''
+        const taken = new Set(wallItems.filter((p) => p.wall === side && p.id !== wallGhost?.ignoreId).map((p) => p.gx))
+        const fixed = fixedSlots(side, grid)
+        return (
+          <g key={side} transform={matrix}>
+            {wallItems
+              .filter((p) => p.wall === side)
+              .map((p) => (
+                <g
+                  key={p.id}
+                  transform={`translate(${(p.gx + 0.5) * 32} 0)${mirror}`}
+                  style={{ cursor: !wallGhost && !placing && onItem ? 'pointer' : undefined, pointerEvents: wallGhost || placing ? 'none' : 'auto' }}
+                  onPointerUp={(e) => {
+                    if (wallGhost || placing || !onItem) return
+                    e.stopPropagation()
+                    onItem(p.id)
+                  }}
+                >
+                  {WALL_ART[p.type as keyof typeof WALL_ART].draw()}
+                </g>
+              ))}
+            {selectedId && wallItems.some((p) => p.id === selectedId && p.wall === side) && (
+              <rect className="selpulse" pointerEvents="none" x={(wallItems.find((p) => p.id === selectedId)!.gx) * 32 + 1} y={42} width="30" height="70" rx="3" fill="rgba(255,210,58,0.22)" stroke="#ffd23a" strokeWidth="2.4" />
+            )}
+            {wallGhost &&
+              Array.from({ length: grid }, (_, slot) => {
+                if (fixed.has(slot)) return null
+                const ok = canPlaceWall(r, wallGhost.type, side, slot, grid, wallGhost.ignoreId)
+                const here = wallGhost.side === side && wallGhost.slot === slot
+                return (
+                  <g
+                    key={slot}
+                    onPointerUp={(e) => {
+                      e.stopPropagation()
+                      onWall?.(side, slot)
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <rect x={slot * 32 + 1} y={40} width="30" height="74" rx="3" fill={here ? (ok ? 'rgba(109,255,192,0.4)' : 'rgba(255,91,110,0.4)') : ok ? 'rgba(255,255,255,0.1)' : taken.has(slot) ? 'rgba(255,91,110,0.12)' : 'transparent'} stroke={here ? (ok ? '#6dffc0' : '#ff5b6e') : 'rgba(255,255,255,0.4)'} strokeWidth={here ? 2.4 : 1} strokeDasharray={here ? undefined : '3 3'} />
+                    {here && (
+                      <g transform={`translate(${(slot + 0.5) * 32} 0)${mirror}`} opacity={ok ? 0.85 : 0.45} pointerEvents="none">
+                        {WALL_ART[wallGhost.type as keyof typeof WALL_ART].draw()}
+                      </g>
+                    )}
+                  </g>
+                )
+              })}
+          </g>
+        )
+      })}
       {/* floor slab and tiles */}
       <polygon points={poly(P(0, grid), P(grid, grid), P(grid, grid, -SLAB), P(0, grid, -SLAB))} fill="#7a4e30" stroke={OL} strokeWidth="2.4" strokeLinejoin="round" />
       <polygon points={poly(P(grid, 0), P(grid, grid), P(grid, grid, -SLAB), P(grid, 0, -SLAB))} fill="#5f3a24" stroke={OL} strokeWidth="2.4" strokeLinejoin="round" />
       <path d={`M${P(0, grid, -4).join(',')}L${P(grid, grid, -4).join(',')}L${P(grid, 0, -4).join(',')}`} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.4" />
       <g>{Array.from({ length: grid * grid }, (_, i) => floorTile(r.floor, Math.floor(i / grid), i % grid))}</g>
+      {/* rugs lie on the floor, under furniture */}
+      <g>
+        {rugs.map((p) => (
+          <g
+            key={p.id}
+            transform={`translate(${P(p.gx, p.gy)[0]} ${P(p.gx, p.gy)[1]})${p.flip ? ' scale(-1 1)' : ''}`}
+            style={{ cursor: !placing && !wallGhost && onItem ? 'pointer' : undefined, pointerEvents: placing || wallGhost ? 'none' : 'auto' }}
+            onPointerUp={(e) => {
+              if (placing || wallGhost || !onItem) return
+              e.stopPropagation()
+              onItem(p.id)
+            }}
+          >
+            {floorArt(p.type).art()}
+          </g>
+        ))}
+      </g>
       <polygon points={floorOutline} fill="url(#floorSheen)" pointerEvents="none" />
       <polygon points={floorOutline} fill="none" stroke={OL} strokeWidth="2.4" strokeLinejoin="round" />
       {/* soft shadows where walls meet the floor, moonlight and street glow */}
@@ -508,8 +609,8 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
       </g>
       {/* light pools */}
       <g style={{ mixBlendMode: 'screen' }} pointerEvents="none" opacity={Math.max(0.35, sky.glow)}>
-        {r.items.map((p) => {
-          const g = DECOR[p.type].glow
+        {floorItems.map((p) => {
+          const g = floorArt(p.type).glow
           return g ? (
             <g key={p.id} transform={`translate(${P(p.gx, p.gy)[0]} ${P(p.gx, p.gy)[1]})${p.flip ? ' scale(-1 1)' : ''}`}>
               {g()}
@@ -525,7 +626,7 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
           ))}
         </g>
       )}
-      {selected && (
+      {selected && itemDef(selected.type).layer !== 'wall' && (
         <polygon
           className="selpulse"
           pointerEvents="none"
@@ -552,7 +653,7 @@ export default function Room({ r, grid, placing, selectedId, onTile, onItem, onH
       ))}
       {placing && (
         <g transform={`translate(${gs[0]} ${gs[1]})${placing.flip ? ' scale(-1 1)' : ''}`} opacity={ghostOk ? 0.8 : 0.45} pointerEvents="none">
-          {DECOR[placing.type].art()}
+          {floorArt(placing.type).art()}
         </g>
       )}
       {/* time-of-day lighting over the whole room */}

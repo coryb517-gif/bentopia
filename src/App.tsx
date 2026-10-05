@@ -384,6 +384,7 @@ function Game() {
           setScreen('hub')
         }}
         onBought={() => setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))}
+        initialTab={tut.step === 'decorate' ? 'lights' : 'seating'}
       />
     )
   }
