@@ -63,6 +63,8 @@ export interface Placed {
   type: ItemType
   gx: number
   gy: number
+  /** Mirrored across the room's diagonal: swaps the footprint's width and depth. */
+  flip?: boolean
 }
 
 export interface Restaurant {
@@ -126,31 +128,33 @@ export function levelProgress(score: number): { have: number; need: number; leve
 }
 
 // ---------- Placement ----------
-export function footprint(type: ItemType, gx: number, gy: number): [number, number][] {
-  const { w, d } = itemDef(type)
+export function footprint(type: ItemType, gx: number, gy: number, flip = false): [number, number][] {
+  const def = itemDef(type)
+  const w = flip ? def.d : def.w
+  const d = flip ? def.w : def.d
   const cells: [number, number][] = []
   for (let x = 0; x < w; x++) for (let y = 0; y < d; y++) cells.push([gx + x, gy + y])
   return cells
 }
 
-export function canPlace(r: Restaurant, type: ItemType, gx: number, gy: number, grid: number, ignoreId?: number): boolean {
-  const mine = footprint(type, gx, gy)
+export function canPlace(r: Restaurant, type: ItemType, gx: number, gy: number, grid: number, ignoreId?: number, flip = false): boolean {
+  const mine = footprint(type, gx, gy, flip)
   if (mine.some(([x, y]) => x < 0 || y < 0 || x >= grid || y >= grid)) return false
   const taken = new Set<string>()
   for (const p of r.items) {
     if (p.id === ignoreId) continue
-    for (const [x, y] of footprint(p.type, p.gx, p.gy)) taken.add(`${x},${y}`)
+    for (const [x, y] of footprint(p.type, p.gx, p.gy, p.flip)) taken.add(`${x},${y}`)
   }
   return mine.every(([x, y]) => !taken.has(`${x},${y}`))
 }
 
-export function placeItem(r: Restaurant, type: ItemType, gx: number, gy: number): Restaurant {
-  return { ...r, items: [...r.items, { id: r.nextId, type, gx, gy }], nextId: r.nextId + 1 }
+export function placeItem(r: Restaurant, type: ItemType, gx: number, gy: number, flip = false): Restaurant {
+  return { ...r, items: [...r.items, { id: r.nextId, type, gx, gy, ...(flip ? { flip: true } : {}) }], nextId: r.nextId + 1 }
 }
 
-export const moveItem = (r: Restaurant, id: number, gx: number, gy: number): Restaurant => ({
+export const moveItem = (r: Restaurant, id: number, gx: number, gy: number, flip?: boolean): Restaurant => ({
   ...r,
-  items: r.items.map((p) => (p.id === id ? { ...p, gx, gy } : p)),
+  items: r.items.map((p) => (p.id === id ? { ...p, gx, gy, flip: flip ?? p.flip } : p)),
 })
 
 export const removeItem = (r: Restaurant, id: number): Restaurant => ({ ...r, items: r.items.filter((p) => p.id !== id) })

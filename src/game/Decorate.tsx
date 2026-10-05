@@ -83,14 +83,14 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
   const confirm = () => {
     if (!placing) return
     const g = placing.ghost
-    if (!canPlace(r, g.type, g.gx, g.gy, grid, g.ignoreId)) return say('Pick a free tile')
+    if (!canPlace(r, g.type, g.gx, g.gy, grid, g.ignoreId, g.flip)) return say('Pick a free tile')
     if (placing.shop) {
       if (!spend(itemDef(g.type).price)) return say('Not enough coins')
       coinSound(3)
-      commit(placeItem(r, g.type, g.gx, g.gy))
+      commit(placeItem(r, g.type, g.gx, g.gy, g.flip))
       onBought?.()
     } else if (g.ignoreId) {
-      commit(moveItem(r, g.ignoreId, g.gx, g.gy))
+      commit(moveItem(r, g.ignoreId, g.gx, g.gy, g.flip))
     }
     setPlacing(null)
   }
@@ -98,13 +98,20 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
   const onTile = (gx: number, gy: number) => {
     if (!placing) return setSelectedId(null)
     const g = placing.ghost
-    if (g.gx === gx && g.gy === gy && canPlace(r, g.type, gx, gy, grid, g.ignoreId)) return confirm()
+    if (g.gx === gx && g.gy === gy && canPlace(r, g.type, gx, gy, grid, g.ignoreId, g.flip)) return confirm()
     setPlacing({ ...placing, ghost: { ...g, gx, gy } })
   }
 
   const startMove = () => {
     if (!selected) return
-    setPlacing({ ghost: { type: selected.type, gx: selected.gx, gy: selected.gy, ignoreId: selected.id }, shop: false })
+    setPlacing({ ghost: { type: selected.type, gx: selected.gx, gy: selected.gy, ignoreId: selected.id, flip: selected.flip }, shop: false })
+  }
+
+  const rotateSelected = () => {
+    if (!selected) return
+    const flip = !selected.flip
+    if (!canPlace(r, selected.type, selected.gx, selected.gy, grid, selected.id, flip)) return say('No room to rotate here')
+    setR(moveItem(r, selected.id, selected.gx, selected.gy, flip))
   }
 
   const sell = () => {
@@ -131,7 +138,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
   }
 
   const cost = placing?.shop ? itemDef(placing.ghost.type).price : 0
-  const okSpot = placing ? canPlace(r, placing.ghost.type, placing.ghost.gx, placing.ghost.gy, grid, placing.ghost.ignoreId) : false
+  const okSpot = placing ? canPlace(r, placing.ghost.type, placing.ghost.gx, placing.ghost.gy, grid, placing.ghost.ignoreId, placing.ghost.flip) : false
 
   return (
     <main className="screen decorate">
@@ -161,7 +168,8 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
               <b>{itemDef(placing.ghost.type).name}</b>
               <small>{okSpot ? 'Tap the tile again, or press Place' : 'Tap a free tile'}</small>
             </div>
-            <button className="btn" onClick={() => setPlacing(null)}>Cancel</button>
+            <button className="btn" onClick={() => setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })}>Rotate</button>
+            <button className="btn ghost" onClick={() => setPlacing(null)}>Cancel</button>
             <button className="btn primary" data-coach="place" disabled={!okSpot} onClick={confirm}>
               {placing.shop ? <>Place <Coin />{cost}</> : 'Move here'}
             </button>
@@ -173,6 +181,7 @@ export default function Decorate({ r, setR, coins, spend, earn, onDone, onBought
               <small>{itemDef(selected.type).blurb}</small>
             </div>
             <button className="btn" onClick={startMove}>Move</button>
+            <button className="btn" onClick={rotateSelected}>Rotate</button>
             <button className="btn" onClick={sell}>Sell <Coin />{sellValue(selected.type)}</button>
             <button className="btn ghost" onClick={() => setSelectedId(null)}>Close</button>
           </div>
