@@ -191,8 +191,64 @@ const items: Record<string, () => string> = {
     shine(30, 30, 11, 3, -40, 0.6),
 }
 
-export const CHAIN_COUNT = 6
-export const TIERS = 3
+/** A maki roll seen end-on: nori, rice, then whatever filling `inner` draws. */
+function maki(cx: number, cy: number, r: number, inner: string): string {
+  return (
+    cel(circ(cx, cy, r), NORI, NORI_SH, shine(cx - r * 0.5, cy - r * 0.5, r * 0.28, 2, -40, 0.35)) +
+    cel(circ(cx, cy, r * 0.78), RICE, RICE_SH, grains([[cx - r * 0.45, cy - r * 0.3, 20], [cx + r * 0.4, cy - r * 0.4, -20], [cx - r * 0.3, cy + r * 0.5, 40], [cx + r * 0.45, cy + r * 0.35, 0]]), 2.4, 3) +
+    inner
+  )
+}
+
+const wedge = (cx: number, cy: number, r: number, a0: number, a1: number, fill: string) => {
+  const p = (a: number) => `${cx + r * Math.cos((a * Math.PI) / 180)} ${cy + r * Math.sin((a * Math.PI) / 180)}`
+  return `<path d="M${cx} ${cy}L${p(a0)}A${r} ${r} 0 0 1 ${p(a1)}Z" fill="${fill}"/>`
+}
+
+// Mixed dishes (kinds 6+): finished dishes only.
+Object.assign(items, {
+  // Chirashi bowl: a mound of rice piled with toppings in a white bowl.
+  '6-2': () =>
+    cel('M16 54C16 26 36 14 50 14C64 14 84 26 84 54Z', RICE, RICE_SH,
+      `<rect x="18" y="28" width="30" height="14" rx="5" fill="${SALMON}" stroke="${OUTLINE}" stroke-width="2.4" transform="rotate(-12 33 35)"/>` +
+      `<path d="M24 31l8 -2M30 36l8 -2" stroke="#ffe2d2" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<rect x="50" y="20" width="18" height="16" rx="3" fill="#ffd45e" stroke="${OUTLINE}" stroke-width="2.4"/>` +
+      `<path d="M53 26H65M53 31H65" stroke="#fff3bd" stroke-width="1.4"/>` +
+      `<circle cx="72" cy="38" r="8" fill="#9fdc62" stroke="${OUTLINE}" stroke-width="2.4"/><circle cx="72" cy="38" r="4" fill="#e6f4c4"/>` +
+      `<rect x="40" y="14" width="9" height="20" rx="2" fill="${NORI}" stroke="${OUTLINE}" stroke-width="2" transform="rotate(8 44 24)"/>` +
+      [[34, 46], [41, 49], [48, 46], [56, 49], [63, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.6" fill="#ff7a2e" stroke="${OUTLINE}" stroke-width="1.4"/><circle cx="${x - 1}" cy="${y - 1}" r="1" fill="#ffd0a0"/>`).join('')) +
+    cel('M10 52H90C90 76 74 90 50 90C26 90 10 76 10 52Z', '#fffdf7', '#d0c6b0', stroke('M18 62Q50 74 82 62', '#d4503b', 4) + shine(24, 70, 5, 2, -50, 0.6)) +
+    cel('M8 49H92V55H8Z', '#ffffff', '#d8d0bf', '', 3, 2),
+  // Tempura roll: two maki, one with a crisp prawn tempura poking out.
+  '7-2': () =>
+    maki(64, 38, 24, cel(circ(64, 38, 9), '#86c84b', '#4a932a', dot(64, 38, 4, '#e6f4c4'), 2.4, 2.5)) +
+    maki(40, 62, 30,
+      cel(circ(40, 62, 14), '#f2b552', '#c8832a', [[34, 57], [44, 58], [38, 68], [46, 66]].map(([x, y]) => dot(x, y, 2, '#ffdc8a')).join(''), 2.6, 3) +
+      cel('M50 52L62 44L64 54L54 60Z', '#ff7a4d', '#c9441f', '', 2.4, 2)) +
+    [[26, 50], [52, 76], [24, 70]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.4" ry="1.3" fill="#fff" stroke="#bbb" stroke-width="0.6"/>`).join(''),
+  // Yakitori feast: three skewers fanned over a plate.
+  '8-2': () =>
+    cel(ell(50, 70, 46, 22), '#fffdf7', '#d9d4c4') +
+    [-24, 24, 0]
+      .map((a) =>
+        `<g transform="rotate(${a} 50 88)">` +
+        `<path d="M50 90V10" stroke="${OUTLINE}" stroke-width="7" stroke-linecap="round"/><path d="M50 90V10" stroke="#e8c88c" stroke-width="3.2" stroke-linecap="round"/>` +
+        cel(rrect(40, 14, 20, 20, 8), '#ffd53f', '#d9981a', stroke('M42 22H58M42 28H58', '#ffe88a', 1.6), 2.6, 3) +
+        cel(rrect(40, 36, 20, 18, 5), '#ffd45e', '#e0a22a', stroke('M42 42H58M42 48H58', '#fff3bd', 1.4), 2.6, 3) +
+        cel(circ(50, 66, 11), '#f2b552', '#c8832a', dot(46, 62, 1.8, '#ffdc8a') + dot(54, 68, 1.8, '#ffdc8a'), 2.6, 3) +
+        `</g>`,
+      )
+      .join('') +
+    cel(circ(84, 74, 5), '#ff9a3a', '#d96a1a', '', 2.4, 2),
+  // Rainbow maki: rolls with a three-color heart.
+  '9-2': () =>
+    maki(62, 38, 26, wedge(62, 38, 11, -90, 30, '#ff8fb0') + wedge(62, 38, 11, 30, 150, '#8fe06a') + wedge(62, 38, 11, 150, 270, '#ffd45e') + `<circle cx="62" cy="38" r="11" fill="none" stroke="${OUTLINE}" stroke-width="2.4"/>`) +
+    maki(36, 64, 30, wedge(36, 64, 14, -90, 30, '#7fe6ff') + wedge(36, 64, 14, 30, 150, '#ff8fb0') + wedge(36, 64, 14, 150, 270, '#c4a8ff') + `<circle cx="36" cy="64" r="14" fill="none" stroke="${OUTLINE}" stroke-width="2.6"/>`),
+})
+
+/** Every illustration that exists, as [kind, tier] pairs. */
+export const ART_PAIRS: [number, number][] = Object.keys(items).map((k) => k.split('-').map(Number) as [number, number])
+export const hasArt = (kind: number, tier: number) => `${kind}-${tier}` in items
 
 /** Kawaii face: wide-set shiny eyes, blush, tiny smile. */
 function face(cx: number, cy: number, s: number): string {
@@ -276,7 +332,5 @@ export function loadArt(kind: number, tier: number): Promise<HTMLImageElement> {
 }
 
 export async function loadAllArt(): Promise<void> {
-  const jobs: Promise<unknown>[] = []
-  for (let k = 0; k < CHAIN_COUNT; k++) for (let t = 0; t < TIERS; t++) jobs.push(loadArt(k, t))
-  await Promise.all(jobs)
+  await Promise.all(ART_PAIRS.map(([k, t]) => loadArt(k, t)))
 }

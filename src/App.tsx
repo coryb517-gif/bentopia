@@ -8,11 +8,16 @@ import { isSoundOn, setSound } from './game/audio'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Mascot, { type Mood } from './game/Mascot'
 import { LEVELS } from './sim/levels'
-import { CHAINS } from './sim/items'
+import { CHAINS, recipeFor } from './sim/items'
 import type { GameState } from './sim/types'
 import './App.css'
 
 type Screen = 'title' | 'map' | 'play'
+
+const CHAPTERS = [
+  { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
+  { title: 'Chapter 2', sub: 'Mix it up', from: 11, to: 20 },
+]
 
 function loadStars(): Record<number, number> {
   try {
@@ -31,6 +36,24 @@ const QUIPS = {
 
 /** Shows how to make a dish: link 3 of the last step to get the next one. */
 function Recipe({ kind, tier }: { kind: number; tier: number }) {
+  const mixed = recipeFor(kind, tier)
+  if (mixed) {
+    return (
+      <div className="recipe">
+        <span className="step">
+          {mixed.inputs.map((inp, n) => (
+            <span key={n} className="plus-wrap">
+              {n > 0 && <span className="plus" aria-hidden>+</span>}
+              <img className="dish" src={svgUrl(inp.kind, inp.tier)} alt="" width={24} height={24} />
+            </span>
+          ))}
+          <span className="arrow" aria-hidden>→</span>
+          <img className="dish" src={svgUrl(kind, tier)} alt="" width={32} height={32} />
+          <span className="sr">Link one each of {mixed.inputs.map((i) => CHAINS[i.kind].names[i.tier]).join(', ')} to make {CHAINS[kind].names[tier]}</span>
+        </span>
+      </div>
+    )
+  }
   const steps = []
   for (let t = 0; t < tier; t++) {
     steps.push(
@@ -106,7 +129,8 @@ function Game() {
     setPreview(null)
     setShowResult(false)
     setScreen('play')
-    say("Let's cook!", 'cheer', 1600)
+    const mixed = LEVELS[idx].order.some((o) => recipeFor(o.kind, o.tier))
+    say(mixed ? 'One of each!' : "Let's cook!", 'cheer', mixed ? 2800 : 1600)
   }
 
   const onState = useCallback((s: GameState) => setGame(s), [])
@@ -175,24 +199,32 @@ function Game() {
       <main className="screen map">
         <header className="bar">
           <button className="btn ghost" onClick={() => setScreen('title')}>Back</button>
-          <h2>Chapter 1</h2>
+          <h2>Levels</h2>
           <span className="coin">★ {total}</span>
         </header>
         <div className="maphero">
           <Mascot mood="idle" size={84} />
           <p className="bubble">Pick an order, chef!</p>
         </div>
-        <ol className="levels">
-          {LEVELS.map((l, i) => (
-            <li key={l.id}>
-              <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i)} onClick={() => start(i)}>
-                <span className="num">{unlocked(i) ? l.id : '🔒'}</span>
-                <span className="lname">{l.name}</span>
-                <Stars n={stars[l.id] ?? 0} />
-              </button>
-            </li>
-          ))}
-        </ol>
+        {CHAPTERS.map((ch) => (
+          <section key={ch.title} className="chapter">
+            <h3>{ch.title}<small>{ch.sub}</small></h3>
+            <ol className="levels">
+              {LEVELS.slice(ch.from - 1, ch.to).map((l) => {
+                const i = l.id - 1
+                return (
+                  <li key={l.id}>
+                    <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i)} onClick={() => start(i)}>
+                      <span className="num">{unlocked(i) ? l.id : '🔒'}</span>
+                      <span className="lname">{l.name}</span>
+                      <Stars n={stars[l.id] ?? 0} />
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </section>
+        ))}
       </main>
     )
   }
@@ -227,7 +259,7 @@ function Game() {
           {level.order.map((o, idx) => (
             <li key={idx} className={(game?.progress[idx] ?? 0) >= o.count ? 'done' : ''}>
               <div className="orow">
-                <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={38} height={38} />
+                <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={32} height={32} />
                 <span className="oname"><span className="need">Make</span>{CHAINS[o.kind].names[o.tier]}</span>
                 <b>{game?.progress[idx] ?? 0}/{o.count}</b>
               </div>
@@ -239,7 +271,7 @@ function Game() {
 
       <div className="preview" aria-live="polite">
         {preview ? (
-          <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={28} height={28} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
+          <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
           <>Link 3+ matching dishes</>
         )}

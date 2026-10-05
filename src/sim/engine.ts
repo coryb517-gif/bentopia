@@ -1,4 +1,4 @@
-import { MAX_TIER } from './items'
+import { FIRST_MIXED_KIND, MAX_TIER, RECIPES, type ItemRef } from './items'
 import { nextRandom } from './rng'
 import type { GameState, LevelDef, Tile } from './types'
 
@@ -26,6 +26,13 @@ function rand(s: GameState): number {
   return v
 }
 
+/** Does an order line depend on raw ingredient kind `k`, directly or through a mixed recipe? */
+function needsKind(o: ItemRef, k: number): boolean {
+  if (o.kind < FIRST_MIXED_KIND) return o.kind === k
+  const r = RECIPES.find((x) => x.out.kind === o.kind && x.out.tier === o.tier)
+  return !!r && r.inputs.some((i) => i.kind === k)
+}
+
 function spawn(s: GameState): Tile {
   const { level } = s
   const lowOnMoves = s.movesLeft <= level.moves * 0.4
@@ -33,7 +40,7 @@ function spawn(s: GameState): Tile {
   for (let k = 0; k < level.kinds; k++) {
     let w = 1
     // Mercy spawn: lean toward ingredients the order still needs.
-    if (lowOnMoves && level.order.some((o, idx) => o.kind === k && s.progress[idx] < o.count)) w = 2
+    if (level.order.some((o, idx) => s.progress[idx] < o.count && needsKind(o, k))) w = lowOnMoves ? 2.6 : 1.7
     weights.push(w)
   }
   const total = weights.reduce((a, b) => a + b, 0)
@@ -98,6 +105,15 @@ export function hasLink(s: GameState): boolean {
     }
     if (size >= 3) return true
   }
+  // Mixed recipes: any adjacent trio that matches one.
+  for (let a = 0; a < CELLS; a++) {
+    if (!s.cells[a] || s.cells[a]!.tier !== 1) continue
+    for (const b of neighbors(a)) {
+      for (const c of neighbors(b)) {
+        if (c !== a && chainOutcome(s, [a, b, c])) return true
+      }
+    }
+  }
   return false
 }
 
@@ -140,29 +156,68 @@ export function newGame(level: LevelDef, seed: number): GameState {
   return s
 }
 
-/** A chain is valid if it is 3+ distinct tiles, each matching and adjacent to the one before. */
-export function isValidChain(s: GameState, path: number[]): boolean {
-  if (path.length < 3 || new Set(path).size !== path.length) return false
-  for (let i = 0; i < path.length; i++) {
-    if (!canLink(s.cells[path[0]], s.cells[path[i]])) return false
-    if (i > 0 && !neighbors(path[i - 1]).includes(path[i])) return false
-  }
-  return true
+const sortedKey = (items: ItemRef[]) =>
+  items
+    .map((i) => `${i.kind}.${i.tier}`)
+    .sort()
+    .join('|')
+
+/** The mixed recipe these exact tiles make, if any (order does not matter). */
+function recipeMatching(tiles: ItemRef[]): ItemRef | null {
+  const key = sortedKey(tiles)
+  return RECIPES.find((r) => sortedKey(r.inputs) === key)?.out ?? null
 }
+
+/** Could `tiles` still grow into some recipe? Used to decide whether a drag may continue. */
+function recipeCouldInclude(tiles: ItemRef[]): boolean {
+  return RECIPES.some((r) => {
+    const pool = r.inputs.map((i) => `${i.kind}.${i.tier}`)
+    return tiles.every((t) => {
+      const at = pool.indexOf(`${t.kind}.${t.tier}`)
+      if (at < 0) return false
+      pool.splice(at, 1)
+      return true
+    })
+  })
+}
+
+/**
+ * What a chain would produce, or null if it is not a valid chain. A chain is 3+ distinct
+ * adjacent tiles that are either all identical (makes the next tier) or exactly one of each
+ * input of a mixed recipe.
+ */
+export function chainOutcome(s: GameState, path: number[]): ItemRef | null {
+  if (path.length < 3 || new Set(path).size !== path.length) return null
+  for (let i = 1; i < path.length; i++) if (!neighbors(path[i - 1]).includes(path[i])) return null
+  const tiles = path.map((i) => s.cells[i])
+  if (tiles.some((t) => !t)) return null
+  const first = tiles[0]!
+  if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) {
+    return first.tier < MAX_TIER ? { kind: first.kind, tier: first.tier + 1 } : null
+  }
+  return recipeMatching(tiles as Tile[])
+}
+
+export const isValidChain = (s: GameState, path: number[]) => chainOutcome(s, path) !== null
 
 export function canExtend(s: GameState, path: number[], cell: number): boolean {
   if (s.blocked[cell] || path.includes(cell)) return false
   const last = path[path.length - 1]
-  return neighbors(last).includes(cell) && canLink(s.cells[path[0]], s.cells[cell])
+  if (!neighbors(last).includes(cell)) return false
+  const tiles = [...path, cell].map((i) => s.cells[i])
+  if (tiles.some((t) => !t)) return false
+  const first = tiles[0]!
+  if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) return first.tier < MAX_TIER
+  return recipeCouldInclude(tiles as Tile[])
 }
 
 /** Returns the next state, or the same state if the chain is invalid or the game is over. */
 export function commitChain(prev: GameState, path: number[]): GameState {
-  if (prev.status !== 'playing' || !isValidChain(prev, path)) return prev
+  const out = prev.status === 'playing' ? chainOutcome(prev, path) : null
+  if (!out) return prev
   const s: GameState = { ...prev, cells: [...prev.cells], progress: [...prev.progress] }
   const toCell = path[path.length - 1]
-  const base = s.cells[toCell]!
-  const result: Tile = { id: s.nextId++, kind: base.kind, tier: base.tier + 1 }
+  const result: Tile = { id: s.nextId++, kind: out.kind, tier: out.tier }
   const removed = path.map((i) => s.cells[i]!.id)
   for (const i of path) s.cells[i] = null
   s.cells[toCell] = result

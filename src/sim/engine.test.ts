@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { commitChain, hasLink, isValidChain, newGame } from './engine'
+import { canExtend, chainOutcome, commitChain, hasLink, isValidChain, newGame } from './engine'
 import { LEVELS } from './levels'
 
 /** Greedy bot: commit the first connected run of 3 it finds. */
@@ -78,3 +78,45 @@ describe('engine', () => {
   })
 })
 
+describe('mixed recipes', () => {
+  /** Level 11 (one Chirashi bowl) with a hand-placed row of crafted tiles. */
+  function setup(kinds: number[]) {
+    const s = newGame(LEVELS[10], 3)
+    kinds.forEach((kind, i) => (s.cells[i] = { id: 900 + i, kind, tier: 1 }))
+    return s
+  }
+
+  it('makes the mixed dish from one of each input, in any order', () => {
+    for (const order of [[0, 1, 3], [3, 0, 1], [1, 3, 0]]) {
+      const s = setup(order)
+      expect(chainOutcome(s, [0, 1, 2])).toEqual({ kind: 6, tier: 2 })
+    }
+  })
+
+  it('rejects trios that are not a recipe', () => {
+    expect(chainOutcome(setup([0, 1, 2]), [0, 1, 2])).toBeNull()
+    expect(chainOutcome(setup([0, 0, 1]), [0, 1, 2])).toBeNull()
+    expect(isValidChain(setup([0, 1, 3]), [0, 1])).toBe(false)
+  })
+
+  it('only lets a drag continue toward a real recipe', () => {
+    const s = setup([0, 1, 3])
+    expect(canExtend(s, [0], 1)).toBe(true)
+    expect(canExtend(s, [0, 1], 2)).toBe(true)
+    const wrong = setup([0, 1, 2])
+    expect(canExtend(wrong, [0, 1], 2)).toBe(false)
+  })
+
+  it('commits the dish on the last tile and completes the order', () => {
+    const s = setup([0, 1, 3])
+    const next = commitChain(s, [0, 1, 2])
+    expect(next.last?.toCell).toBe(2)
+    expect(next.progress).toEqual([1])
+    expect(next.status).toBe('won')
+  })
+
+  it('counts a mixed trio as a legal move when checking for deadlock', () => {
+    const s = setup([0, 1, 3])
+    expect(hasLink(s)).toBe(true)
+  })
+})

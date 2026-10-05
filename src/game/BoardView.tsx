@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, commitChain, isValidChain, newGame, SIZE } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, newGame, SIZE } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { clackSound, loseSound, popSound, winSound } from './audio'
@@ -247,8 +247,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge }: 
           const p = center(i)
           lines.circle(p.x, p.y, cell * 0.48).stroke({ width: Math.max(2, cell * 0.06), color: 0xff6f91, alpha: 0.9 })
         }
-        const t0 = path.length ? state.cells[path[0]] : null
-        cb.current.onPreview(t0 && isValidChain(state, path) ? { kind: t0.kind, tier: t0.tier + 1 } : null)
+        cb.current.onPreview(chainOutcome(state, path))
         for (const [id, sp] of sprites) {
           if (sp.dying) continue
           const idx = state.cells.findIndex((t) => t?.id === id)

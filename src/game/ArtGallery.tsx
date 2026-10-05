@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { CHAINS } from '../sim/items'
-import { loadAllArt, svgUrl } from './art'
+import { hasArt, loadAllArt, svgUrl } from './art'
 import CustomerPortrait, { CUSTOMERS, type CustomerMood } from './Customers'
 import { tileCanvas } from './render'
 
@@ -29,7 +29,7 @@ export default function ArtGallery() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {CHAINS.flatMap((c, k) =>
-          c.names.map((n, t) => (
+          c.names.map((n, t) => !hasArt(k, t) ? null : (
             <figure key={`${k}-${t}`} style={{ margin: 0, textAlign: 'center' }}>
               <img src={svgUrl(k, t)} alt={n} width={200} height={200} style={{ background: '#f1e6cf', borderRadius: 16 }} />
               <figcaption style={{ fontSize: 13 }}>{n}</figcaption>

@@ -175,14 +175,14 @@ h1, h2 { font-family: var(--font-title); font-weight: 400; margin: 0; }
   background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(12px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
-.order ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.order li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.order ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.order li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; }
 .orow { flex: 1 1 150px; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .need { display: block; font-size: 0.65rem; line-height: 1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--pink); }
 .oname { flex: 1; font-weight: 700; white-space: nowrap; }
 .orow b { color: var(--gold); text-shadow: 0 0 10px rgba(255, 194, 51, 0.6); }
 .recipe { display: flex; flex-wrap: wrap; gap: 4px 8px; }
-.step { display: inline-flex; align-items: center; gap: 1px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 2px 8px 2px 4px; }
+.step { display: inline-flex; align-items: center; gap: 1px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 0 8px 0 4px; }
 .step .arrow { margin: 0 6px 0 4px; font-weight: 800; color: var(--mint); text-shadow: 0 0 8px rgba(109, 255, 192, 0.8); }
 .order li.done { opacity: 0.55; }
 .order li.done .oname { text-decoration: line-through; }
@@ -232,4 +232,11 @@ h1, h2 { font-family: var(--font-title); font-weight: 400; margin: 0; }
 .ask::before { content: ''; position: absolute; left: -7px; bottom: 10px; border: 7px solid transparent; border-left: 0; border-right-color: #fff; }
 .ask.solo { margin: 0; text-align: center; }
 .ask.solo::before { left: 50%; top: -7px; bottom: auto; margin-left: -7px; border: 7px solid transparent; border-top: 0; border-bottom-color: #fff; }
-.order { padding-top: 26px; }
+.order { padding: 22px 12px 8px; }
+/* Chapters and mixed recipes */
+.chapter { display: grid; gap: 10px; }
+.chapter + .chapter { margin-top: 10px; }
+.chapter h3 { margin: 4px 2px 0; font-family: var(--font-title); font-weight: 400; font-size: 1.2rem; text-shadow: 0 0 16px rgba(127, 230, 255, 0.6); }
+.chapter h3 small { margin-left: 10px; font-family: var(--font-ui); font-size: 0.8rem; color: var(--muted); text-shadow: none; }
+.plus-wrap { display: inline-flex; align-items: center; }
+.plus { margin: 0 3px; font-weight: 800; color: var(--pink); }
