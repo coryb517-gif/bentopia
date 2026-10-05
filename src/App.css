@@ -530,3 +530,24 @@ h1, h2 { font-family: var(--font-title); font-weight: 400; margin: 0; }
 .namepick select option { color: #2a0f2e; }
 .signpreview { text-align: center; margin: 0; font-family: var(--font-title); font-size: 1.2rem; color: var(--gold); text-shadow: 0 0 14px rgba(255, 194, 51, 0.6); }
 .signpreview small { display: block; font-family: var(--font-ui); font-size: 0.7rem; letter-spacing: 0.14em; color: var(--muted); text-shadow: none; }
+
+/* Legibility: calm the backdrop behind the HUD on every screen except the title */
+body[data-screen]:not([data-screen="title"]) .lanterns { opacity: 0.16; }
+body[data-screen]:not([data-screen="title"]) .moon { opacity: 0.4; box-shadow: 0 0 40px 10px rgba(255, 214, 130, 0.18); }
+body[data-screen]:not([data-screen="title"]) .backdrop::after {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 170px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 3, 24, 0.82), rgba(8, 3, 24, 0));
+}
+.wallet, .moves, .levelname, .rlevel, .bar h2, .storey, .setpill, .statrow div {
+  text-shadow: 0 1px 6px rgba(8, 3, 24, 0.9);
+}
+.wallet, .moves { background: rgba(13, 6, 38, 0.72); backdrop-filter: blur(12px); border-color: rgba(255, 255, 255, 0.28); }
+.storey { background: rgba(13, 6, 38, 0.55); }
+.storey.on { background: rgba(13, 6, 38, 0.8); }
+.btn.ghost { color: #fff; text-shadow: 0 1px 6px rgba(8, 3, 24, 0.9); }
+.btn.round { background: rgba(13, 6, 38, 0.72); }
+.decorate .bar { background: rgba(13, 6, 38, 0.78); }
+.coin { text-shadow: 0 1px 6px rgba(8, 3, 24, 0.9), 0 0 14px rgba(255, 194, 51, 0.5); }
+.rlevel { max-width: 230px; grid-template-columns: auto minmax(70px, 1fr); }
+.rlevel small { white-space: nowrap; }
+.nextcard small { white-space: nowrap; font-size: 0.6rem; letter-spacing: 0.04em; }

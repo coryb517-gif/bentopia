@@ -81,7 +81,7 @@ describe('engine', () => {
 describe('mixed recipes', () => {
   /** Level 11 (one Chirashi bowl) with a hand-placed row of crafted tiles. */
   function setup(kinds: number[]) {
-    const s = newGame(LEVELS[10], 3)
+    const s = newGame(LEVELS[12], 3)
     kinds.forEach((kind, i) => (s.cells[i] = { id: 900 + i, kind, tier: 1 }))
     return s
   }
@@ -145,7 +145,7 @@ describe('hints', () => {
   })
 
   it('suggests a mixed trio when that is what the order needs', () => {
-    const s = newGame(LEVELS[10], 3)
+    const s = newGame(LEVELS[12], 3)
     ;[0, 1, 3].forEach((kind, i) => (s.cells[i] = { id: 900 + i, kind, tier: 1 }))
     expect(chainOutcome(s, suggestChain(s)!)).toEqual({ kind: 6, tier: 2 })
   })

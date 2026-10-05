@@ -40,7 +40,7 @@ function spawn(s: GameState): Tile {
   for (let k = 0; k < level.kinds; k++) {
     let w = 1
     // Mercy spawn: lean toward ingredients the order still needs.
-    if (level.order.some((o, idx) => s.progress[idx] < o.count && needsKind(o, k))) w = lowOnMoves ? 2.6 : 1.7
+    if (level.order.some((o, idx) => s.progress[idx] < o.count && needsKind(o, k))) w = lowOnMoves ? 3.4 : 2.3
     weights.push(w)
   }
   const total = weights.reduce((a, b) => a + b, 0)

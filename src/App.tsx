@@ -19,17 +19,13 @@ import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
-import { LEVELS } from './sim/levels'
+import { CHAPTER_RANGES, chapterOf, LEVELS } from './sim/levels'
 import { CHAINS, recipeFor } from './sim/items'
 import type { GameState } from './sim/types'
 import './App.css'
 
 type Screen = 'title' | 'hub' | 'decorate' | 'build' | 'town' | 'map' | 'play'
 
-const CHAPTERS = [
-  { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 10 },
-  { title: 'Chapter 2', sub: 'Mix it up', from: 11, to: 20 },
-]
 
 function hasProgress(): boolean {
   try {
@@ -165,6 +161,11 @@ function Game() {
 
   const level = LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
+
+  // Screens with a HUD at the top calm the backdrop so coins and buttons stay readable.
+  useEffect(() => {
+    document.body.dataset.screen = screen
+  }, [screen])
 
   // One clock drives heart regeneration and the countdown, and the wallet is saved on every change.
   useEffect(() => {
@@ -369,7 +370,7 @@ function Game() {
         onTown={() => setScreen('town')}
         next={(() => {
           const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
-          return { id: l.id, name: l.name, chapter: l.id <= 10 ? 1 : 2 }
+          return { id: l.id, name: l.name, chapter: chapterOf(l.id) }
         })()}
         onContinue={() => start(LEVELS.findIndex((x) => !(stars[x.id] > 0)) >= 0 ? LEVELS.findIndex((x) => !(stars[x.id] > 0)) : LEVELS.length - 1)}
         prefs={prefs}
@@ -439,7 +440,7 @@ function Game() {
           <Mascot mood="idle" size={84} />
           <p className="bubble">{outOfHearts ? 'Rest a moment, chef...' : 'Pick an order, chef!'}</p>
         </div>
-        {CHAPTERS.map((ch) => (
+        {CHAPTER_RANGES.map((ch) => (
           <section key={ch.title} className="chapter">
             <h3>{ch.title}<small>{ch.sub}</small></h3>
             <ol className="levels">

@@ -49,10 +49,10 @@ function play(levelIdx: number, seed: number): GameState {
 
 /** A deliberately dull bot should still clear every level sometimes, and the early ones usually. */
 describe('level solvability (greedy bot)', () => {
-  it.each(Array.from({ length: 20 }, (_, i) => [i]))('level index %i is clearable by the greedy bot', (idx) => {
+  it.each(Array.from({ length: LEVELS.length }, (_, i) => [i]))('level index %i is clearable by the greedy bot', (idx) => {
     let wins = 0
     for (let seed = 1; seed <= 10; seed++) if (play(idx, seed).status === 'won') wins++
-    const easy = idx < 4 || (idx >= 10 && idx < 13)
-    expect(wins).toBeGreaterThanOrEqual(easy ? 7 : 2)
+    // The curve is gentle: the dull bot should clear every level most of the time.
+    expect(wins).toBeGreaterThanOrEqual(idx < 8 ? 9 : 6)
   })
 })

@@ -59,7 +59,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           <div className="meter" aria-label={prog ? `${prog.have} of ${prog.need} to the next level` : 'Max level'}>
             <i style={{ width: `${prog ? Math.min(100, (prog.have / prog.need) * 100) : 100}%` }} />
           </div>
-          <small>{score} decor · {seatTotal(r)} seats · {Math.round(tipsPerHour(score, seatTotal(r), upgradeLevel(r, 'menu')))} tips/hr</small>
+          <small>{score} decor · {Math.round(tipsPerHour(score, seatTotal(r), upgradeLevel(r, 'menu')))} tips/hr</small>
         </div>
         <div className="wallet mini">
           <Hearts wallet={wallet} now={now} />
