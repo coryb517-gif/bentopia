@@ -3,11 +3,16 @@ import { Box, FaceY, OL, P, type Tri } from './iso'
 import Room, { floorArt, phaseOf, RoomDefs, SKY, type Phase } from './Room'
 import ZoomPan, { type Focus } from './ZoomPan'
 import { neighbourRestaurant } from './neighbours'
+import { AvatarFigure } from './AvatarFigure'
+import { NAMES, type Avatar } from './avatar'
+import { along, findRoute, routeLength, type TownGeometry, type V } from './townwalk'
 import { HipRoof } from './Exterior'
 import { decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
 
 interface Props {
   r: Restaurant
+  avatar: Avatar
+  onEditAvatar: () => void
   onBack: () => void
 }
 
@@ -114,12 +119,71 @@ function Shop({ lot, top, bottom, glow, selected, floors, deck }: { lot: Lot; to
   )
 }
 
-export default function Town({ r, onBack }: Props) {
+/** Tiles per second the avatar walks. */
+const SPEED = 3.4
+const GEO: TownGeometry = {
+  size: SIZE,
+  lots: Array.from({ length: 9 }, (_, i) => [...lotOrigin(i % 3, Math.floor(i / 3)), LOT] as [number, number, number]),
+  bridge: { x0: MARGIN + LOT + STREET / 2 - 0.8, x1: MARGIN + LOT + STREET / 2 + 0.8, yEnd: SIZE + 3 },
+}
+const doorFront = (l: { c: number; r: number }): V => {
+  const [x, y] = lotOrigin(l.c, l.r)
+  return [x + LOT / 2, y + LOT + 0.45]
+}
+
+export default function Town({ r, avatar, onEditAvatar, onBack }: Props) {
   const [phase, setPhase] = useState<Phase>(() => phaseOf())
   const [sel, setSel] = useState<string | null>('mine')
   const [visiting, setVisiting] = useState<string | null>(null)
   const [focus, setFocus] = useState<Focus | undefined>(undefined)
   const mapRef = useRef<SVGSVGElement>(null)
+  const [me, setMe] = useState<{ pos: V; left: boolean; walking: boolean }>(() => ({ pos: doorFront({ c: 1, r: 1 }), left: false, walking: false }))
+  const meRef = useRef(me)
+  meRef.current = me
+  const trip = useRef<{ route: V[]; walked: number; then?: () => void } | null>(null)
+  const raf = useRef(0)
+  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+
+  /** Walk the avatar to a spot along the pavement, then run a callback. */
+  const walkTo = (to: V, then?: () => void) => {
+    const route = findRoute(GEO, meRef.current.pos, to)
+    cancelAnimationFrame(raf.current)
+    if (!route || route.length < 2 || routeLength(route) < 0.05) {
+      trip.current = null
+      setMe((m) => ({ ...m, walking: false }))
+      then?.()
+      return
+    }
+    trip.current = { route, walked: 0, then }
+    let last = performance.now()
+    const step = (now: number) => {
+      const tr = trip.current
+      if (!tr) return
+      tr.walked += SPEED * Math.min(0.05, (now - last) / 1000)
+      last = now
+      const a = along(tr.route, tr.walked)
+      setMe({ pos: a.pos, left: a.dx - a.dy < 0, walking: !a.done })
+      if (a.done) {
+        trip.current = null
+        tr.then?.()
+        return
+      }
+      raf.current = requestAnimationFrame(step)
+    }
+    raf.current = requestAnimationFrame(step)
+  }
+
+  /** Turn a tap on the map into a spot on the ground. */
+  const groundTap = (e: React.PointerEvent) => {
+    const svg = mapRef.current
+    const m = svg?.getScreenCTM()
+    if (!svg || !m) return
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const q = pt.matrixTransform(m.inverse())
+    walkTo([(q.y / 16 + q.x / 32) / 2, (q.y / 16 - q.x / 32) / 2])
+  }
   useEffect(() => {
     const id = setInterval(() => setPhase(phaseOf()), 60_000)
     return () => clearInterval(id)
@@ -139,6 +203,11 @@ export default function Town({ r, onBack }: Props) {
   const maxY = (SIZE + 3.4) * 32 + 30
 
   /** Select a shop and swing the camera over to it. */
+  /** Select a shop, walk up to it and swing the camera over. */
+  const visitLot = (l: Lot) => {
+    goTo(l)
+    walkTo(doorFront(l))
+  }
   const goTo = (l: Lot) => {
     setSel(l.id)
     const el = mapRef.current
@@ -170,10 +239,20 @@ export default function Town({ r, onBack }: Props) {
     { x: 9.6, y: 9.2, dx: 3, dy: 0, d: -4, color: '#ff9a4e' }, { x: 5.6, y: 4.8, dx: 3, dy: 0, d: -5, color: '#d29bff' },
   ]
 
+  /** The avatar is drawn over a building when standing past its far edges, behind it otherwise. */
+  const inFront = (l: Lot) => {
+    const [ox, oy] = lotOrigin(l.c, l.r)
+    return me.pos[0] >= ox + LOT || me.pos[1] >= oy + LOT
+  }
+  const shopEl = (l: Lot) => (
+    <g key={l.id} style={{ cursor: 'pointer' }} onPointerUp={() => visitLot(l)}>
+      <Shop lot={l} top={labelOf(l)[0]} bottom={labelOf(l)[1]} glow={glow} selected={sel === l.id} floors={l.floors} deck={!!l.mine && hasStorey(r, 'rooftop')} />
+    </g>
+  )
   const selected = lots.find((l) => l.id === sel) ?? null
   const [selTop, selBottom] = selected ? labelOf(selected) : ['', '']
   const ground: ReactNode = (
-    <g>
+    <g onPointerUp={groundTap}>
       <polygon points={[P(-1, -1), P(SIZE + 1, -1), P(SIZE + 1, SIZE + 1), P(-1, SIZE + 1)].map((p) => p.join(',')).join(' ')} fill="#2b2147" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
       {Array.from({ length: 3 }, (_, c) => Array.from({ length: 3 }, (_, rr) => {
         const [x, y] = lotOrigin(c, rr)
@@ -278,10 +357,11 @@ export default function Town({ r, onBack }: Props) {
 
       <nav className="townchips" aria-label="Places">
         {[...lots].sort((a, b) => Number(!!b.mine) - Number(!!a.mine) || a.r - b.r || a.c - b.c).map((l) => (
-          <button key={l.id} className={`tchip${sel === l.id ? ' on' : ''}`} onClick={() => goTo(l)} style={{ ['--neon' as string]: l.neon } as CSSProperties}>
+          <button key={l.id} className={`tchip${sel === l.id ? ' on' : ''}`} onClick={() => visitLot(l)} style={{ ['--neon' as string]: l.neon } as CSSProperties}>
             <i aria-hidden />{l.mine ? 'My shop' : labelOf(l)[0]}
           </button>
         ))}
+        <button className="tchip me" onClick={onEditAvatar}><i aria-hidden />Change look</button>
       </nav>
 
       <div className="stage townstage">
@@ -297,11 +377,12 @@ export default function Town({ r, onBack }: Props) {
             <g mask="url(#townFade)">
               {ground}
               {[4.8, 9.2].flatMap((s) => [[s, 0.6], [s, SIZE - 0.4], [0.6, s], [SIZE - 0.4, s]]).map(([x, y]) => pole(x, y))}
-              {lots.map((l) => (
-                <g key={l.id} style={{ cursor: 'pointer' }} onPointerUp={() => goTo(l)}>
-                  <Shop lot={l} top={labelOf(l)[0]} bottom={labelOf(l)[1]} glow={glow} selected={sel === l.id} floors={l.floors} deck={!!l.mine && hasStorey(r, 'rooftop')} />
-                </g>
-              ))}
+              {lots.filter(inFront).map(shopEl)}
+              <g transform={`translate(${P(me.pos[0], me.pos[1])[0]} ${P(me.pos[0], me.pos[1])[1]})`} pointerEvents="none">
+                <ellipse cx="0" cy="1" rx="9" ry="4" fill="none" stroke="#7fe6ff" strokeWidth="1.4" opacity="0.7" className="ripple2" />
+                <g transform="scale(1.1)"><AvatarFigure a={avatar} left={me.left} walking={me.walking} /></g>
+              </g>
+              {lots.filter((l) => !inFront(l)).map(shopEl)}
               {props.map((p) => {
                 const art = floorArt(p.type)
                 const [px, py] = P(p.x, p.y)
@@ -313,6 +394,11 @@ export default function Town({ r, onBack }: Props) {
                 )
               })}
               {strings}
+              {/* a see-through copy and name tag on top, so you never lose yourself behind a building */}
+              <g transform={`translate(${P(me.pos[0], me.pos[1])[0]} ${P(me.pos[0], me.pos[1])[1]})`} pointerEvents="none">
+                <g transform="scale(1.1)" opacity="0.45"><AvatarFigure a={avatar} left={me.left} walking={me.walking} /></g>
+                <text y="-58" textAnchor="middle" fontSize="8.6" fontWeight="800" fill="#fff" stroke="#2a0f2e" strokeWidth="1.6" paintOrder="stroke" fontFamily="'M PLUS Rounded 1c', sans-serif">{NAMES[avatar.name]}</text>
+              </g>
               {walkers.map((w, i) => {
                 const [wx, wy] = P(w.x, w.y)
                 const [ex, ey] = P(w.x + w.dx, w.y + w.dy)

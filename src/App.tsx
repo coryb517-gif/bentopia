@@ -14,6 +14,8 @@ import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
 import Hub from './game/Hub'
 import Town from './game/Town'
+import AvatarCreator from './game/AvatarCreator'
+import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
@@ -26,7 +28,7 @@ import { isBomb } from './sim/engine'
 import type { GameState } from './sim/types'
 import './App.css'
 
-type Screen = 'title' | 'hub' | 'decorate' | 'build' | 'town' | 'map' | 'play'
+type Screen = 'title' | 'avatar' | 'hub' | 'decorate' | 'build' | 'town' | 'map' | 'play'
 
 
 function hasProgress(): boolean {
@@ -194,6 +196,8 @@ function Game() {
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
   const [intro, setIntro] = useState(false)
+  const [avatar, setAvatar] = useState<Avatar | null>(() => loadAvatar())
+  const avatarBack = useRef<Screen>('title')
   const [pending, setPending] = useState<number | null>(null)
   const [storey, setStorey] = useState<StoreyId>('ground')
   const [hubView, setHubView] = useState<ViewId>('outside')
@@ -335,6 +339,14 @@ function Game() {
 
   const playFromTitle = () => {
     startMusic()
+    if (!avatar) {
+      avatarBack.current = 'title'
+      return setScreen('avatar')
+    }
+    proceedFromTitle()
+  }
+
+  const proceedFromTitle = () => {
     if (tut.step === 'intro') return setIntro(true)
     if (tut.step === 'link' || tut.step === 'merged' || tut.step === 'play') return start(0)
     setScreen('hub')
@@ -453,8 +465,33 @@ function Game() {
       />
     )
   }
+  if (screen === 'avatar') {
+    return (
+      <AvatarCreator
+        initial={avatar ?? DEFAULT_AVATAR}
+        first={avatarBack.current === 'title'}
+        onCancel={avatarBack.current === 'title' ? undefined : () => setScreen(avatarBack.current)}
+        onDone={(a) => {
+          setAvatar(a)
+          saveAvatar(a)
+          if (avatarBack.current === 'title') proceedFromTitle()
+          else setScreen(avatarBack.current)
+        }}
+      />
+    )
+  }
   if (screen === 'town') {
-    return withCoach(<Town r={restaurant} onBack={() => setScreen('hub')} />)
+    return withCoach(
+      <Town
+        r={restaurant}
+        avatar={avatar ?? DEFAULT_AVATAR}
+        onEditAvatar={() => {
+          avatarBack.current = 'town'
+          setScreen('avatar')
+        }}
+        onBack={() => setScreen('hub')}
+      />,
+    )
   }
   if (screen === 'build') {
     return withCoach(
