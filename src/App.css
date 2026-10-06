@@ -598,3 +598,13 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .prestats { display: flex; justify-content: center; gap: 22px; font-size: 0.9rem; color: var(--muted); }
 .prestats b { color: var(--gold); font-family: var(--font-title); font-weight: 400; font-size: 1.3rem; }
 .pretip { margin: 0; font-size: 0.78rem; color: var(--mint) !important; }
+/* Staff and pets */
+.wbob { animation: wbob 0.52s ease-in-out infinite; }
+@keyframes wbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.6px); } }
+.legA { animation: legA 0.52s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 0; }
+.legB { animation: legA 0.52s ease-in-out infinite reverse; transform-box: fill-box; transform-origin: 50% 0; }
+@keyframes legA { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(22deg); } }
+.tail { animation: tailswish 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 100% 100%; }
+@keyframes tailswish { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+.zzz { animation: zzz 2.6s ease-out infinite; }
+@keyframes zzz { 0% { transform: translate(0, 0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(5px, -10px); opacity: 0; } }

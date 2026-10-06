@@ -8,6 +8,8 @@ import {
   type StoreyId, type WallId, type WallSide,
 } from './restaurant'
 import { WALL_ART } from './wall'
+import { Cat, Waiter } from './WalkerSprites'
+import { STEP_MS, useWalkers } from './walkers'
 
 export const floorArt = (t: ItemType) => DECOR[t as FloorItem | RugItem]
 
@@ -420,6 +422,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
     return () => clearInterval(id)
   }, [forced])
   const sky = SKY[phase]
+  const walkers = useWalkers(r, grid, live && true)
 
   const minX = -grid * 32 - 14
   const width = grid * 64 + 28
@@ -734,6 +737,24 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
           <polygon key={`${x}${y}`} pointerEvents="none" points={diamond(x, y)} fill={ghostOk ? 'rgba(109,255,192,0.4)' : 'rgba(255,91,110,0.4)'} stroke={ghostOk ? '#6dffc0' : '#ff5b6e'} strokeWidth="2.4" strokeLinejoin="round" />
         ))}
       {drawables.map((d) => d.node)}
+      {/* staff and pets, with furniture in front of them drawn over the top again */}
+      {walkers.map((w) => {
+        const [px, py] = P(w.x + 0.5, w.y + 0.5)
+        const front = floorItems.filter((p) => {
+          const def = itemDef(p.type)
+          return p.gx + p.gy + def.w + def.d > w.x + w.y + 1.6 && Math.abs(p.gx + def.w / 2 - (w.x + 0.5)) < 2.6 && Math.abs(p.gy + def.d / 2 - (w.y + 0.5)) < 2.6
+        })
+        return (
+          <g key={w.id} pointerEvents="none">
+            <g style={{ transform: `translate(${px}px, ${py}px)`, transition: `transform ${STEP_MS}ms linear` }}>
+              {w.id === 'waiter' ? <Waiter left={w.left} walking={w.mode === 'walk'} carrying={w.carrying} /> : <Cat left={w.left} walking={w.mode === 'walk'} />}
+            </g>
+            {front.map((p) => (
+              <g key={`${w.id}-${p.id}`} transform={`translate(${P(p.gx, p.gy)[0]} ${P(p.gx, p.gy)[1]})${p.flip ? ' scale(-1 1)' : ''}`}>{floorArt(p.type).art()}</g>
+            ))}
+          </g>
+        )
+      })}
       {coins.map((c) => (
         <g key={c.id} transform={`translate(${c.x} ${c.y})`} pointerEvents="none">
           <g className="coinpop">
