@@ -19,7 +19,8 @@ import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
-import { CHAPTER_RANGES, chapterOf, LEVELS } from './sim/levels'
+import { chapterOf, isBoss, LEVELS } from './sim/levels'
+import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
 import { isBomb } from './sim/engine'
 import type { GameState } from './sim/types'
@@ -119,6 +120,50 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
   )
 }
 
+const TIPS = [
+  'Link five or more of one ingredient and you leave a Flavor Bomb. Tap it to clear its row and column.',
+  'Land each crafted dish next to its siblings, so the next chain is one short drag away.',
+  'Stuck? Pause for a moment and a finger will trace a good chain.',
+  'A finished dish takes four links, so count your moves before you start.',
+  'Dishes made of different ingredients: link one of each, in any order.',
+]
+
+/** The order preview: who is asking, what they want, how many moves you get. */
+function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars: Record<number, number>; resting: boolean; onPlay: () => void; onClose: () => void }) {
+  const l = LEVELS[idx]
+  const cust = customerFor(l.id)
+  const got = stars[l.id] ?? 0
+  const mixed = l.order.some((o) => recipeFor(o.kind, o.tier))
+  const tip = mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={`Level ${l.id}`} onClick={onClose}>
+      <div className="card prelevel" onClick={(e) => e.stopPropagation()}>
+        <CustomerPortrait customer={cust} mood="idle" size={86} />
+        <p className="ask solo"><b>{cust.name}</b>{cust.ask}</p>
+        <h2>Level {l.id}{isBoss(l.id) && <span className="bosstag">Boss</span>}</h2>
+        <p className="lvname">{l.name}</p>
+        <ul className="preorder">
+          {l.order.map((o, i) => (
+            <li key={i}>
+              <img className="dish" src={svgUrl(o.kind, o.tier)} alt="" width={34} height={34} />
+              <span>{o.count} × {CHAINS[o.kind].names[o.tier]}</span>
+              <Recipe kind={o.kind} tier={o.tier} />
+            </li>
+          ))}
+        </ul>
+        <div className="prestats">
+          <span><b>{l.moves}</b> moves</span>
+          <span>{got > 0 ? <Stars n={got} /> : 'First time'}</span>
+        </div>
+        <p className="pretip">{tip}</p>
+        <div className="actions">
+          <button className="btn primary" disabled={resting} onClick={onPlay}>{resting ? 'Out of hearts' : `Play level ${l.id}`}</button>
+          <button className="btn ghost" onClick={onClose}>Not yet</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
   const hero = new URLSearchParams(location.search).has('hero')
@@ -149,6 +194,7 @@ function Game() {
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
   const [intro, setIntro] = useState(false)
+  const [pending, setPending] = useState<number | null>(null)
   const [storey, setStorey] = useState<StoreyId>('ground')
   const [hubView, setHubView] = useState<ViewId>('outside')
   const starsRef = useRef(stars)
@@ -443,25 +489,8 @@ function Game() {
           <Mascot mood="idle" size={84} />
           <p className="bubble">{outOfHearts ? 'Rest a moment, chef...' : 'Pick an order, chef!'}</p>
         </div>
-        {CHAPTER_RANGES.map((ch) => (
-          <section key={ch.title} className="chapter">
-            <h3>{ch.title}<small>{ch.sub}</small></h3>
-            <ol className="levels">
-              {LEVELS.slice(ch.from - 1, ch.to).map((l) => {
-                const i = l.id - 1
-                return (
-                  <li key={l.id}>
-                    <button className={`level${stars[l.id] ? ' cleared' : ''}`} disabled={!unlocked(i) || outOfHearts} onClick={() => start(i)}>
-                      <span className="num">{unlocked(i) ? l.id : '🔒'}</span>
-                      <span className="lname">{l.name}</span>
-                      <Stars n={stars[l.id] ?? 0} />
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          </section>
-        ))}
+        <LevelMap stars={stars} unlocked={unlocked} resting={outOfHearts} onPick={setPending} />
+        {pending !== null && <PreLevel idx={pending} stars={stars} resting={outOfHearts} onPlay={() => { const p = pending; setPending(null); start(p) }} onClose={() => setPending(null)} />}
       </main>
     )
   }
