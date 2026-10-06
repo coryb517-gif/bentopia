@@ -645,3 +645,6 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .avatarmaker .btn.ghost { white-space: nowrap; }
 .acdone { position: sticky; bottom: 12px; z-index: 2; }
 .tidyrow { display: flex; gap: 8px; margin-bottom: 8px; }
+.tidystyles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.tidystyles .btn { display: grid; gap: 2px; text-align: left; padding: 8px 12px; }
+.tidystyles .btn small { font-size: 0.68rem; font-weight: 600; opacity: 0.75; }

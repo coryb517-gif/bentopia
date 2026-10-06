@@ -1,10 +1,50 @@
 import { describe, expect, it } from 'vitest'
-import { autoArrange } from './layout'
+import { autoArrange, LAYOUT_STYLES } from './layout'
 import { neighbourRestaurant } from './neighbours'
 import { blockedTiles, entranceTile, reachable } from './walkers'
 import { canPlace, canPlaceWall, itemDef, type Restaurant } from './restaurant'
 
 const sample = (seed: number, level: number): Restaurant => neighbourRestaurant(seed, level)
+
+describe('layout styles', () => {
+  it('every style keeps all items, a walkway and no sealed-off tiles', () => {
+    for (const { id } of LAYOUT_STYLES) {
+      for (const [seed, level] of [[1, 3], [3, 6], [5, 5]]) {
+        const r = sample(seed, level)
+        const out = autoArrange(r, r.size!, id)!
+        expect(out.items).toHaveLength(r.items.length)
+        const blocked = blockedTiles(out)
+        const door = entranceTile(new Set(), r.size!)!
+        expect(reachable(blocked, r.size!, door).size).toBe(r.size! * r.size! - blocked.size)
+      }
+    }
+  })
+
+  it('cozy packs seating closer than open does', () => {
+    const touching = (items: Restaurant['items']) => {
+      const seats = items.filter((p) => itemDef(p.type).category === 'seating')
+      let n = 0
+      for (const a of seats) for (const b of seats) if (a.id < b.id && Math.abs(a.gx - b.gx) + Math.abs(a.gy - b.gy) <= 1) n++
+      return n
+    }
+    let cozy = 0
+    let open = 0
+    for (const [seed, level] of [[1, 6], [3, 6], [4, 6], [6, 6]]) {
+      const r = sample(seed, level)
+      cozy += touching(autoArrange(r, r.size!, 'cozy')!.items)
+      open += touching(autoArrange(r, r.size!, 'open')!.items)
+    }
+    expect(cozy).toBeGreaterThanOrEqual(open)
+  })
+
+  it('show-kitchen style lines gear along the back wall', () => {
+    const r = sample(3, 6)
+    const out = autoArrange(r, r.size!, 'kitchen')!
+    const kitchen = out.items.filter((p) => itemDef(p.type).category === 'kitchen')
+    expect(kitchen.length).toBeGreaterThan(0)
+    expect(Math.min(...kitchen.map((p) => p.gy))).toBeLessThanOrEqual(1)
+  })
+})
 
 describe('auto-arrange', () => {
   const cases: [number, number][] = [[1, 2], [2, 4], [3, 6], [4, 6], [5, 3], [6, 5]]

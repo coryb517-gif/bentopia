@@ -9,7 +9,25 @@ import { blockedTiles, entranceTile, reachable, type Pt } from './walkers'
  * - Rugs sit under the seating, with a runner from the door; wall decor is spread evenly.
  * Returns null if the items cannot all be fitted (nothing is changed then).
  */
-export function autoArrange(r: Restaurant, grid: number): Restaurant | null {
+export type LayoutStyle = 'balanced' | 'cozy' | 'open' | 'kitchen'
+
+export const LAYOUT_STYLES: { id: LayoutStyle; name: string; blurb: string }[] = [
+  { id: 'balanced', name: 'Balanced', blurb: 'A bit of everything' },
+  { id: 'cozy', name: 'Cozy', blurb: 'Tables close together' },
+  { id: 'open', name: 'Open', blurb: 'Wide aisles, lots of floor' },
+  { id: 'kitchen', name: 'Show kitchen', blurb: 'Kitchen along the back wall' },
+]
+
+/** How each style bends the scoring: appetite for neighbours, pull to the walls, and where the kitchen goes. */
+const TUNE: Record<LayoutStyle, { aisle: number; edge: number; kitchen: 'left' | 'back'; cohesion: number }> = {
+  balanced: { aisle: 2.2, edge: 1, kitchen: 'left', cohesion: 1.6 },
+  cozy: { aisle: -1.4, edge: 0.55, kitchen: 'left', cohesion: 1.6 },
+  open: { aisle: 4.2, edge: 1.7, kitchen: 'left', cohesion: 1.2 },
+  kitchen: { aisle: 2.2, edge: 1, kitchen: 'back', cohesion: 2.6 },
+}
+
+export function autoArrange(r: Restaurant, grid: number, style: LayoutStyle = 'balanced'): Restaurant | null {
+  const tune = TUNE[style]
   const door = entranceTile(new Set(), grid)
   if (!door) return null
   const [dx] = door
@@ -70,7 +88,7 @@ export function autoArrange(r: Restaurant, grid: number): Restaurant | null {
           const edge = Math.min(fx, fy)
           let cost = 0
           if (cat === 'kitchen') {
-            cost = fx * 4 + fy * 0.5 + (kitchenAt ? Math.hypot(fx - kitchenAt[0], fy - kitchenAt[1]) * 1.6 : 0)
+            cost = (tune.kitchen === 'left' ? fx * 4 + fy * 0.5 : fy * 4 + Math.abs(fx - dx) * -0.3 + fx * 0.2) + (kitchenAt ? Math.hypot(fx - kitchenAt[0], fy - kitchenAt[1]) * tune.cohesion : 0)
           } else if (cat === 'seating') {
             cost = (Math.abs(fx - center) + Math.abs(fy - center)) * 1.1
             const nb = cs.flatMap(orth).filter(([x, y]) => !mine.has(`${x},${y}`))
@@ -79,13 +97,13 @@ export function autoArrange(r: Restaurant, grid: number): Restaurant | null {
             const beside = nb.some(([x, y]) => out.some((o) => ['table', 'kotatsu', 'counter'].includes(o.type) && cells(o.type, o.gx, o.gy, !!o.flip).some((c) => c[0] === x && c[1] === y)))
             if (open === 0) cost += 60
             if (p.type === 'stool') cost += beside ? -4 : 3
-            else cost += taken * 2.2
+            else cost += taken * tune.aisle
           } else if (cat === 'garden') {
-            cost = (tall ? edge * 2.6 : edge * 1.4 + 1) + (gardenAt ? Math.hypot(fx - gardenAt[0], fy - gardenAt[1]) * 0.5 : 0)
+            cost = (tall ? edge * 2.6 * tune.edge : edge * 1.4 * tune.edge + 1) + (gardenAt ? Math.hypot(fx - gardenAt[0], fy - gardenAt[1]) * 0.5 : 0)
           } else if (cat === 'lights') {
             cost = Math.abs(fx - dx) * 1.4 + fy * 1.1 + (Math.abs(fx - dx) < 0.9 ? 6 : 0)
           } else {
-            cost = (tall ? edge * 2.2 : edge * 1.5 + 1) + (cs.some(([x, y]) => x === 0 && y === 0) ? -1 : 0)
+            cost = (tall ? edge * 2.2 * tune.edge : edge * 1.5 * tune.edge + 1) + (cs.some(([x, y]) => x === 0 && y === 0) ? -1 : 0)
           }
           cost += gx * 0.001 + gy * 0.0001
           if (!best || cost < best.cost) best = { x: gx, y: gy, flip, cost }

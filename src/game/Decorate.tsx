@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { autoArrange } from './layout'
+import { autoArrange, LAYOUT_STYLES, type LayoutStyle } from './layout'
 import { coinSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
@@ -59,6 +59,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
   const [levelUp, setLevelUp] = useState<number | null>(null)
+  const [tidyOpen, setTidyOpen] = useState(false)
   const [undo, setUndo] = useState<{ before: Restaurant; after: Restaurant } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -86,8 +87,9 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
   }
 
   /** Rearrange everything on this floor; one tap on Undo puts it all back. */
-  const tidy = () => {
-    const next = autoArrange(r, grid)
+  const tidy = (style: LayoutStyle) => {
+    setTidyOpen(false)
+    const next = autoArrange(r, grid, style)
     if (!next) return say('Not enough room to rearrange. Sell something or expand!')
     const moved = next.items.some((p, i) => { const o = r.items[i]; return !o || o.gx !== p.gx || o.gy !== p.gy || !!o.flip !== !!p.flip || o.wall !== p.wall })
     if (!moved) return say('Already looking tidy!')
@@ -286,9 +288,16 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
         ) : (
           <>
             <div className="tidyrow">
-              <button className="btn" onClick={tidy} disabled={r.items.length < 2}>✨ Auto-arrange</button>
+              <button className="btn" onClick={() => setTidyOpen((o) => !o)} disabled={r.items.length < 2}>✨ Auto-arrange</button>
               {undo && undo.after === root && <button className="btn ghost" onClick={() => { setRoot(undo.before); setUndo(null); say('Put back.') }}>Undo</button>}
             </div>
+            {tidyOpen && (
+              <div className="tidystyles" role="group" aria-label="Layout style">
+                {LAYOUT_STYLES.map((s) => (
+                  <button key={s.id} className="btn" onClick={() => tidy(s.id)}><b>{s.name}</b><small>{s.blurb}</small></button>
+                ))}
+              </div>
+            )}
             <div className="tabs" role="tablist">
               {tabs.map((t) => (
                 <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
