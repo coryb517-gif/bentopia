@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { along, findRoute, nearestWalkable, routeLength, walkable, type TownGeometry } from './townwalk'
-import { cleanAvatar, DEFAULT_AVATAR, OPTION_COUNTS, randomAvatar } from './avatar'
+import { avatarName, cleanAvatar, DEFAULT_AVATAR, NAME_MAX, OPTION_COUNTS, randomAvatar, sanitizeName } from './avatar'
 
 const g: TownGeometry = {
   size: 14,
@@ -48,12 +48,30 @@ describe('walking the town', () => {
   })
 })
 
+describe('avatar names', () => {
+  it('keeps a typed name like Ashlyndia and cleans anything odd', () => {
+    expect(sanitizeName('Ashlyndia')).toBe('Ashlyndia')
+    expect(sanitizeName("  Jo-Ann  O'Neil ")).toBe("Jo-Ann O'Neil")
+    expect(sanitizeName('<b>Bob</b>123')).toBe('bBobb')
+    expect(sanitizeName('A'.repeat(40))).toHaveLength(NAME_MAX)
+    expect(sanitizeName('   ')).toBe('')
+  })
+
+  it('shows the typed name, falls back to the listed one, and survives saving', () => {
+    expect(avatarName(DEFAULT_AVATAR)).toBe('Mika')
+    const mine = { ...DEFAULT_AVATAR, custom: 'Ashlyndia' }
+    expect(avatarName(mine)).toBe('Ashlyndia')
+    expect(cleanAvatar(JSON.parse(JSON.stringify(mine)))).toEqual(mine)
+    expect(cleanAvatar({ ...DEFAULT_AVATAR, custom: '<script>' })?.custom).toBe('script')
+  })
+})
+
 describe('avatars', () => {
   it('only accept valid saved choices', () => {
     expect(cleanAvatar(DEFAULT_AVATAR)).toEqual(DEFAULT_AVATAR)
     expect(cleanAvatar({ ...DEFAULT_AVATAR, skin: 99 })).toBeNull()
     expect(cleanAvatar('x')).toBeNull()
     const a = randomAvatar()
-    for (const k of Object.keys(OPTION_COUNTS) as (keyof typeof OPTION_COUNTS)[]) expect(a[k]).toBeLessThan(OPTION_COUNTS[k])
+    for (const k of Object.keys(OPTION_COUNTS) as (keyof typeof OPTION_COUNTS)[]) expect(a[k] as number).toBeLessThan(OPTION_COUNTS[k])
   })
 })

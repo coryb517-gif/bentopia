@@ -694,8 +694,17 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         if (t && onTile) onTile(t[0], t[1])
         else if (t && avatar && !placing && !wallGhost) walkToTile(t[0], t[1])
       }}
+      onPointerDown={(e) => {
+        // Touching a tile while placing puts the ghost there straight away, so a drag can follow.
+        if (!placing || !onHover) return
+        const t = tileAt(e)
+        if (t) onHover(t[0], t[1])
+      }}
       onPointerMove={(e) => {
-        if (e.pointerType !== 'mouse' || !onHover) return
+        if (!onHover) return
+        // A mouse hovers; a finger or pen only counts while it is pressed (dragging the item).
+        if (e.pointerType !== 'mouse' && !(e.buttons & 1)) return
+        if (!placing) return
         const t = tileAt(e)
         if (t) onHover(t[0], t[1])
       }}
@@ -909,7 +918,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         </g>
       ))}
       {placing && (
-        <g transform={itemTf(placing.type, placing.gx, placing.gy, placing.flip)} opacity={ghostOk ? 0.8 : 0.45} pointerEvents="none">
+        <g transform={itemTf(placing.type, placing.gx, placing.gy, placing.flip)} opacity={ghostOk ? 0.85 : 0.45} pointerEvents="none">
           {floorArt(placing.type).art()}
         </g>
       )}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ACCESSORIES, HAIR_COLORS, HAIRS, NAMES, OUTFITS, randomAvatar, SKINS, type Avatar } from './avatar'
+import { ACCESSORIES, avatarName, HAIR_COLORS, HAIRS, NAME_MAX, NAMES, OUTFITS, randomAvatar, sanitizeName, SKINS, type Avatar } from './avatar'
 import { AvatarPortrait } from './AvatarFigure'
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 /** Pick a name, skin, hair, outfit and accessory. Every choice is a button: nothing to type. */
 export default function AvatarCreator({ initial, first, onDone, onCancel }: Props) {
   const [a, setA] = useState(initial)
-  const set = <K extends keyof Avatar>(k: K, v: Avatar[K]) => setA((x) => ({ ...x, [k]: v }))
+  const set = <K extends keyof Avatar>(k: K, v: Avatar[K]) => setA((x) => ({ ...x, [k]: v, ...(k === 'name' ? { custom: undefined } : {}) }))
 
   const swatches = (key: 'skin' | 'hairColor' | 'outfit', colours: string[], label: string) => (
     <div className="acrow" role="radiogroup" aria-label={label}>
@@ -44,17 +44,31 @@ export default function AvatarCreator({ initial, first, onDone, onCancel }: Prop
       </header>
       <div className="acstage">
         <AvatarPortrait a={a} size={150} />
-        <p className="acname">{NAMES[a.name]}</p>
+        <p className="acname">{avatarName(a)}</p>
       </div>
       <div className="acpanel">
-        {pills('name', NAMES, 'Name')}
+        <div className="acrow">
+          <span>Your name</span>
+          <input
+            className="acinput"
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            maxLength={NAME_MAX}
+            placeholder="Type a name"
+            value={a.custom ?? ''}
+            onChange={(e) => setA((x) => ({ ...x, custom: sanitizeName(e.target.value + (e.target.value.endsWith(' ') ? ' ' : '')).slice(0, NAME_MAX) || undefined }))}
+            aria-label="Your name"
+          />
+        </div>
+        {pills('name', NAMES, 'Or pick one')}
         {swatches('skin', SKINS, 'Skin')}
         {pills('hair', HAIRS, 'Hair')}
         {swatches('hairColor', HAIR_COLORS, 'Hair colour')}
         {swatches('outfit', OUTFITS, 'Happi coat')}
         {pills('accessory', ACCESSORIES, 'Extra')}
       </div>
-      <button className="btn primary acdone" onClick={() => onDone(a)}>{first ? `Hi, I'm ${NAMES[a.name]}!` : 'Save'}</button>
+      <button className="btn primary acdone" onClick={() => onDone(a)}>{first ? `Hi, I'm ${avatarName(a)}!` : 'Save'}</button>
     </main>
   )
 }

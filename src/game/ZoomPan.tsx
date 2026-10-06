@@ -21,7 +21,7 @@ export interface Focus {
   n: number
 }
 
-export default function ZoomPan({ children, resetKey, className = '', startScale = 1, focus }: { children: ReactNode; resetKey?: string | number; className?: string; startScale?: number; focus?: Focus }) {
+export default function ZoomPan({ children, resetKey, className = '', startScale = 1, focus, panLocked = false }: { children: ReactNode; resetKey?: string | number; className?: string; startScale?: number; focus?: Focus; panLocked?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const [t, setT] = useState<T>({ s: 1, x: 0, y: 0 })
   const tRef = useRef(t)
@@ -114,6 +114,7 @@ export default function ZoomPan({ children, resetKey, className = '', startScale
     const dy = p.y - g.lastY
     if (!g.moved && Math.hypot(dx, dy) < 7) return
     if (tRef.current.s <= MIN + 0.01) return // nothing to pan at fit zoom
+    if (panLocked) return // a drag is moving something, not the camera
     if (!g.moved) {
       g.moved = true
       box.current?.setPointerCapture(e.pointerId)

@@ -114,9 +114,24 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     say('Rearranged! Not your style? Tap Undo.')
   }
 
+  /** Where a new piece first appears: free, close to the middle of the room, off the walkway from the door. */
   const firstFree = (type: ItemType): [number, number] | null => {
-    for (let y = 0; y < grid; y++) for (let x = 0; x < grid; x++) if (canPlace(r, type, x, y, grid)) return [x, y]
-    return null
+    const door = Math.floor(grid / 2)
+    const mid = (grid - 1) / 2
+    let best: [number, number] | null = null
+    let bestCost = Infinity
+    for (let y = 0; y < grid; y++) {
+      for (let x = 0; x < grid; x++) {
+        if (!canPlace(r, type, x, y, grid)) continue
+        const onWalkway = itemDef(type).layer === 'floor' && x === door && y <= door
+        const cost = Math.hypot(x - mid, y - mid) + (onWalkway ? 4 : 0)
+        if (cost < bestCost) {
+          bestCost = cost
+          best = [x, y]
+        }
+      }
+    }
+    return best
   }
 
   const firstFreeWall = (type: ItemType): { side: WallSide; slot: number } | null => {
@@ -173,14 +188,12 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     if (!placing) return setSelectedId(null)
     if (!placing.ghost) return
     const g = placing.ghost
-    if (g.gx === gx && g.gy === gy && canPlace(r, g.type, gx, gy, grid, g.ignoreId, g.flip)) return confirm()
     setPlacing({ ...placing, ghost: { ...g, gx, gy } })
   }
 
   const onWall = (side: WallSide, slot: number) => {
     if (!placing?.wall) return
     const w = placing.wall
-    if (w.side === side && w.slot === slot && canPlaceWall(r, w.type, side, slot, grid, w.ignoreId)) return confirm()
     setPlacing({ ...placing, wall: { ...w, side, slot } })
   }
 
@@ -256,7 +269,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
       <StoreyTabs r={root} active={storey} onPick={(id) => { if (id === 'outside') return; setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={() => { setPlacing(null); setSelectedId(null); setMode('build') }} />
 
       <div className="stage">
-        <ZoomPan resetKey={storey}>
+        <ZoomPan resetKey={storey} panLocked={!!placing}>
         <Room
           storey={storey}
           r={r}
@@ -275,29 +288,37 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
 
       <section className={`sheet studio${mode === 'build' && !placing && !selected ? ' tall' : ''}`} aria-label="Studio controls">
         {placing && placingType ? (
-          <div className="placebar">
-            <div>
+          <div className="placebar placing">
+            <div className="pinfo">
               <b>{itemDef(placingType).name}</b>
-              <small>{okSpot ? (isWallPlacing ? 'Tap the same spot again, or press Place' : 'Tap the tile again, or press Place') : isWallPlacing ? 'Tap a free spot on a wall' : 'Tap a free tile'}</small>
+              <small className={okSpot ? 'okay' : 'nope'}>
+                {okSpot
+                  ? isWallPlacing ? 'Looks good. Tap another glowing spot to move it.' : 'Looks good. Drag it, or tap a tile, to move it.'
+                  : isWallPlacing ? 'Taken. Tap a free glowing spot on a wall.' : 'Blocked. Drag it to a free tile.'}
+              </small>
             </div>
-            {canRotate && (
-              <button className="btn" onClick={() => placing.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })}>Rotate</button>
-            )}
-            <button className="btn ghost" onClick={() => setPlacing(null)}>Cancel</button>
-            <button className="btn primary" data-coach="place" disabled={!okSpot} onClick={confirm}>
-              {placing.shop ? <>Place <Coin />{cost}</> : 'Move here'}
-            </button>
+            <div className="pbtns">
+              <button className="act" onClick={() => setPlacing(null)} aria-label="Cancel"><i aria-hidden>✕</i>Cancel</button>
+              {canRotate && (
+                <button className="act" onClick={() => placing.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })} aria-label="Rotate"><i aria-hidden>↻</i>Rotate</button>
+              )}
+              <button className="act ok" data-coach="place" disabled={!okSpot} onClick={confirm} aria-label={placing.shop ? 'Place' : 'Move here'}>
+                <i aria-hidden>✓</i>{placing.shop ? <>Place <span className="cst"><Coin />{cost}</span></> : 'Done'}
+              </button>
+            </div>
           </div>
         ) : selected ? (
-          <div className="placebar">
-            <div>
+          <div className="placebar placing">
+            <div className="pinfo">
               <b>{itemDef(selected.type).name}</b>
               <small>{itemDef(selected.type).blurb}</small>
             </div>
-            <button className="btn" onClick={startMove}>Move</button>
-            {itemDef(selected.type).layer !== 'wall' && <button className="btn" onClick={rotateSelected}>Rotate</button>}
-            <button className="btn" onClick={sell}>Sell <Coin />{sellValue(selected.type)}</button>
-            <button className="btn ghost" onClick={() => setSelectedId(null)}>Close</button>
+            <div className="pbtns">
+              <button className="act" onClick={startMove}><i aria-hidden>✋</i>Move</button>
+              {itemDef(selected.type).layer !== 'wall' && <button className="act" onClick={rotateSelected}><i aria-hidden>↻</i>Rotate</button>}
+              <button className="act" onClick={sell}><i aria-hidden>💰</i>Sell <span className="cst"><Coin />{sellValue(selected.type)}</span></button>
+              <button className="act" onClick={() => setSelectedId(null)} aria-label="Close"><i aria-hidden>✕</i>Close</button>
+            </div>
           </div>
         ) : (
           <>

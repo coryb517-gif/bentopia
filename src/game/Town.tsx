@@ -5,7 +5,7 @@ import ZoomPan, { type Focus } from './ZoomPan'
 import { neighbourRestaurant } from './neighbours'
 import { AvatarFigure } from './AvatarFigure'
 import { stepSound } from './audio'
-import { NAMES, type Avatar } from './avatar'
+import { avatarName, type Avatar } from './avatar'
 import { along, findRoute, routeLength, type TownGeometry, type V } from './townwalk'
 import { HipRoof } from './Exterior'
 import { decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
@@ -404,7 +404,7 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
               {/* a see-through copy and name tag on top, so you never lose yourself behind a building */}
               <g transform={`translate(${P(me.pos[0], me.pos[1])[0]} ${P(me.pos[0], me.pos[1])[1]})`} pointerEvents="none">
                 <g transform="scale(1.1)" opacity="0.45"><AvatarFigure a={avatar} left={me.left} walking={me.walking} /></g>
-                <text y="-58" textAnchor="middle" fontSize="8.6" fontWeight="800" fill="#fff" stroke="#2a0f2e" strokeWidth="1.6" paintOrder="stroke" fontFamily="'M PLUS Rounded 1c', sans-serif">{NAMES[avatar.name]}</text>
+                <text y="-58" textAnchor="middle" fontSize="8.6" fontWeight="800" fill="#fff" stroke="#2a0f2e" strokeWidth="1.6" paintOrder="stroke" fontFamily="'M PLUS Rounded 1c', sans-serif">{avatarName(avatar)}</text>
               </g>
               {walkers.map((w, i) => {
                 const [wx, wy] = P(w.x, w.y)
