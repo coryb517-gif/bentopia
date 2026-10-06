@@ -19,11 +19,11 @@ export const LAYOUT_STYLES: { id: LayoutStyle; name: string; blurb: string }[] =
 ]
 
 /** How each style bends the scoring: appetite for neighbours, pull to the walls, and where the kitchen goes. */
-const TUNE: Record<LayoutStyle, { aisle: number; edge: number; kitchen: 'left' | 'back'; cohesion: number }> = {
-  balanced: { aisle: 2.2, edge: 1, kitchen: 'left', cohesion: 1.6 },
-  cozy: { aisle: -1.4, edge: 0.55, kitchen: 'left', cohesion: 1.6 },
-  open: { aisle: 4.2, edge: 1.7, kitchen: 'left', cohesion: 1.2 },
-  kitchen: { aisle: 2.2, edge: 1, kitchen: 'back', cohesion: 2.6 },
+const TUNE: Record<LayoutStyle, { aisle: number; edge: number; kitchen: 'left' | 'back'; cohesion: number; spread: number }> = {
+  balanced: { aisle: 2.2, edge: 1, kitchen: 'left', cohesion: 1.6, spread: 1.1 },
+  cozy: { aisle: -1.4, edge: 0.55, kitchen: 'left', cohesion: 1.6, spread: 0.2 },
+  open: { aisle: 4.2, edge: 1.7, kitchen: 'left', cohesion: 1.2, spread: 1.6 },
+  kitchen: { aisle: 2.2, edge: 1, kitchen: 'back', cohesion: 2.6, spread: 1.1 },
 }
 
 export function autoArrange(r: Restaurant, grid: number, style: LayoutStyle = 'balanced'): Restaurant | null {
@@ -85,7 +85,8 @@ export function autoArrange(r: Restaurant, grid: number, style: LayoutStyle = 'b
           const free = grid * grid - after.size
           if (respectLane && reachable(after, grid, door).size < free) continue
           const [fx, fy] = mean(cs)!
-          const edge = Math.min(fx, fy)
+          // Tall pieces hug the back walls; low ones may line any edge so the whole floor gets used.
+          const edge = tall ? Math.min(fx, fy) : Math.min(fx, fy, grid - 1 - fx, grid - 1 - fy)
           let cost = 0
           if (cat === 'kitchen') {
             cost = (tune.kitchen === 'left' ? fx * 4 + fy * 0.5 : fy * 4 + Math.abs(fx - dx) * -0.3 + fx * 0.2) + (kitchenAt ? Math.hypot(fx - kitchenAt[0], fy - kitchenAt[1]) * tune.cohesion : 0)
@@ -104,6 +105,11 @@ export function autoArrange(r: Restaurant, grid: number, style: LayoutStyle = 'b
             cost = Math.abs(fx - dx) * 1.4 + fy * 1.1 + (Math.abs(fx - dx) < 0.9 ? 6 : 0)
           } else {
             cost = (tall ? edge * 2.2 * tune.edge : edge * 1.5 * tune.edge + 1) + (cs.some(([x, y]) => x === 0 && y === 0) ? -1 : 0)
+          }
+          // Use the whole floor: pieces like a little breathing room from whatever is already down.
+          if (cat !== 'kitchen' && p.type !== 'stool') {
+            const near = Math.min(3, ...blocked.size ? [...blocked].map((k) => { const [bx, by] = k.split(',').map(Number); return Math.hypot(bx - fx, by - fy) }) : [3])
+            cost -= near * tune.spread
           }
           cost += gx * 0.001 + gy * 0.0001
           if (!best || cost < best.cost) best = { x: gx, y: gy, flip, cost }
