@@ -2,6 +2,8 @@ export interface Tile {
   id: number
   kind: number
   tier: number
+  /** Layers of ice: a frozen tile cannot be linked until it thaws. */
+  ice?: number
 }
 
 export interface OrderItem {
@@ -18,6 +20,8 @@ export interface LevelDef {
   kinds: number
   moves: number
   order: OrderItem[]
+  /** How many raw tiles start frozen. */
+  ice?: number
 }
 
 export interface MergeEvent {
@@ -26,6 +30,8 @@ export interface MergeEvent {
   toCell: number
   /** Set when the chain also left a Flavor Bomb behind. */
   bombId?: number
+  /** Frozen tiles that lost a layer of ice this move. */
+  thawed?: number[]
 }
 
 export type Status = 'playing' | 'won' | 'lost'

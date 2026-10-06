@@ -89,13 +89,17 @@ function defaultSlack(order: OrderItem[]): number {
   return 1.9
 }
 
+/** Frozen tiles arrive in the last two chapters and build up slowly. */
+const iceFor = (id: number): number => (id < 25 ? 0 : id <= 36 ? 2 + Math.floor((id - 25) / 4) : 4 + Math.floor((id - 37) / 3))
+
 export const LEVELS: LevelDef[] = SPECS.map(([name, shape, kinds, order, slack], i) => ({
   id: i + 1,
   name,
   shape,
   kinds,
   order,
-  moves: Math.ceil(minLinks(order) * (slack ?? defaultSlack(order))) + 3,
+  moves: Math.ceil(minLinks(order) * (slack ?? defaultSlack(order))) + 3 + Math.ceil(iceFor(i + 1) * 0.7),
+  ...(iceFor(i + 1) ? { ice: iceFor(i + 1) } : {}),
 }))
 
 /** Chapter boundaries (inclusive level ids), shared by the map and the hub. */

@@ -4,7 +4,7 @@ import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, newGame, SIZE
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
-import { boardCanvas, boardGeometry, tileCanvas, TILE_PAD } from './render'
+import { boardCanvas, boardGeometry, iceCanvas, tileCanvas, TILE_PAD } from './render'
 
 interface Props {
   level: LevelDef
@@ -33,6 +33,8 @@ interface Sprite {
   phase: number
   fs: number
   bomb: boolean
+  /** Layers of ice currently drawn over the tile. */
+  ice: number
 }
 
 interface Particle {
@@ -128,12 +130,33 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         textures = new Map()
       }
 
+      const iceTextureFor = (layers: number) => {
+        const key = `ice-${layers}`
+        let tex = textures.get(key)
+        if (!tex) {
+          tex = Texture.from(iceCanvas(layers, cell * 0.94, dpr))
+          textures.set(key, tex)
+        }
+        return tex
+      }
+
+      /** Show (or swap or remove) the frost over a tile. The face stays child 0. */
+      const setIce = (node: Container, layers: number) => {
+        while (node.children.length > 1) node.removeChildAt(1).destroy()
+        if (!layers) return
+        const frost = new PixiSprite(iceTextureFor(layers))
+        frost.anchor.set(0.5)
+        frost.width = frost.height = cell * 0.94 * TILE_PAD
+        node.addChild(frost)
+      }
+
       const makeNode = (t: Tile) => {
         const node = new Container()
         const face = new PixiSprite(textureFor(t.kind, t.tier))
         face.anchor.set(0.5)
         face.width = face.height = cell * 0.94 * TILE_PAD
         node.addChild(face)
+        if (t.ice) setIce(node, t.ice)
         tiles.addChild(node)
         return node
       }
@@ -149,7 +172,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           if (!sp) {
             const node = makeNode(t)
             const fs = (node.children[0] as PixiSprite).scale.x
-            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t) }
+            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t), ice: t.ice ?? 0 }
             node.x = p.x
             node.y = spawnFromAbove && t.id !== popId ? -cell * (1 + Math.random() * 2) : p.y
             node.scale.set(t.id === popId ? 0.5 : 1)
@@ -158,6 +181,11 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           sp.tx = p.x
           sp.ty = p.y
           sp.ts = path.includes(i) ? 1.14 : 1
+          if ((t.ice ?? 0) !== sp.ice) {
+            if (sp.ice > (t.ice ?? 0)) sparks(sp.node.x, sp.node.y, t.ice ? 6 : 12, [0xbfe9ff, 0xffffff, 0x7fcfff])
+            sp.ice = t.ice ?? 0
+            setIce(sp.node, sp.ice)
+          }
         })
         for (const [id, sp] of sprites) {
           if (live.has(id) || sp.dying) continue
@@ -365,6 +393,13 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
             dragging = true
             return
           }
+        }
+        if (state.cells[i]?.ice) {
+          // Frozen: it will not budge, so give a little shiver instead of starting a chain.
+          const sp = state.cells[i] && sprites.get(state.cells[i]!.id)
+          if (sp) sp.pop = 0.6
+          popSound(0)
+          return
         }
         path = [i]
         dragging = true

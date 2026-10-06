@@ -159,7 +159,7 @@ function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars
           <span><b>{l.moves}</b> moves</span>
           <span>{got > 0 ? <Stars n={got} /> : 'First time'}</span>
         </div>
-        <p className="pretip">{tip}</p>
+        <p className="pretip">{l.ice ? '❄️ Some tiles start frozen. Clear a chain next to one to crack its ice. A Flavor Bomb shatters it outright.' : tip}</p>
         <div className="actions">
           <button className="btn primary" disabled={resting} onClick={onPlay}>{resting ? 'Out of hearts' : `Play level ${l.id}`}</button>
           <button className="btn ghost" onClick={onClose}>Not yet</button>
@@ -613,7 +613,7 @@ function Game() {
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : 'Link 3+ matching dishes'}</>
+          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
         )}
       </div>
 

@@ -84,14 +84,14 @@ function settle(s: GameState) {
 export const isBomb = (t: Tile | null | undefined): boolean => !!t && t.kind === BOMB_KIND
 
 function canLink(a: Tile | null, b: Tile | null): boolean {
-  return !!a && !!b && !isBomb(a) && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
+  return !!a && !!b && !isBomb(a) && !a.ice && !b.ice && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
 }
 
 export function hasLink(s: GameState): boolean {
   const seen = new Array<boolean>(CELLS).fill(false)
   for (let i = 0; i < CELLS; i++) {
     const t = s.cells[i]
-    if (seen[i] || !t || t.tier >= MAX_TIER) continue
+    if (seen[i] || !t || t.tier >= MAX_TIER || t.ice) continue
     let size = 0
     const stack = [i]
     seen[i] = true
@@ -139,6 +139,22 @@ function ensureLinkable(s: GameState) {
   }
 }
 
+/** Put the level's starting ice on random raw tiles. Later levels get a second layer on some. */
+function freezeSome(s: GameState) {
+  const n = s.level.ice ?? 0
+  if (!n) return
+  const raw: number[] = []
+  for (let i = 0; i < CELLS; i++) {
+    const t = s.cells[i]
+    if (t && t.tier === 0 && !isBomb(t)) raw.push(i)
+  }
+  for (let k = 0; k < n && raw.length; k++) {
+    const pick = raw.splice(Math.floor(rand(s) * raw.length), 1)[0]
+    const t = s.cells[pick]!
+    s.cells[pick] = { ...t, ice: s.level.id >= 40 && k % 2 === 0 ? 2 : 1 }
+  }
+}
+
 export function newGame(level: LevelDef, seed: number): GameState {
   const blocked = Array.from({ length: CELLS }, (_, i) => level.shape[Math.floor(i / SIZE)][i % SIZE] === '#')
   const s: GameState = {
@@ -154,6 +170,7 @@ export function newGame(level: LevelDef, seed: number): GameState {
     last: null,
   }
   settle(s)
+  freezeSome(s)
   ensureLinkable(s)
   return s
 }
@@ -192,7 +209,7 @@ export function chainOutcome(s: GameState, path: number[]): ItemRef | null {
   if (path.length < 3 || new Set(path).size !== path.length) return null
   for (let i = 1; i < path.length; i++) if (!neighbors(path[i - 1]).includes(path[i])) return null
   const tiles = path.map((i) => s.cells[i])
-  if (tiles.some((t) => !t || isBomb(t))) return null
+  if (tiles.some((t) => !t || isBomb(t) || t.ice)) return null
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) {
     return first.tier < MAX_TIER ? { kind: first.kind, tier: first.tier + 1 } : null
@@ -207,7 +224,7 @@ export function canExtend(s: GameState, path: number[], cell: number): boolean {
   const last = path[path.length - 1]
   if (!neighbors(last).includes(cell)) return false
   const tiles = [...path, cell].map((i) => s.cells[i])
-  if (tiles.some((t) => !t || isBomb(t))) return false
+  if (tiles.some((t) => !t || isBomb(t) || t.ice)) return false
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) return first.tier < MAX_TIER
   return recipeCouldInclude(tiles as Tile[])
@@ -297,6 +314,18 @@ export function commitChain(prev: GameState, path: number[]): GameState {
   s.cells[toCell] = result
   s.movesLeft--
   s.last = { removed, resultId: result.id, toCell }
+  // Ice next to the cleared tiles cracks: one layer per move.
+  const thawed = new Set<number>()
+  for (const i of path) {
+    for (const n of neighbors(i)) {
+      const nt = s.cells[n]
+      if (nt?.ice && !thawed.has(nt.id)) {
+        thawed.add(nt.id)
+        s.cells[n] = { ...nt, ice: nt.ice > 1 ? nt.ice - 1 : undefined }
+      }
+    }
+  }
+  if (thawed.size) s.last.thawed = [...thawed]
   // A long chain of one ingredient (5+) leaves a Flavor Bomb on one of the vacated cells.
   if (singleKind && path.length >= 5) {
     const spots = path.slice(0, -1)

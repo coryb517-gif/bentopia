@@ -269,3 +269,61 @@ export function boardGeometry(size: number) {
   const pad = size * 0.032
   return { pad, cell: (size - pad * 2) / SIZE }
 }
+
+/** A frosted pane laid over a frozen tile. Two layers look thicker and whiter; one layer has cracked. */
+export function iceCanvas(layers: number, plate: number, dpr: number): HTMLCanvasElement {
+  const size = plate * TILE_PAD
+  const { c, ctx } = canvas(size, size, dpr)
+  const cx = size / 2
+  const r = plate / 2
+  const x = cx - r * 0.98
+  const w = r * 1.96
+  const thick = layers >= 2
+
+  const g = ctx.createLinearGradient(x, x, x + w, x + w)
+  g.addColorStop(0, thick ? 'rgba(235, 248, 255, 0.62)' : 'rgba(215, 240, 255, 0.4)')
+  g.addColorStop(1, thick ? 'rgba(120, 190, 245, 0.7)' : 'rgba(130, 200, 250, 0.46)')
+  ctx.save()
+  ctx.shadowColor = 'rgba(150, 215, 255, 0.9)'
+  ctx.shadowBlur = plate * 0.12
+  roundRect(ctx, x, x, w, w, plate * 0.26)
+  ctx.fillStyle = g
+  ctx.fill()
+  ctx.restore()
+  roundRect(ctx, x, x, w, w, plate * 0.26)
+  ctx.lineWidth = Math.max(1.5, plate * 0.045)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
+  ctx.stroke()
+
+  // glassy streaks
+  ctx.save()
+  roundRect(ctx, x, x, w, w, plate * 0.26)
+  ctx.clip()
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.lineWidth = plate * 0.06
+  ctx.lineCap = 'round'
+  ;[[0.18, 0.5], [0.3, 0.38]].forEach(([a, b]) => {
+    ctx.beginPath()
+    ctx.moveTo(x + w * a, x + w * 0.1)
+    ctx.lineTo(x + w * 0.1, x + w * b)
+    ctx.stroke()
+  })
+  // a crack on thin ice shows it is about to give
+  if (!thick) {
+    ctx.strokeStyle = 'rgba(70, 120, 190, 0.75)'
+    ctx.lineWidth = plate * 0.035
+    ctx.beginPath()
+    ctx.moveTo(x + w * 0.62, x + w * 0.08)
+    ctx.lineTo(x + w * 0.5, x + w * 0.38)
+    ctx.lineTo(x + w * 0.66, x + w * 0.52)
+    ctx.lineTo(x + w * 0.52, x + w * 0.9)
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // sparkle
+  ctx.fillStyle = '#fff'
+  star(ctx, x + w * 0.8, x + w * 0.22, plate * 0.08, plate * 0.025)
+  ctx.fill()
+  return c
+}
