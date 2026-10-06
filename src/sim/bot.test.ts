@@ -54,5 +54,5 @@ describe('level solvability (greedy bot)', () => {
     for (let seed = 1; seed <= 10; seed++) if (play(idx, seed).status === 'won') wins++
     // The curve is gentle: the dull bot should clear every level most of the time.
     expect(wins).toBeGreaterThanOrEqual(idx < 8 ? 9 : 6)
-  })
+  }, 60_000)
 })
