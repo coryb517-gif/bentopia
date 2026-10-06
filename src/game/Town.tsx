@@ -330,7 +330,7 @@ export default function Town({ r, avatar, onEditAvatar, onBack }: Props) {
         </header>
         <div className="stage">
           <ZoomPan resetKey={visited.id}>
-            <Room r={inside} grid={inside.size ?? 5} storey="ground" />
+            <Room r={inside} grid={inside.size ?? 5} storey="ground" avatar={avatar} />
           </ZoomPan>
         </div>
         <section className="townsheet">

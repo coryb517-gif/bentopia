@@ -436,6 +436,7 @@ function Game() {
         onContinue={() => start(LEVELS.findIndex((x) => !(stars[x.id] > 0)) >= 0 ? LEVELS.findIndex((x) => !(stars[x.id] > 0)) : LEVELS.length - 1)}
         prefs={prefs}
         onPref={togglePref}
+        avatar={avatar ?? undefined}
       />
     )
   }

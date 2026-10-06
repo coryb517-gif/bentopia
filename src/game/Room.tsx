@@ -4,14 +4,43 @@ import { DECOR } from './decor'
 import { Box, OL, P } from './iso'
 import Mascot from './Mascot'
 import {
-  canPlace, canPlaceWall, fixedSlots, footprint, itemDef, seats, type FloorId, type FloorItem, type ItemType, type Restaurant, type RugItem,
+  canPlace, canPlaceWall, fixedSlots, footprint, itemDef, seats, type Placed, type FloorId, type FloorItem, type ItemType, type Restaurant, type RugItem,
   type StoreyId, type WallId, type WallSide,
 } from './restaurant'
 import { WALL_ART } from './wall'
 import { Cat, Waiter } from './WalkerSprites'
-import { STEP_MS, useWalkers } from './walkers'
+import { blockedTiles, entranceTile, findPath, STEP_MS, useWalkers, type Pt } from './walkers'
+import { AvatarFigure } from './AvatarFigure'
+import type { Avatar } from './avatar'
+import { along, type V } from './townwalk'
 
 export const floorArt = (t: ItemType) => DECOR[t as FloorItem | RugItem]
+
+/** Furniture is drawn a little smaller than its tile so rooms breathe. Everything that sits on or beside it shrinks to match. */
+const S = 0.86
+
+/** Where an item's art is anchored and shrunk (about the middle of its footprint). */
+function itemTf(type: ItemType, gx: number, gy: number, flip?: boolean): string {
+  const def = itemDef(type)
+  const [sx, sy] = P(gx, gy)
+  const mirror = flip ? ' scale(-1 1)' : ''
+  if (def.layer !== 'floor') return `translate(${sx} ${sy})${mirror}`
+  const [cx, cy] = P(def.w / 2, def.d / 2)
+  return `translate(${sx} ${sy})${mirror} translate(${cx} ${cy}) scale(${S}) translate(${-cx} ${-cy})`
+}
+
+/** A point near an item (tile coordinates and height), pulled in toward its centre like its art. */
+function shrinkPt(p: Placed, x: number, y: number, z: number): [number, number, number] {
+  const def = itemDef(p.type)
+  const cx = p.gx + (p.flip ? def.d : def.w) / 2
+  const cy = p.gy + (p.flip ? def.w : def.d) / 2
+  return [cx + (x - cx) * S, cy + (y - cy) * S, z * S]
+}
+
+const chefPoint = (p: Placed): [number, number] => {
+  const [x, y, z] = shrinkPt(p, p.flip ? p.gx + 0.12 : p.gx + 1, p.flip ? p.gy + 1 : p.gy + 0.12, 32)
+  return P(x, y, z)
+}
 
 const WALL_H = 124
 const SLAB = 14
@@ -377,6 +406,8 @@ export interface RoomProps {
   phase?: Phase
   /** Let diners come and go. Off for stills. */
   live?: boolean
+  /** The player's character: tap the floor to walk around. */
+  avatar?: Avatar
 }
 
 type Seat = ReturnType<typeof seats>[number]
@@ -408,10 +439,11 @@ function seatSpot(r: Restaurant, s: Seat): { x: number; y: number; z: number; ke
     z = 20
   }
   if (it.flip) [lx, ly] = [ly, lx]
-  return { x: it.gx + lx, y: it.gy + ly, z, key: it.gx + it.gy + fw + fd + adj }
+  const [sx, sy, sz] = shrinkPt(it, it.gx + lx, it.gy + ly, z)
+  return { x: sx, y: sy, z: sz, key: it.gx + it.gy + fw + fd + adj }
 }
 
-export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, onTile, onItem, onHover, storey = 'ground', phase: forced, live = true }: RoomProps) {
+export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, onTile, onItem, onHover, storey = 'ground', phase: forced, live = true, avatar }: RoomProps) {
   const rooftop = storey === 'rooftop'
   const topH = rooftop ? 78 : WALL_H
   const svg = useRef<SVGSVGElement>(null)
@@ -422,6 +454,62 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
     return () => clearInterval(id)
   }, [forced])
   const sky = SKY[phase]
+  const blockedNow = blockedTiles(r)
+  const door = entranceTile(blockedNow, grid)
+  const [me, setMe] = useState<{ x: number; y: number; left: boolean; walking: boolean } | null>(null)
+  const meRef = useRef(me)
+  meRef.current = me
+  const trip = useRef<{ route: V[]; walked: number } | null>(null)
+  const raf = useRef(0)
+  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+  // Start at the door, and step back to it if furniture lands on our feet.
+  useEffect(() => {
+    if (!avatar || !door) return
+    const cur = meRef.current
+    const stuck = cur && blockedNow.has(`${Math.floor(cur.x)},${Math.floor(cur.y)}`)
+    if (!cur || stuck) {
+      cancelAnimationFrame(raf.current)
+      trip.current = null
+      setMe({ x: door[0] + 0.5, y: door[1] + 0.5, left: false, walking: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avatar, r, grid])
+
+  const walkToTile = (gx: number, gy: number) => {
+    const cur = meRef.current
+    if (!avatar || !cur) return
+    let dest: Pt = [gx, gy]
+    if (blockedNow.has(`${gx},${gy}`)) {
+      // Tapped furniture: go to the nearest free tile beside it.
+      const near = ([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]] as Pt[])
+        .map(([dx, dy]) => [gx + dx, gy + dy] as Pt)
+        .filter(([x, y]) => x >= 0 && y >= 0 && x < grid && y < grid && !blockedNow.has(`${x},${y}`))
+      if (!near.length) return
+      near.sort((a, b) => Math.hypot(a[0] + 0.5 - cur.x, a[1] + 0.5 - cur.y) - Math.hypot(b[0] + 0.5 - cur.x, b[1] + 0.5 - cur.y))
+      dest = near[0]
+    }
+    const from: Pt = [Math.min(grid - 1, Math.max(0, Math.floor(cur.x))), Math.min(grid - 1, Math.max(0, Math.floor(cur.y)))]
+    const tiles = findPath(blockedNow, grid, from, dest)
+    if (!tiles || !tiles.length) return
+    const route: V[] = [[cur.x, cur.y], ...tiles.map(([x, y]) => [x + 0.5, y + 0.5] as V)]
+    cancelAnimationFrame(raf.current)
+    trip.current = { route, walked: 0 }
+    let last = performance.now()
+    const step = (now: number) => {
+      const tr = trip.current
+      if (!tr) return
+      tr.walked += 3 * Math.min(0.05, (now - last) / 1000)
+      last = now
+      const a = along(tr.route, tr.walked)
+      setMe({ x: a.pos[0], y: a.pos[1], left: a.dx - a.dy < 0, walking: !a.done })
+      if (a.done) {
+        trip.current = null
+        return
+      }
+      raf.current = requestAnimationFrame(step)
+    }
+    raf.current = requestAnimationFrame(step)
+  }
   const walkers = useWalkers(r, grid, live && true)
 
   const minX = -grid * 32 - 14
@@ -496,13 +584,12 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
   floorItems.forEach((p) => {
     const def = itemDef(p.type)
     const base = p.gx + p.gy + def.w + def.d
-    const [sx, sy] = P(p.gx, p.gy)
     drawables.push({
       key: base,
       node: (
         <g
           key={`i${p.id}`}
-          transform={`translate(${sx} ${sy})${p.flip ? ' scale(-1 1)' : ''}`}
+          transform={itemTf(p.type, p.gx, p.gy, p.flip)}
           style={{ cursor: !placing && onItem ? 'pointer' : undefined, pointerEvents: placing ? 'none' : 'auto' }}
           onPointerUp={(e) => {
             if (placing || !onItem) return
@@ -516,7 +603,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
     })
     if (p.type === 'counter') {
       // The chef works behind the counter.
-      const [cx, cy] = p.flip ? P(p.gx + 0.12, p.gy + 1, 32) : P(p.gx + 1, p.gy + 0.12, 32)
+      const [cx, cy] = chefPoint(p)
       drawables.push({
         key: base - 0.3,
         node: (
@@ -557,7 +644,6 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
 
   const selected = selectedId ? r.items.find((p) => p.id === selectedId) : null
   const ghostOk = placing ? canPlace(r, placing.type, placing.gx, placing.gy, grid, placing.ignoreId, placing.flip) : false
-  const gs = placing ? P(placing.gx, placing.gy) : [0, 0]
 
   // window light shaft across the floor, and warm spill from the street door
   const { u: winU, w: winW, len } = winGeom(grid)
@@ -591,6 +677,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
       onPointerUp={(e) => {
         const t = tileAt(e)
         if (t && onTile) onTile(t[0], t[1])
+        else if (t && avatar && !placing && !wallGhost) walkToTile(t[0], t[1])
       }}
       onPointerMove={(e) => {
         if (e.pointerType !== 'mouse' || !onHover) return
@@ -686,6 +773,17 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
           </g>
         ))}
       </g>
+      {!rooftop && (() => {
+        const dt = entranceTile(new Set(), grid)
+        if (!dt) return null
+        const [dx, dy] = dt
+        return (
+          <g pointerEvents="none">
+            <polygon points={diamond(dx + 0.14, dy + 0.1, 0.72, 0.8)} fill="#7a3a2e" stroke="#2a0f2e" strokeWidth="1.2" strokeLinejoin="round" />
+            <polygon points={diamond(dx + 0.24, dy + 0.2, 0.52, 0.6)} fill="none" stroke="#e8b878" strokeWidth="1.1" strokeLinejoin="round" />
+          </g>
+        )
+      })()}
       <polygon points={floorOutline} fill="url(#floorSheen)" pointerEvents="none" />
       <polygon points={floorOutline} fill="none" stroke={OL} strokeWidth="2.4" strokeLinejoin="round" />
       {/* soft shadows where walls meet the floor, moonlight and street glow */}
@@ -702,12 +800,22 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         </g>
         {live && motes.map(([mx, my], i) => <circle key={i} className="mote" style={{ animationDelay: `${-i * 1.3}s` }} cx={mx} cy={my} r="1.4" fill="#fff" opacity="0.7" />)}
       </g>
+      {/* soft contact shadows ground the furniture */}
+      <g pointerEvents="none">
+        {floorItems.map((p) => {
+          const def = itemDef(p.type)
+          const w = p.flip ? def.d : def.w
+          const d = p.flip ? def.w : def.d
+          const m = (1 - S) / 2 + 0.03
+          return <polygon key={`sh${p.id}`} points={diamond(p.gx + m * w, p.gy + m * d, w * (1 - m * 2) + 0.12, d * (1 - m * 2) + 0.12)} fill="rgba(18,4,36,0.3)" />
+        })}
+      </g>
       {/* light pools */}
       <g style={{ mixBlendMode: 'screen' }} pointerEvents="none" opacity={Math.max(0.35, sky.glow)}>
         {floorItems.map((p) => {
           const g = floorArt(p.type).glow
           return g ? (
-            <g key={p.id} transform={`translate(${P(p.gx, p.gy)[0]} ${P(p.gx, p.gy)[1]})${p.flip ? ' scale(-1 1)' : ''}`}>
+            <g key={p.id} transform={itemTf(p.type, p.gx, p.gy, p.flip)}>
               {g()}
             </g>
           ) : null
@@ -750,11 +858,26 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
               {w.id === 'waiter' ? <Waiter left={w.left} walking={w.mode === 'walk'} carrying={w.carrying} /> : <Cat left={w.left} walking={w.mode === 'walk'} />}
             </g>
             {front.map((p) => (
-              <g key={`${w.id}-${p.id}`} transform={`translate(${P(p.gx, p.gy)[0]} ${P(p.gx, p.gy)[1]})${p.flip ? ' scale(-1 1)' : ''}`}>{floorArt(p.type).art()}</g>
+              <g key={`${w.id}-${p.id}`} transform={itemTf(p.type, p.gx, p.gy, p.flip)}>{floorArt(p.type).art()}</g>
             ))}
           </g>
         )
       })}
+      {avatar && me && (() => {
+        const [px, py] = P(me.x, me.y)
+        const front = floorItems.filter((p) => {
+          const def = itemDef(p.type)
+          return p.gx + p.gy + def.w + def.d > me.x + me.y + 1.1 && Math.abs(p.gx + def.w / 2 - me.x) < 2.6 && Math.abs(p.gy + def.d / 2 - me.y) < 2.6
+        })
+        return (
+          <g pointerEvents="none">
+            <g transform={`translate(${px} ${py}) scale(0.74)`}><AvatarFigure a={avatar} left={me.left} walking={me.walking} /></g>
+            {front.map((p) => (
+              <g key={`me-${p.id}`} transform={itemTf(p.type, p.gx, p.gy, p.flip)}>{floorArt(p.type).art()}</g>
+            ))}
+          </g>
+        )
+      })()}
       {coins.map((c) => (
         <g key={c.id} transform={`translate(${c.x} ${c.y})`} pointerEvents="none">
           <g className="coinpop">
@@ -765,7 +888,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         </g>
       ))}
       {placing && (
-        <g transform={`translate(${gs[0]} ${gs[1]})${placing.flip ? ' scale(-1 1)' : ''}`} opacity={ghostOk ? 0.8 : 0.45} pointerEvents="none">
+        <g transform={itemTf(placing.type, placing.gx, placing.gy, placing.flip)} opacity={ghostOk ? 0.8 : 0.45} pointerEvents="none">
           {floorArt(placing.type).art()}
         </g>
       )}
