@@ -644,3 +644,4 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .avatarmaker h2 { font-size: 1.3rem; }
 .avatarmaker .btn.ghost { white-space: nowrap; }
 .acdone { position: sticky; bottom: 12px; z-index: 2; }
+.tidyrow { display: flex; gap: 8px; margin-bottom: 8px; }

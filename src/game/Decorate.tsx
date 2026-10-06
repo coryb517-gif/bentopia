@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { autoArrange } from './layout'
 import { coinSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
@@ -58,6 +59,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
   const [levelUp, setLevelUp] = useState<number | null>(null)
+  const [undo, setUndo] = useState<{ before: Restaurant; after: Restaurant } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const level = levelOf(root)
@@ -81,6 +83,19 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     const after = grown.peak ?? 1
     setRoot(grown)
     if (after > before) setLevelUp(after)
+  }
+
+  /** Rearrange everything on this floor; one tap on Undo puts it all back. */
+  const tidy = () => {
+    const next = autoArrange(r, grid)
+    if (!next) return say('Not enough room to rearrange. Sell something or expand!')
+    const moved = next.items.some((p, i) => { const o = r.items[i]; return !o || o.gx !== p.gx || o.gy !== p.gy || !!o.flip !== !!p.flip || o.wall !== p.wall })
+    if (!moved) return say('Already looking tidy!')
+    const arranged = applyStorey(root, storey, next)
+    setUndo({ before: root, after: arranged })
+    setSelectedId(null)
+    setRoot(arranged)
+    say('Rearranged! Not your style? Tap Undo.')
   }
 
   const firstFree = (type: ItemType): [number, number] | null => {
@@ -270,6 +285,10 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
           </div>
         ) : (
           <>
+            <div className="tidyrow">
+              <button className="btn" onClick={tidy} disabled={r.items.length < 2}>✨ Auto-arrange</button>
+              {undo && undo.after === root && <button className="btn ghost" onClick={() => { setRoot(undo.before); setUndo(null); say('Put back.') }}>Undo</button>}
+            </div>
             <div className="tabs" role="tablist">
               {tabs.map((t) => (
                 <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
