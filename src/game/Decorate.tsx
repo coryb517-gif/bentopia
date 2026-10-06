@@ -197,6 +197,34 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     setPlacing({ ...placing, wall: { ...w, side, slot } })
   }
 
+  /** Fine positioning: one tile at a time, in the directions the room is drawn. */
+  const nudge = (dx: number, dy: number) => {
+    if (!placing) return
+    if (placing.ghost) {
+      const g = placing.ghost
+      const def = itemDef(g.type)
+      const w = g.flip ? def.d : def.w
+      const d = g.flip ? def.w : def.d
+      const gx = Math.min(grid - w, Math.max(0, g.gx + dx))
+      const gy = Math.min(grid - d, Math.max(0, g.gy + dy))
+      setPlacing({ ...placing, ghost: { ...g, gx, gy } })
+    } else if (placing.wall) {
+      // Left and right on screen. The left wall is drawn mirrored, so its slots count the other way,
+      // and walking past the back corner carries you onto the other wall.
+      const w = placing.wall
+      const screenStep = dx + dy
+      let side = w.side
+      let slot = w.slot + (side === 'R' ? screenStep : -screenStep)
+      if (slot < 0) {
+        side = side === 'R' ? 'L' : 'R'
+        slot = 0
+      } else if (slot >= grid) {
+        slot = grid - 1
+      }
+      setPlacing({ ...placing, wall: { ...w, side, slot } })
+    }
+  }
+
   const startMove = () => {
     if (!selected) return
     const def = itemDef(selected.type)
@@ -288,7 +316,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
 
       <section className={`sheet studio${mode === 'build' && !placing && !selected ? ' tall' : ''}`} aria-label="Studio controls">
         {placing && placingType ? (
-          <div className="placebar placing">
+          <div className="placebar placing withnudge">
             <div className="pinfo">
               <b>{itemDef(placingType).name}</b>
               <small className={okSpot ? 'okay' : 'nope'}>
@@ -296,6 +324,21 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
                   ? isWallPlacing ? 'Looks good. Tap another glowing spot to move it.' : 'Looks good. Drag it, or tap a tile, to move it.'
                   : isWallPlacing ? 'Taken. Tap a free glowing spot on a wall.' : 'Blocked. Drag it to a free tile.'}
               </small>
+            </div>
+            <div className="nudge" role="group" aria-label="Nudge">
+              {isWallPlacing ? (
+                <>
+                  <button onClick={() => nudge(-1, 0)} aria-label="Move left along the wall">◀</button>
+                  <button onClick={() => nudge(1, 0)} aria-label="Move right along the wall">▶</button>
+                </>
+              ) : (
+                <>
+                  <button className="nw" onClick={() => nudge(-1, 0)} aria-label="Nudge up-left">↖</button>
+                  <button className="ne" onClick={() => nudge(0, -1)} aria-label="Nudge up-right">↗</button>
+                  <button className="sw" onClick={() => nudge(0, 1)} aria-label="Nudge down-left">↙</button>
+                  <button className="se" onClick={() => nudge(1, 0)} aria-label="Nudge down-right">↘</button>
+                </>
+              )}
             </div>
             <div className="pbtns">
               <button className="act" onClick={() => setPlacing(null)} aria-label="Cancel"><i aria-hidden>✕</i>Cancel</button>

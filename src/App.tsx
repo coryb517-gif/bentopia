@@ -3,6 +3,7 @@ import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
+import Og from './game/Og'
 import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
@@ -171,12 +172,13 @@ function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars
 export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
   const hero = new URLSearchParams(location.search).has('hero')
+  const og = new URLSearchParams(location.search).has('og')
   if (new URLSearchParams(location.search).has('room')) return <><Backdrop /><RoomLab /></>
   if (new URLSearchParams(location.search).has('exterior')) return <><Backdrop /><ExteriorLab /></>
   return (
     <>
       <Backdrop />
-      {hero ? <Hero /> : <Game />}
+      {og ? <Og /> : hero ? <Hero /> : <Game />}
     </>
   )
 }

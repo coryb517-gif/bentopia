@@ -755,3 +755,11 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .act .cst { display: inline-flex; align-items: center; gap: 3px; }
 .act.ok { flex: 1.8; color: #2a0f2e; background: linear-gradient(#ffe27a, #ffb838); border-color: #ffd23a; box-shadow: 0 3px 0 #c98200; }
 .act.ok:disabled { opacity: 0.45; filter: grayscale(0.6); box-shadow: none; }
+
+/* Nudge pad: arrows point the way the room is drawn */
+.placebar.withnudge { grid-template-columns: 1fr auto; align-items: center; }
+.placebar.withnudge .pbtns { grid-column: 1 / -1; }
+.nudge { display: grid; grid-template-columns: repeat(2, 44px); grid-template-rows: repeat(2, 38px); gap: 5px; }
+.nudge button { border-radius: 12px; border: 1px solid var(--glass-edge); background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 1.25rem; font-weight: 800; cursor: pointer; padding: 0; }
+.nudge button:active { background: rgba(255, 210, 58, 0.35); border-color: #ffd23a; }
+.nudge button:only-child, .nudge button:nth-child(-n+2):nth-last-child(-n+2) { grid-row: 1 / -1; }
