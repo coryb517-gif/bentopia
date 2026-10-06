@@ -24,6 +24,8 @@ export interface MergeEvent {
   removed: number[]
   resultId: number
   toCell: number
+  /** Set when the chain also left a Flavor Bomb behind. */
+  bombId?: number
 }
 
 export type Status = 'playing' | 'won' | 'lost'

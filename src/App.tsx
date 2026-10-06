@@ -21,6 +21,7 @@ import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
 import { CHAPTER_RANGES, chapterOf, LEVELS } from './sim/levels'
 import { CHAINS, recipeFor } from './sim/items'
+import { isBomb } from './sim/engine'
 import type { GameState } from './sim/types'
 import './App.css'
 
@@ -45,7 +46,7 @@ function loadStars(): Record<number, number> {
 
 const QUIPS = {
   dish: ['Masterpiece!', 'Order up!', "Chef's kiss!"],
-  huge: ['INCREDIBLE!', 'What a chain!', 'Wooow!'],
+  huge: ['Flavor bomb!', 'What a chain!', 'Wooow!'],
   big: ['Ooh, nice!', 'Delicious!', 'Look at that!'],
   small: ['Yum!', 'Nice link!', 'Tasty!', 'Mmm!'],
 }
@@ -220,6 +221,8 @@ function Game() {
   }
 
   const onState = useCallback((s: GameState) => setGame(s), [])
+
+  const onBomb = useCallback((cleared: number) => say(cleared > 4 ? 'BOOM! Fresh ingredients!' : 'Boom!', 'wow'), [say])
 
   const onMerge = useCallback(
     (len: number, tier: number) => {
@@ -507,11 +510,11 @@ function Game() {
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>Link 3+ matching dishes</>
+          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : 'Link 3+ matching dishes'}</>
         )}
       </div>
 
-      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} />
+      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} />
 
       <footer className="foot">
         {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (

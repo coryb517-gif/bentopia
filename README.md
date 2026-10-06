@@ -10,7 +10,7 @@ Phase 1 (Board) is done and Phase 2 is under way:
 
 - 8x8 board, 8-way linking, drag or tap-to-link, gravity, refill with mercy spawns, auto-shuffle.
 - Single-chain recipes (Chapter 1) and **mixed recipes** (Chapter 2): link one of each ingredient to make a dish.
-- 36 levels in 3 chapters on a deliberately slow difficulty curve, six customers with reactions, a mascot, a hand-built vector art set (22 dishes), glass-orb tiles on a lacquer board.
+- 48 levels in 4 chapters on a deliberately slow difficulty curve, with Flavor Bombs (a 5+ chain leaves a bomb that clears its row and column), six customers with reactions, a mascot, a hand-built vector art set (22 dishes), glass-orb tiles on a lacquer board.
 - Tests include a greedy bot that must be able to clear every level.
 
 - Coins (earned per clear, 40% on replays), hearts (5 max, one back every 30 minutes, lost on a failed level) and a "+5 moves for 50 coins" rescue. These live in localStorage for now and become a server ledger in Phase 3.

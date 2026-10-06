@@ -5,6 +5,9 @@ const FULL = ['........', '........', '........', '........', '........', '.....
 const CORNERS = ['#......#', '........', '........', '........', '........', '........', '........', '#......#']
 const CENTER = ['........', '........', '........', '...##...', '...##...', '........', '........', '........']
 const BARS = ['........', '.##..##.', '........', '........', '........', '........', '.##..##.', '........']
+const STAIRS = ['#.......', '##......', '###.....', '........', '........', '.....###', '......##', '.......#']
+const WINDOW = ['........', '.##..##.', '.##..##.', '........', '........', '.##..##.', '.##..##.', '........']
+const CHAMFER = ['##....##', '##....##', '........', '........', '........', '........', '##....##', '##....##']
 const DIAMOND = ['##....##', '#......#', '........', '........', '........', '........', '#......#', '##....##']
 
 const o = (kind: number, tier: number, count: number): OrderItem => ({ kind, tier, count })
@@ -58,6 +61,20 @@ const SPECS: Spec[] = [
   ["Chef's choice", DIAMOND, 6, [o(9, 2, 3)], 3.5],
   ['Banquet for six', FULL, 6, [o(6, 2, 2), o(8, 2, 2)], 3.5],
   ['Grand finale', FULL, 6, [o(6, 2, 2), o(7, 2, 2), o(9, 2, 1)], 3.5],
+
+  // Chapter 4: master chef. Longer orders on odd-shaped boards. Try a 5-chain: it leaves a Flavor Bomb.
+  ['Two by two', FULL, 6, [o(6, 2, 2), o(7, 2, 2)], 4.2],
+  ['Stairway sushi', STAIRS, 6, [o(8, 2, 1), o(9, 2, 1)], 4.4],
+  ['Window seats', WINDOW, 6, [o(6, 2, 1), o(7, 2, 1), o(8, 2, 1)], 4.2],
+  ['Chamfer cuts', CHAMFER, 6, [o(9, 2, 2), o(1, 2, 1)], 4.6],
+  ['Rainbow trio', FULL, 6, [o(9, 2, 3)], 4],
+  ['All the classics', FULL, 6, [o(0, 2, 1), o(1, 2, 1), o(2, 2, 1), o(3, 2, 1)], 5],
+  ['Tempura tower', CHAMFER, 6, [o(7, 2, 3)], 4.2],
+  ['Skewer storm', STAIRS, 6, [o(8, 2, 3)], 4.4],
+  ['Chirashi chain', WINDOW, 6, [o(6, 2, 3)], 4.2],
+  ['Dish parade', FULL, 6, [o(6, 2, 1), o(7, 2, 1), o(8, 2, 1), o(9, 2, 1), o(0, 2, 1)], 3.8],
+  ['Double feast', FULL, 6, [o(6, 2, 2), o(8, 2, 2), o(9, 2, 1)], 3.8],
+  ['Master chef', FULL, 6, [o(6, 2, 2), o(7, 2, 2), o(8, 2, 1), o(9, 2, 2)], 3.8],
 ]
 
 // A tier-1 item takes one link, a tier-2 item takes four (3 tier-1s plus the final link).
@@ -86,6 +103,10 @@ export const CHAPTER_RANGES: { title: string; sub: string; from: number; to: num
   { title: 'Chapter 1', sub: 'Learn the kitchen', from: 1, to: 12 },
   { title: 'Chapter 2', sub: 'Mix it up', from: 13, to: 24 },
   { title: 'Chapter 3', sub: 'Service rush', from: 25, to: 36 },
+  { title: 'Chapter 4', sub: 'Master chef', from: 37, to: 48 },
 ]
+
+/** The last level of each chapter is a boss: a bigger order to finish the chapter. */
+export const isBoss = (levelId: number) => CHAPTER_RANGES.some((c) => c.to === levelId)
 
 export const chapterOf = (levelId: number) => CHAPTER_RANGES.findIndex((c) => levelId >= c.from && levelId <= c.to) + 1

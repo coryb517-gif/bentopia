@@ -1,4 +1,4 @@
-import { FIRST_MIXED_KIND, MAX_TIER, RECIPES, type ItemRef } from './items'
+import { BOMB_KIND, FIRST_MIXED_KIND, MAX_TIER, RECIPES, type ItemRef } from './items'
 import { nextRandom } from './rng'
 import type { GameState, LevelDef, Tile } from './types'
 
@@ -81,8 +81,10 @@ function settle(s: GameState) {
   }
 }
 
+export const isBomb = (t: Tile | null | undefined): boolean => !!t && t.kind === BOMB_KIND
+
 function canLink(a: Tile | null, b: Tile | null): boolean {
-  return !!a && !!b && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
+  return !!a && !!b && !isBomb(a) && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
 }
 
 export function hasLink(s: GameState): boolean {
@@ -190,7 +192,7 @@ export function chainOutcome(s: GameState, path: number[]): ItemRef | null {
   if (path.length < 3 || new Set(path).size !== path.length) return null
   for (let i = 1; i < path.length; i++) if (!neighbors(path[i - 1]).includes(path[i])) return null
   const tiles = path.map((i) => s.cells[i])
-  if (tiles.some((t) => !t)) return null
+  if (tiles.some((t) => !t || isBomb(t))) return null
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) {
     return first.tier < MAX_TIER ? { kind: first.kind, tier: first.tier + 1 } : null
@@ -205,7 +207,7 @@ export function canExtend(s: GameState, path: number[], cell: number): boolean {
   const last = path[path.length - 1]
   if (!neighbors(last).includes(cell)) return false
   const tiles = [...path, cell].map((i) => s.cells[i])
-  if (tiles.some((t) => !t)) return false
+  if (tiles.some((t) => !t || isBomb(t))) return false
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) return first.tier < MAX_TIER
   return recipeCouldInclude(tiles as Tile[])
@@ -256,6 +258,31 @@ export function grantMoves(prev: GameState, n: number): GameState {
   return s
 }
 
+/**
+ * Tap a Flavor Bomb: clears every raw ingredient in its row and column. Free (no move), and crafted
+ * items are never destroyed. Returns the same state if the tile is not a bomb or the game is over.
+ */
+export function tapBomb(prev: GameState, cell: number): GameState {
+  if (prev.status !== 'playing' || !isBomb(prev.cells[cell])) return prev
+  const s: GameState = { ...prev, cells: [...prev.cells] }
+  const row = Math.floor(cell / SIZE)
+  const col = cell % SIZE
+  const removed: number[] = []
+  for (let i = 0; i < CELLS; i++) {
+    const t = s.cells[i]
+    if (!t) continue
+    const inLine = Math.floor(i / SIZE) === row || i % SIZE === col
+    if (inLine && (i === cell || (t.tier === 0 && !isBomb(t)))) {
+      removed.push(t.id)
+      s.cells[i] = null
+    }
+  }
+  s.last = { removed, resultId: -1, toCell: cell }
+  settle(s)
+  ensureLinkable(s)
+  return s
+}
+
 /** Returns the next state, or the same state if the chain is invalid or the game is over. */
 export function commitChain(prev: GameState, path: number[]): GameState {
   const out = prev.status === 'playing' ? chainOutcome(prev, path) : null
@@ -264,10 +291,20 @@ export function commitChain(prev: GameState, path: number[]): GameState {
   const toCell = path[path.length - 1]
   const result: Tile = { id: s.nextId++, kind: out.kind, tier: out.tier }
   const removed = path.map((i) => s.cells[i]!.id)
+  const firstKind = s.cells[path[0]]!.kind
+  const singleKind = path.every((i) => s.cells[i]!.kind === firstKind)
   for (const i of path) s.cells[i] = null
   s.cells[toCell] = result
   s.movesLeft--
   s.last = { removed, resultId: result.id, toCell }
+  // A long chain of one ingredient (5+) leaves a Flavor Bomb on one of the vacated cells.
+  if (singleKind && path.length >= 5) {
+    const spots = path.slice(0, -1)
+    const spot = spots[Math.floor(rand(s) * spots.length)]
+    const bomb: Tile = { id: s.nextId++, kind: BOMB_KIND, tier: 0 }
+    s.cells[spot] = bomb
+    s.last.bombId = bomb.id
+  }
 
   s.level.order.forEach((o, idx) => {
     if (o.kind === result.kind && o.tier === result.tier) s.progress[idx]++

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, grantMoves, newGame, SIZE, suggestChain } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, newGame, SIZE, suggestChain, tapBomb } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { clackSound, loseSound, popSound, winSound } from './audio'
@@ -14,6 +14,8 @@ interface Props {
   onPreview: (t: { kind: number; tier: number } | null) => void
   /** Fired after each committed chain with its length and the tier it produced. */
   onMerge?: (len: number, tier: number) => void
+  /** Fired when a Flavor Bomb goes off, with how many ingredients it cleared. */
+  onBomb?: (cleared: number) => void
   /** Bump id to give a lost game 
  more moves. */
   grant?: { id: number; n: number }
@@ -30,6 +32,7 @@ interface Sprite {
   pop: number
   phase: number
   fs: number
+  bomb: boolean
 }
 
 interface Particle {
@@ -44,11 +47,11 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, grant, hint }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, grant, hint }: Props) {
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview, onMerge, hint })
-  cb.current = { onState, onPreview, onMerge, hint }
+  const cb = useRef({ onState, onPreview, onMerge, onBomb, hint })
+  cb.current = { onState, onPreview, onMerge, onBomb, hint }
 
   useEffect(() => {
     const el = host.current!
@@ -80,6 +83,12 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
       app.canvas.style.touchAction = 'none'
 
       let state = newGame(level, seed)
+      // Dev switch (/?bombs): start with two Flavor Bombs on the board, for testing the effect.
+      if (new URLSearchParams(location.search).has('bombs')) {
+        const cells = [...state.cells]
+        for (const [k, i] of [[1, 27], [2, 44]] as const) if (cells[i]) cells[i] = { id: 9000 + k, kind: 10, tier: 0 }
+        state = { ...state, cells, nextId: state.nextId + 10 }
+      }
       let path: number[] = []
       let dragging = false
       let { pad, cell } = boardGeometry(size)
@@ -140,7 +149,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
           if (!sp) {
             const node = makeNode(t)
             const fs = (node.children[0] as PixiSprite).scale.x
-            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs }
+            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t) }
             node.x = p.x
             node.y = spawnFromAbove && t.id !== popId ? -cell * (1 + Math.random() * 2) : p.y
             node.scale.set(t.id === popId ? 0.5 : 1)
@@ -185,6 +194,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
           if (!reduce && !sp.dying) {
             // Gentle idle bob, each tile on its own phase.
             face.y = Math.sin(now + sp.phase) * cell * 0.018
+            if (sp.bomb && sp.pop <= 0) face.scale.set(sp.fs * (1 + 0.07 * Math.sin(now * 3.2 + sp.phase)))
             if (sp.pop > 0) {
               sp.pop = Math.max(0, sp.pop - tk.deltaMS / 320)
               face.scale.set(sp.fs * (1 + 0.32 * Math.sin(Math.PI * sp.pop)))
@@ -282,6 +292,35 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
         return i
       }
 
+      const sparks = (x: number, y: number, n: number, colors: number[]) => {
+        if (reduce) return
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2
+          const v = (1 + Math.random() * 3) * (cell / 60)
+          particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, life: 1, r: cell * (0.05 + Math.random() * 0.08), color: colors[i % colors.length] })
+        }
+      }
+
+      /** A Flavor Bomb goes off: a shockwave, fire along its row and column, and the board shakes. */
+      const detonate = (i: number) => {
+        const next = tapBomb(state, i)
+        if (next === state) return
+        lastInput = performance.now()
+        path = []
+        // Fire where the cleared ingredients were.
+        for (const [id, sp] of sprites) if (next.last?.removed.includes(id)) sparks(sp.node.x, sp.node.y, 8, [0xff8a2a, 0xffd23a, 0xffffff])
+        const c0 = center(i)
+        rings.push({ x: c0.x, y: c0.y, t: 0, color: 0xffb347 }, { x: c0.x, y: c0.y, t: -0.25, color: 0xffffff })
+        el.classList.remove('shake')
+        void el.offsetWidth
+        el.classList.add('shake')
+        state = next
+        clackSound(2)
+        placeSprites(true)
+        drawPath()
+        cb.current.onState(state)
+        cb.current.onBomb?.((next.last?.removed.length ?? 1) - 1)
+      }
       const commit = () => {
         const next = commitChain(state, path)
         if (next === state) return
@@ -291,6 +330,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
         state = next
         clackSound(next.cells[next.last?.toCell ?? 0]?.tier ?? 1)
         if (next.last) cb.current.onMerge?.(chainLen, next.cells[next.last.toCell]?.tier ?? 1)
+        if (next.last?.bombId) sparks(center(next.last.toCell).x, center(next.last.toCell).y, 14, [0xff8a2a, 0xffd23a])
         placeSprites(true, state.last?.resultId)
         if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)
         drawPath()
@@ -339,6 +379,13 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, gr
       const up = () => {
         if (!dragging) return
         dragging = false
+        // Tapping a Flavor Bomb sets it off.
+        if (path.length === 1 && isBomb(state.cells[path[0]])) {
+          const i = path[0]
+          path = []
+          drawPath()
+          return detonate(i)
+        }
         if (path.length >= 3) commit()
         else if (path.length !== 1) {
           path = []

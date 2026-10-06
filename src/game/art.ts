@@ -246,6 +246,17 @@ Object.assign(items, {
     maki(36, 64, 30, wedge(36, 64, 14, -90, 30, '#7fe6ff') + wedge(36, 64, 14, 30, 150, '#ff8fb0') + wedge(36, 64, 14, 150, 270, '#c4a8ff') + `<circle cx="36" cy="64" r="14" fill="none" stroke="${OUTLINE}" stroke-width="2.6"/>`),
 })
 
+// The Flavor Bomb: a round red spice bomb with a gold band and a sparking fuse.
+Object.assign(items, {
+  '10-0': () =>
+    stroke('M52 26C56 14 66 14 72 8', OUTLINE, 8) +
+    stroke('M52 26C56 14 66 14 72 8', '#c8935a', 4.2) +
+    cel(rrect(40, 22, 20, 10, 3), '#6b5586', '#33264a', '', 2.6, 3) +
+    cel(circ(50, 60, 32), '#f0584a', '#a02030', stroke('M16 62Q50 78 84 62', '#ffd45e', 5.4) + stroke('M20 50Q50 62 80 50', '#ffe9a0', 1.8, 'opacity="0.55"')) +
+    shine(34, 44, 5, 11, 30, 0.7) +
+    `<g class="spark"><path d="M74 2l3 5l5 3l-5 3l-3 5l-3 -5l-5 -3l5 -3z" fill="#ffe070" stroke="#ff8a2a" stroke-width="1.6" stroke-linejoin="round"/><circle cx="74" cy="10" r="2" fill="#fff"/></g>`,
+})
+
 /** Every illustration that exists, as [kind, tier] pairs. */
 export const ART_PAIRS: [number, number][] = Object.keys(items).map((k) => k.split('-').map(Number) as [number, number])
 export const hasArt = (kind: number, tier: number) => `${kind}-${tier}` in items
@@ -276,6 +287,7 @@ const FACES: Record<string, number[]> = {
   '5-0': [50, 36, 0.8, -32, 50, 46],
   '5-1': [52, 48, 0.55],
   '5-2': [50, 30, 0.8],
+  '10-0': [50, 54, 1.05],
 }
 
 const sparkle = (x: number, y: number, r: number) =>

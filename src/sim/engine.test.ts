@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canExtend, chainOutcome, commitChain, grantMoves, hasLink, isValidChain, newGame, suggestChain } from './engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, hasLink, isBomb, isValidChain, newGame, suggestChain, tapBomb } from './engine'
 import { LEVELS } from './levels'
 
 /** Greedy bot: commit the first connected run of 3 it finds. */
@@ -153,5 +153,64 @@ describe('hints', () => {
   it('gives nothing once the game is over', () => {
     const s = newGame(LEVELS[0], 1)
     expect(suggestChain({ ...s, status: 'won' })).toBeNull()
+  })
+})
+
+describe('flavor bombs', () => {
+  const rice = (id: number) => ({ id, kind: 0, tier: 0 })
+
+  function rowOfRice(count: number) {
+    const s = newGame(LEVELS[0], 11)
+    for (let i = 0; i < 8; i++) s.cells[i] = { id: 500 + i, kind: i < count ? 0 : 1, tier: 0 }
+    return s
+  }
+
+  it('a chain of five or more leaves a bomb, and shorter chains do not', () => {
+    const five = commitChain(rowOfRice(5), [0, 1, 2, 3, 4])
+    expect(five.cells.filter(isBomb)).toHaveLength(1)
+    expect(five.last?.bombId).toBeDefined()
+    expect(five.movesLeft).toBe(LEVELS[0].moves - 1)
+    const four = commitChain(rowOfRice(4), [0, 1, 2, 3])
+    expect(four.cells.some(isBomb)).toBe(false)
+    expect(four.last?.bombId).toBeUndefined()
+  })
+
+  it('bombs never link, and cannot be part of a chain', () => {
+    const s = newGame(LEVELS[0], 3)
+    s.cells[0] = { id: 900, kind: 10, tier: 0 }
+    s.cells[1] = { id: 901, kind: 10, tier: 0 }
+    s.cells[2] = { id: 902, kind: 10, tier: 0 }
+    expect(chainOutcome(s, [0, 1, 2])).toBeNull()
+    expect(canExtend(s, [0], 1)).toBe(false)
+  })
+
+  it('tapping a bomb clears raw ingredients in its row and column, free, and keeps crafted items', () => {
+    const s = newGame(LEVELS[0], 21)
+    const row = 3
+    const col = 4
+    const bombCell = row * 8 + col
+    s.cells[bombCell] = { id: 800, kind: 10, tier: 0 }
+    s.cells[row * 8 + 1] = { id: 801, kind: 0, tier: 1 } // crafted, same row
+    s.cells[2 * 8 + col] = rice(802) // raw, same column
+    s.cells[row * 8 + 6] = rice(803) // raw, same row
+    s.cells[0] = rice(804) // raw, elsewhere
+    const next = tapBomb(s, bombCell)
+    const ids = new Set(next.cells.map((c) => c?.id))
+    expect(ids.has(800)).toBe(false) // the bomb is gone
+    expect(ids.has(802)).toBe(false)
+    expect(ids.has(803)).toBe(false)
+    expect(ids.has(801)).toBe(true) // crafted items are never destroyed
+    expect(ids.has(804)).toBe(true) // other rows and columns are untouched
+    expect(next.movesLeft).toBe(s.movesLeft)
+    expect(next.last?.removed).toEqual(expect.arrayContaining([800, 802, 803]))
+    expect(next.cells.every((c, i) => (c === null) === next.blocked[i])).toBe(true)
+    expect(hasLink(next)).toBe(true)
+  })
+
+  it('ignores taps on ordinary tiles and finished games', () => {
+    const s = newGame(LEVELS[0], 5)
+    expect(tapBomb(s, 0)).toBe(s)
+    s.cells[9] = { id: 950, kind: 10, tier: 0 }
+    expect(tapBomb({ ...s, status: 'won' }, 9).cells[9]?.id).toBe(950)
   })
 })

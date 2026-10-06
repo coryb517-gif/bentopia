@@ -37,6 +37,7 @@ const ORBS = [
   ['#f3ecff', '#c4a8ff', '#7a4fe0'],
   ['#fff4dc', '#ffc880', '#e08a2a'],
   ['#fff0ff', '#ff9fe0', '#b04fe0'],
+  ['#fff4d6', '#ffb347', '#e0602a'],
 ]
 
 /** Logical canvas size of a tile texture relative to the plate diameter. */
