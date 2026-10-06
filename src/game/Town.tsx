@@ -23,6 +23,7 @@ interface Lot {
   level: number
   score: number
   stars: number
+  kind?: 'shop' | 'pagoda' | 'teahouse' | 'tower'
   mine?: boolean
 }
 
@@ -30,14 +31,14 @@ const W = (a: string, b: string, c: string): Tri => [a, b, c]
 
 // Neighbouring shops. Bots are labelled "Featured Shop" and never appear on leaderboards (see the spec).
 const BOTS: Lot[] = [
-  { id: 'b0', c: 0, r: 0, name: [3, 1, 4], floors: 2, wall: W('#ecdcc0', '#e6d2b0', '#cbb18a'), roof: W('#7a4a52', '#613b44', '#4a2c34'), neon: '#ff7fc0', level: 4, score: 640, stars: 4 },
-  { id: 'b1', c: 1, r: 0, name: [1, 7, 0], floors: 1, wall: W('#f2e4cc', '#ecdcc0', '#d2bb94'), roof: W('#4a6a5a', '#3a5848', '#2c4538'), neon: '#6dffc0', level: 3, score: 330, stars: 3 },
-  { id: 'b2', c: 2, r: 0, name: [7, 5, 5], floors: 3, wall: W('#e4d2b2', '#dcc8a6', '#c2a97f'), roof: W('#51628a', '#3f4f78', '#2f3d62'), neon: '#7fe6ff', level: 6, score: 1480, stars: 5 },
-  { id: 'b3', c: 0, r: 1, name: [4, 0, 6], floors: 1, wall: W('#f0dcc0', '#ead4b4', '#cdb08c'), roof: W('#8a5a3a', '#6e4429', '#52301c'), neon: '#ffd23a', level: 2, score: 190, stars: 3 },
-  { id: 'b4', c: 2, r: 1, name: [2, 3, 3], floors: 2, wall: W('#efe0c4', '#e8d6b6', '#cdb48c'), roof: W('#6a4a7a', '#563a66', '#432c52'), neon: '#d29bff', level: 5, score: 880, stars: 4 },
+  { id: 'b0', c: 0, r: 0, name: [3, 1, 4], floors: 2, wall: W('#ecdcc0', '#e6d2b0', '#cbb18a'), roof: W('#7a4a52', '#613b44', '#4a2c34'), neon: '#ff7fc0', level: 4, score: 640, stars: 4, kind: 'pagoda' },
+  { id: 'b1', c: 1, r: 0, name: [1, 7, 0], floors: 1, wall: W('#f2e4cc', '#ecdcc0', '#d2bb94'), roof: W('#4a6a5a', '#3a5848', '#2c4538'), neon: '#6dffc0', level: 3, score: 330, stars: 3, kind: 'teahouse' },
+  { id: 'b2', c: 2, r: 0, name: [7, 5, 5], floors: 3, wall: W('#e4d2b2', '#dcc8a6', '#c2a97f'), roof: W('#51628a', '#3f4f78', '#2f3d62'), neon: '#7fe6ff', level: 6, score: 1480, stars: 5, kind: 'tower' },
+  { id: 'b3', c: 0, r: 1, name: [4, 0, 6], floors: 1, wall: W('#f0dcc0', '#ead4b4', '#cdb08c'), roof: W('#8a5a3a', '#6e4429', '#52301c'), neon: '#ffd23a', level: 2, score: 190, stars: 3, kind: 'teahouse' },
+  { id: 'b4', c: 2, r: 1, name: [2, 3, 3], floors: 2, wall: W('#efe0c4', '#e8d6b6', '#cdb48c'), roof: W('#6a4a7a', '#563a66', '#432c52'), neon: '#d29bff', level: 5, score: 880, stars: 4, kind: 'pagoda' },
   { id: 'b5', c: 0, r: 2, name: [5, 6, 7], floors: 2, wall: W('#e9d8bc', '#e2cfae', '#c6ae86'), roof: W('#7a4a52', '#613b44', '#4a2c34'), neon: '#ff9a4e', level: 3, score: 410, stars: 3 },
   { id: 'b6', c: 1, r: 2, name: [6, 4, 1], floors: 1, wall: W('#f2e2c8', '#ecdabc', '#d0b890'), roof: W('#4a6a5a', '#3a5848', '#2c4538'), neon: '#ff7fc0', level: 2, score: 150, stars: 2 },
-  { id: 'b7', c: 2, r: 2, name: [0, 2, 2], floors: 2, wall: W('#e6d4b4', '#dfcaa8', '#c4aa80'), roof: W('#51628a', '#3f4f78', '#2f3d62'), neon: '#6dffc0', level: 4, score: 560, stars: 4 },
+  { id: 'b7', c: 2, r: 2, name: [0, 2, 2], floors: 2, wall: W('#e6d4b4', '#dfcaa8', '#c4aa80'), roof: W('#51628a', '#3f4f78', '#2f3d62'), neon: '#6dffc0', level: 4, score: 560, stars: 4, kind: 'tower' },
 ]
 
 const LOT = 3.2
@@ -68,6 +69,26 @@ function Shop({ lot, top, bottom, glow, selected, floors, deck }: { lot: Lot; to
           <Box x={bx + w * 0.5} y={by + w * 0.4} w={0.5} d={0.5} h={7} z={h + 3} c={['#ffd0e0', '#f3a0c0', '#c97a9a']} sw={1.4} />
           <Box x={bx - 0.02} y={by + w - 0.02} w={w} d={0.05} h={2.4} z={h + 14} c={['#d8dcec', '#aab2c8', '#8890aa']} sw={1.4} />
           <Box x={bx + w - 0.02} y={by} w={0.05} d={w} h={2.4} z={h + 14} c={['#d8dcec', '#aab2c8', '#8890aa']} sw={1.4} />
+        </g>
+      ) : lot.kind === 'pagoda' ? (
+        <g>
+          <HipRoof x={bx} y={by} w={w} d={w} z={h + 3} rh={13} over={0.3} c={lot.roof} />
+          <Box x={bx + w * 0.22} y={by + w * 0.22} w={w * 0.56} d={w * 0.56} h={14} z={h + 14} c={lot.wall} sw={1.6} />
+          <HipRoof x={bx + w * 0.22} y={by + w * 0.22} w={w * 0.56} d={w * 0.56} z={h + 28} rh={16} over={0.3} c={lot.roof} />
+          <Box x={bx + w / 2 - 0.03} y={by + w / 2 - 0.03} w={0.06} d={0.06} h={14} z={h + 42} c={['#ffd23a', '#e0a41a', '#b07a10']} sw={1.2} />
+        </g>
+      ) : lot.kind === 'tower' ? (
+        <g>
+          <Box x={bx + w * 0.1} y={by + w * 0.1} w={w * 0.8} d={w * 0.8} h={4} z={h + 3} c={['#d8dcec', '#aab2c8', '#8890aa']} sw={1.4} />
+          <Box x={bx + w * 0.55} y={by + w * 0.2} w={w * 0.28} d={w * 0.28} h={12} z={h + 7} c={['#c8d0e4', '#98a2bc', '#7a84a0']} sw={1.4} />
+          <Box x={bx + w * 0.22} y={by + w * 0.6} w={0.05} d={0.05} h={30} z={h + 7} c={['#d8dcec', '#aab2c8', '#8890aa']} sw={1.2} />
+          <circle cx={P(bx + w * 0.22 + 0.025, by + w * 0.6 + 0.025, h + 38)[0]} cy={P(bx + w * 0.22 + 0.025, by + w * 0.6 + 0.025, h + 38)[1]} r="2.6" fill="#ff3d57" stroke={OL} strokeWidth="1" className="flick" />
+        </g>
+      ) : lot.kind === 'teahouse' ? (
+        <g>
+          <HipRoof x={bx} y={by} w={w} d={w} z={h + 3} rh={30} over={0.35} c={lot.roof} />
+          <Box x={bx + w * 0.7} y={by + w * 0.25} w={0.3} d={0.3} h={14} z={h + 12} c={['#a8584a', '#8a4438', '#6a3028']} sw={1.4} />
+          <path className="steam" d={`M${P(bx + w * 0.7 + 0.15, by + w * 0.25 + 0.15, h + 30).join(' ')}q-5 -7 0 -12t0 -10`} fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" opacity="0.6" />
         </g>
       ) : (
         <HipRoof x={bx} y={by} w={w} d={w} z={h + 3} rh={20 + floors * 3} over={0.2} c={lot.roof} />
@@ -143,11 +164,31 @@ export default function Town({ r, onBack }: Props) {
           <path d={`M${P(0, s).join(',')}L${P(SIZE, s).join(',')}`} stroke="rgba(255,236,170,0.45)" strokeWidth="2" strokeDasharray="10 9" />
         </g>
       ))}
+      {lamps > 0.15 && [[4.5, 4.5], [8.9, 4.5], [4.5, 8.9], [8.9, 8.9]].map(([lx, ly], i) => {
+        const [px, py] = P(lx, ly)
+        return <ellipse key={i} cx={px} cy={py} rx="62" ry="31" fill="url(#lampPool)" opacity={lamps} pointerEvents="none" />
+      })}
       {/* the river at the front and its bridge */}
       <polygon points={[P(-1, SIZE + 0.6), P(SIZE + 1, SIZE + 0.6), P(SIZE + 1, SIZE + 3.2), P(-1, SIZE + 3.2)].map((p) => p.join(',')).join(' ')} fill="url(#water)" opacity="0.85" stroke={OL} strokeWidth="2" strokeLinejoin="round" />
       {[0.2, 0.55, 0.9, 1.25, 1.6, 2.0].map((o, i) => (
         <path key={i} className="ripple2" style={{ animationDelay: `${-i * 0.9}s` }} d={`M${P(2 + i * 2, SIZE + 0.9 + o).join(',')}l14 7`} stroke="#fff" strokeWidth="1.6" strokeLinecap="round" opacity="0.5" />
       ))}
+      {[{ y: SIZE + 1.5, x: 1, dx: 5.5, d: 0, c: '#ff7a45' }, { y: SIZE + 2.4, x: 11, dx: -6, d: -9, c: '#6dffc0' }].map((b, i) => {
+        const [bx, by] = P(b.x, b.y)
+        const [ex, ey] = P(b.x + b.dx, b.y)
+        return (
+          <g key={`boat${i}`} transform={`translate(${bx} ${by})`} pointerEvents="none">
+            <g className="boat" style={{ ['--tx' as string]: `${ex - bx}px`, ['--ty' as string]: `${ey - by}px`, animationDelay: `${b.d}s` } as CSSProperties}>
+              <g className="bsway">
+                <path d="M-15 -3q15 12 30 0l-4 7q-11 5 -22 0z" fill="#8a5a3a" stroke={OL} strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M0 -3V-14" stroke={OL} strokeWidth="1.6" />
+                <ellipse cx="0" cy="-18" rx="5" ry="6.4" fill={b.c} stroke={OL} strokeWidth="1.5" className="flick" />
+                <ellipse cx="0" cy="-18" rx="11" ry="9" fill={b.c} opacity={0.22 + lamps * 0.3} style={{ mixBlendMode: 'screen' }} />
+              </g>
+            </g>
+          </g>
+        )
+      })}
       <Box x={MARGIN + LOT + STREET / 2 - 0.8} y={SIZE + 0.4} w={1.6} d={2.9} h={6} c={['#c99a5c', '#a5763f', '#7a4e30']} />
       {[0, 1].map((k) => <Box key={k} x={MARGIN + LOT + STREET / 2 - 0.8 + k * 1.5} y={SIZE + 0.4} w={0.1} d={2.9} h={12} z={6} c={['#e4574a', '#b92d3e', '#8f1f38']} sw={1.4} />)}
     </g>
@@ -166,8 +207,10 @@ export default function Town({ r, onBack }: Props) {
         <path d={`M${pa[0]} ${pa[1]}Q${mx} ${my} ${pb[0]} ${pb[1]}`} fill="none" stroke="rgba(42,15,46,0.7)" strokeWidth="1.2" />
         {Array.from({ length: 9 }, (_, k) => {
           const t = (k + 1) / 10
+          const flag = i % 2 === 1
           const bx = (1 - t) * (1 - t) * pa[0] + 2 * (1 - t) * t * mx + t * t * pb[0]
           const by = (1 - t) * (1 - t) * pa[1] + 2 * (1 - t) * t * my + t * t * pb[1]
+          if (flag) return <path key={k} d={`M${bx - 3.4} ${by + 1}h6.8l-3.4 7.4z`} fill={['#ff5b6e', '#ffd23a', '#6dffc0', '#7fe6ff', '#d29bff'][(k + i) % 5]} stroke={OL} strokeWidth="0.8" strokeLinejoin="round" />
           return <circle key={k} cx={bx} cy={by + 2} r="2.2" fill="#ffd9a0" stroke={OL} strokeWidth="0.8" className="flick" style={{ animationDelay: `${-(k + i) * 0.6}s` }} />
         })}
       </g>
@@ -183,10 +226,11 @@ export default function Town({ r, onBack }: Props) {
       </header>
 
       <div className="stage townstage">
-        <ZoomPan resetKey="town" startScale={1.9}>
+        <ZoomPan resetKey="town" startScale={1.35}>
           <svg className="townmap" viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} role="img" aria-label="Map of the Night Market district">
             <RoomDefs phase={phase} />
             <defs>
+              <radialGradient id="lampPool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stopColor="#ffd9a0" stopOpacity="0.5" /><stop offset="1" stopColor="#ffd9a0" stopOpacity="0" /></radialGradient>
               <linearGradient id="townWin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff0b8" /><stop offset="1" stopColor="#ff9a4e" /></linearGradient>
               <radialGradient id="townFadeG" cx="0.5" cy="0.5" r="0.66"><stop offset="0.6" stopColor="#fff" /><stop offset="1" stopColor="#000" /></radialGradient>
               <mask id="townFade" maskUnits="userSpaceOnUse" x={minX} y={minY} width={maxX - minX} height={maxY - minY}><rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#townFadeG)" /></mask>
@@ -223,6 +267,17 @@ export default function Town({ r, onBack }: Props) {
                   </g>
                 )
               })}
+              {[[0.2, 0.7], [0.8, 0.9], [1.4, 0.4]].map(([qx, qy], i) => {
+                const [ox, oy] = lotOrigin(1, 1)
+                const [px, py] = P(ox + 1.3 + qx, oy + LOT + qy)
+                return (
+                  <g key={`q${i}`} transform={`translate(${px} ${py})`} pointerEvents="none"><g className="bsway" style={{ animationDelay: `${-i * 0.7}s` }}>
+                    <ellipse cx="0" cy="1" rx="4" ry="1.6" fill="rgba(0,0,0,0.35)" />
+                    <rect x="-2.6" y="-9" width="5.2" height="8" rx="2.4" fill={['#ff7fc0', '#7fe6ff', '#ffd23a'][i]} stroke={OL} strokeWidth="1" />
+                    <circle cx="0" cy="-11.4" r="2.8" fill="#ffe1c4" stroke={OL} strokeWidth="1" />
+                  </g></g>
+                )
+              })}
               {/* "you are here" pin over your restaurant */}
               {(() => {
                 const [x, y] = lotOrigin(1, 1)
@@ -236,6 +291,13 @@ export default function Town({ r, onBack }: Props) {
                 )
               })()}
             </g>
+            {phase !== 'day' && [[-120, -96, 0], [90, -118, -1.6], [-10, -70, -3.1], [150, -62, -4.4]].map(([fx, fy, fd], i) => (
+              <g key={`fw${i}`} transform={`translate(${fx} ${fy})`} pointerEvents="none">
+                <g className="burst" style={{ animationDelay: `${fd}s` }}>
+                  {Array.from({ length: 12 }, (_, k) => <line key={k} x1="0" y1="-5" x2="0" y2="-22" stroke={['#ffd23a', '#ff7fc0', '#7fe6ff', '#6dffc0'][i % 4]} strokeWidth="2.4" strokeLinecap="round" transform={`rotate(${k * 30})`} />)}
+                </g>
+              </g>
+            ))}
           </svg>
         </ZoomPan>
       </div>
