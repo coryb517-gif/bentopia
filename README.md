@@ -11,6 +11,7 @@ Phase 1 (Board) is done and Phase 2 is under way:
 - 8x8 board, 8-way linking, drag or tap-to-link, gravity, refill with mercy spawns, auto-shuffle.
 - Single-chain recipes (Chapter 1) and **mixed recipes** (Chapter 2): link one of each ingredient to make a dish.
 - 48 levels in 4 chapters on a deliberately slow difficulty curve, with Flavor Bombs (a 5+ chain leaves a bomb that clears its row and column), six customers with reactions, a mascot, a hand-built vector art set (22 dishes), glass-orb tiles on a lacquer board.
+- **Frozen tiles** (levels 25+): ice blocks a tile from linking until you clear a chain next to it; a Flavor Bomb shatters it outright.
 - Tests include a greedy bot that must be able to clear every level.
 
 - Coins (earned per clear, 40% on replays), hearts (5 max, one back every 30 minutes, lost on a failed level) and a "+5 moves for 50 coins" rescue. These live in localStorage for now and become a server ledger in Phase 3.
@@ -24,6 +25,9 @@ Phase 1 (Board) is done and Phase 2 is under way:
 - **Auto-arrange:** one tap in Decorate tidies a floor (clear walkway, kitchen on the wall, spaced seating, even wall decor) with a one-tap undo.
 
 - **First-time tutorial:** a mascot intro, an animated finger on the real board, a guided first trip to Decorate, and a one-time callout on the first mixed recipe. Replay it with `/?tutorial`. The idle hint (a finger tracing a good chain after 9 seconds) is on for everyone.
+
+- **Reasons to return:** a daily gift with a 7-day streak, goals that pay coins, and a collection book of every item you have owned. Emotes and an avatar badge in the hub, plus sound effects (footsteps, bomb, fanfares) and a soft restaurant ambience.
+- **Installable:** add it to your home screen (web manifest, icons, safe-area aware).
 
 Still to come: accounts and the server economy, crates and tokens, the Night Market (see the spec).
 
