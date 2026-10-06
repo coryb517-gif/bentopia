@@ -11,6 +11,7 @@ import { WALL_ART } from './wall'
 import { Cat, Waiter } from './WalkerSprites'
 import { blockedTiles, entranceTile, findPath, STEP_MS, useWalkers, type Pt } from './walkers'
 import { AvatarFigure } from './AvatarFigure'
+import { stepSound } from './audio'
 import type { Avatar } from './avatar'
 import { along, type V } from './townwalk'
 
@@ -504,12 +505,17 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
     cancelAnimationFrame(raf.current)
     trip.current = { route, walked: 0 }
     let last = performance.now()
+    let stepped = 0
     const step = (now: number) => {
       const tr = trip.current
       if (!tr) return
       tr.walked += 3 * Math.min(0.05, (now - last) / 1000)
       last = now
       const a = along(tr.route, tr.walked)
+      if (tr.walked - stepped >= 0.6) {
+        stepped = tr.walked
+        stepSound()
+      }
       setMe({ x: a.pos[0], y: a.pos[1], left: a.dx - a.dy < 0, walking: !a.done })
       if (a.done) {
         trip.current = null

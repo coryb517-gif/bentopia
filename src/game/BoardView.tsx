@@ -3,7 +3,7 @@ import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 
 import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, newGame, SIZE, suggestChain, tapBomb } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
-import { clackSound, loseSound, popSound, winSound } from './audio'
+import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
 import { boardCanvas, boardGeometry, tileCanvas, TILE_PAD } from './render'
 
 interface Props {
@@ -315,7 +315,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         void el.offsetWidth
         el.classList.add('shake')
         state = next
-        clackSound(2)
+        boomSound()
         placeSprites(true)
         drawPath()
         cb.current.onState(state)

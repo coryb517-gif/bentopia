@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { type Pref } from './audio'
 import CustomerPortrait, { customerFor } from './Customers'
 import Hearts from './Hearts'
@@ -9,6 +9,7 @@ import StoreyTabs, { type ViewId } from './StoreyTabs'
 import ZoomPan from './ZoomPan'
 import type { Avatar } from './avatar'
 import { AvatarBadge } from './AvatarFigure'
+import { emoteSound, startAmbience, stopAmbience } from './audio'
 import { decorScore, levelOf, levelProgress, restaurantLevel, seatTotal, sizeOf, storeyView, tipsPerHour, upgradeLevel, type Restaurant } from './restaurant'
 
 interface Props {
@@ -51,6 +52,12 @@ const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wa
 
 export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, rewardDot }: Props) {
   const [emote, setEmote] = useState({ n: 0, e: '' })
+  // The restaurant hums softly while you are inside it.
+  useEffect(() => {
+    if (view === 'outside') return
+    startAmbience()
+    return stopAmbience
+  }, [view])
   const [sheet, setSheet] = useState<'settings' | 'pantry' | 'market' | null>(null)
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
   const score = decorScore(r)
@@ -82,7 +89,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
         <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} />}</ZoomPan>
         {avatar && view !== 'outside' && (
           <div className="emotebar" aria-label="Emotes">
-            {['👋', '❤️', '🎉', '😋', '😴'].map((e) => <button key={e} onClick={() => setEmote((m) => ({ n: m.n + 1, e }))} aria-label={`Emote ${e}`}>{e}</button>)}
+            {['👋', '❤️', '🎉', '😋', '😴'].map((e) => <button key={e} onClick={() => { emoteSound(); setEmote((m) => ({ n: m.n + 1, e })) }} aria-label={`Emote ${e}`}>{e}</button>)}
           </div>
         )}
         {tips > 0 && (

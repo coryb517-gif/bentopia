@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { autoArrange, LAYOUT_STYLES, type LayoutStyle } from './layout'
-import { coinSound } from './audio'
+import { coinSound, levelUpSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
 import StoreyTabs from './StoreyTabs'
@@ -83,7 +83,10 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     const grown = withPeak(applyStorey(root, storey, next))
     const after = grown.peak ?? 1
     setRoot(grown)
-    if (after > before) setLevelUp(after)
+    if (after > before) {
+      setLevelUp(after)
+      levelUpSound()
+    }
   }
 
   /** Rearrange everything on this floor; one tap on Undo puts it all back. */

@@ -6,7 +6,7 @@ import Hero from './game/Hero'
 import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
-import { coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
+import { claimSound, coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
 import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import Coach from './game/Coach'
 import Build from './game/Build'
@@ -423,12 +423,14 @@ function Game() {
     if (!got) return
     setProgress(got.progress)
     setWallet((w) => earn(w, got.reward))
+    claimSound()
   }
   const claimGoalReward = (g: Goal) => {
     const next = claimGoal(progress, g, goalCtx)
     if (!next) return
     setProgress(next)
     setWallet((w) => earn(w, g.reward))
+    claimSound()
   }
 
   if (screen === 'hub') {

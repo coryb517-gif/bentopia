@@ -4,6 +4,7 @@ import Room, { floorArt, phaseOf, RoomDefs, SKY, type Phase } from './Room'
 import ZoomPan, { type Focus } from './ZoomPan'
 import { neighbourRestaurant } from './neighbours'
 import { AvatarFigure } from './AvatarFigure'
+import { stepSound } from './audio'
 import { NAMES, type Avatar } from './avatar'
 import { along, findRoute, routeLength, type TownGeometry, type V } from './townwalk'
 import { HipRoof } from './Exterior'
@@ -157,12 +158,17 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
     }
     trip.current = { route, walked: 0, then }
     let last = performance.now()
+    let stepped = 0
     const step = (now: number) => {
       const tr = trip.current
       if (!tr) return
       tr.walked += SPEED * Math.min(0.05, (now - last) / 1000)
       last = now
       const a = along(tr.route, tr.walked)
+      if (tr.walked - stepped >= 0.7) {
+        stepped = tr.walked
+        stepSound()
+      }
       setMe({ pos: a.pos, left: a.dx - a.dy < 0, walking: !a.done })
       if (a.done) {
         trip.current = null
