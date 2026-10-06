@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Box, FaceY, OL, P, type Tri } from './iso'
-import { floorArt, phaseOf, RoomDefs, SKY, type Phase } from './Room'
-import ZoomPan from './ZoomPan'
+import Room, { floorArt, phaseOf, RoomDefs, SKY, type Phase } from './Room'
+import ZoomPan, { type Focus } from './ZoomPan'
+import { neighbourRestaurant } from './neighbours'
 import { HipRoof } from './Exterior'
 import { decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
 
@@ -116,6 +117,9 @@ function Shop({ lot, top, bottom, glow, selected, floors, deck }: { lot: Lot; to
 export default function Town({ r, onBack }: Props) {
   const [phase, setPhase] = useState<Phase>(() => phaseOf())
   const [sel, setSel] = useState<string | null>('mine')
+  const [visiting, setVisiting] = useState<string | null>(null)
+  const [focus, setFocus] = useState<Focus | undefined>(undefined)
+  const mapRef = useRef<SVGSVGElement>(null)
   useEffect(() => {
     const id = setInterval(() => setPhase(phaseOf()), 60_000)
     return () => clearInterval(id)
@@ -129,12 +133,29 @@ export default function Town({ r, onBack }: Props) {
   }
   const lots = [...BOTS, mine].sort((a, b) => a.c + a.r - (b.c + b.r))
   const [myTop, myBottom] = restaurantName(r)
-  const labelOf = (l: Lot): [string, string] => (l.mine ? [myTop, myBottom] : nameOf(l.name))
-
   const minX = -SIZE * 32 - 40
   const maxX = SIZE * 32 + 40
   const minY = -140
   const maxY = (SIZE + 3.4) * 32 + 30
+
+  /** Select a shop and swing the camera over to it. */
+  const goTo = (l: Lot) => {
+    setSel(l.id)
+    const el = mapRef.current
+    if (!el) return
+    const [x, y] = lotOrigin(l.c, l.r)
+    const [px, py] = P(x + LOT / 2, y + LOT / 2, l.floors * 17)
+    const vw = maxX - minX
+    const vh = maxY - minY
+    const sw = el.clientWidth
+    const sh = el.clientHeight
+    const zp = el.closest('.zp') as HTMLElement | null
+    const bw = zp?.clientWidth ?? sw
+    const bh = zp?.clientHeight ?? sh
+    const k = Math.min(sw / vw, sh / vh)
+    setFocus({ fx: ((sw - vw * k) / 2 + (px - minX) * k) / bw, fy: ((sh - vh * k) / 2 + (py - minY) * k) / bh, s: 2.4, n: (focus?.n ?? 0) + 1 })
+  }
+  const labelOf = (l: Lot): [string, string] => (l.mine ? [myTop, myBottom] : nameOf(l.name))
 
   const props: { type: 'lamp' | 'sakura' | 'ramencart' | 'stonelantern' | 'vending' | 'bench' | 'torii'; x: number; y: number }[] = [
     { type: 'torii', x: 6.0, y: -0.9 },
@@ -217,6 +238,36 @@ export default function Town({ r, onBack }: Props) {
     )
   })
 
+  const visited = lots.find((l) => l.id === visiting && !l.mine)
+  if (visited) {
+    const [vTop, vBottom] = labelOf(visited)
+    const inside = neighbourRestaurant(Number(visited.id.slice(1)) + 1, visited.level)
+    return (
+      <main className="screen town visit">
+        <header className="bar">
+          <button className="btn ghost" onClick={() => setVisiting(null)}>Leave</button>
+          <h2>{vTop}</h2>
+          <span className="spacer" />
+        </header>
+        <div className="stage">
+          <ZoomPan resetKey={visited.id}>
+            <Room r={inside} grid={inside.size ?? 5} storey="ground" />
+          </ZoomPan>
+        </div>
+        <section className="townsheet">
+          <div className="ts-head">
+            <div>
+              <h3>{vTop} <small>{vBottom}</small></h3>
+              <p>Featured Shop · Level {visited.level} · {visited.score} decor</p>
+            </div>
+            <span className="stars" aria-label={`${visited.stars} of 5 stars`}>{'★'.repeat(visited.stars)}<span className="dim">{'★'.repeat(5 - visited.stars)}</span></span>
+          </div>
+          <p className="ts-note">Pick up ideas for your own place. Leaving a tip opens with accounts.</p>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="screen town">
       <header className="bar">
@@ -225,9 +276,17 @@ export default function Town({ r, onBack }: Props) {
         <span className="spacer" />
       </header>
 
+      <nav className="townchips" aria-label="Places">
+        {[...lots].sort((a, b) => Number(!!b.mine) - Number(!!a.mine) || a.r - b.r || a.c - b.c).map((l) => (
+          <button key={l.id} className={`tchip${sel === l.id ? ' on' : ''}`} onClick={() => goTo(l)} style={{ ['--neon' as string]: l.neon } as CSSProperties}>
+            <i aria-hidden />{l.mine ? 'My shop' : labelOf(l)[0]}
+          </button>
+        ))}
+      </nav>
+
       <div className="stage townstage">
-        <ZoomPan resetKey="town" startScale={1.35}>
-          <svg className="townmap" viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} role="img" aria-label="Map of the Night Market district">
+        <ZoomPan resetKey="town" startScale={1.35} focus={focus}>
+          <svg ref={mapRef} className="townmap" viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} role="img" aria-label="Map of the Night Market district">
             <RoomDefs phase={phase} />
             <defs>
               <radialGradient id="lampPool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stopColor="#ffd9a0" stopOpacity="0.5" /><stop offset="1" stopColor="#ffd9a0" stopOpacity="0" /></radialGradient>
@@ -239,7 +298,7 @@ export default function Town({ r, onBack }: Props) {
               {ground}
               {[4.8, 9.2].flatMap((s) => [[s, 0.6], [s, SIZE - 0.4], [0.6, s], [SIZE - 0.4, s]]).map(([x, y]) => pole(x, y))}
               {lots.map((l) => (
-                <g key={l.id} style={{ cursor: 'pointer' }} onPointerUp={() => setSel(l.id)}>
+                <g key={l.id} style={{ cursor: 'pointer' }} onPointerUp={() => goTo(l)}>
                   <Shop lot={l} top={labelOf(l)[0]} bottom={labelOf(l)[1]} glow={glow} selected={sel === l.id} floors={l.floors} deck={!!l.mine && hasStorey(r, 'rooftop')} />
                 </g>
               ))}
@@ -323,8 +382,8 @@ export default function Town({ r, onBack }: Props) {
               </>
             ) : (
               <>
-                <p className="ts-note">Visiting shops and leaving tips opens with accounts. Until then, enjoy the view.</p>
-                <button className="btn" disabled>Visit (coming soon)</button>
+                <p className="ts-note">Step inside and look around. Leaving tips opens with accounts.</p>
+                <button className="btn primary" onClick={() => setVisiting(selected.id)}>Visit shop</button>
               </>
             )}
           </>

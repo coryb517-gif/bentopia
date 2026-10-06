@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { coinSound } from './audio'
 import Room from './Room'
+import Exterior from './Exterior'
 import {
   allItems, BUILD, buildStorey, DEFAULT_NAME, NAME_WORDS, restaurantName, buyUpgrade, decorScore, expandStorey, hasStorey, itemDef, levelOf, nextExpansion, nextUpgrade, seatTotal, sizeOf,
   STOREY_IDS, STOREY_NAMES, storeyOf, storeyView, tipCapHours, tipsPerHour, UPGRADES, upgradeLevel, type Restaurant, type StoreyId, type UpgradeId,
@@ -54,6 +55,8 @@ export default function Build({ r, setR, coins, spend, onBack, onGoto }: Props) 
         <span className="coin"><Coin />{coins}</span>
       </header>
       {toast && <p className="toast fixed" key={toast}>{toast}</p>}
+
+      <div className="buildhero" aria-hidden><Exterior r={r} /></div>
 
       <section className="statrow" aria-label="Restaurant stats">
         <div><b>{level}</b><small>Level</small></div>

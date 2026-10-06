@@ -13,7 +13,15 @@ const MAX = 3.2
  * Pinch, drag and wheel zoom for a big room. Taps still pass through to whatever is underneath;
  * only a real drag pans, and that drag is swallowed so it does not place or select things.
  */
-export default function ZoomPan({ children, resetKey, className = '', startScale = 1 }: { children: ReactNode; resetKey?: string | number; className?: string; startScale?: number }) {
+/** Ask the camera to centre on a point: fx/fy are fractions of the content, s the zoom, n changes to re-trigger. */
+export interface Focus {
+  fx: number
+  fy: number
+  s: number
+  n: number
+}
+
+export default function ZoomPan({ children, resetKey, className = '', startScale = 1, focus }: { children: ReactNode; resetKey?: string | number; className?: string; startScale?: number; focus?: Focus }) {
   const box = useRef<HTMLDivElement>(null)
   const [t, setT] = useState<T>({ s: 1, x: 0, y: 0 })
   const tRef = useRef(t)
@@ -49,6 +57,16 @@ export default function ZoomPan({ children, resetKey, className = '', startScale
 
   useEffect(() => setT(home()), [resetKey])
   // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = box.current
+    if (!focus || !el) return
+    const w = el.clientWidth
+    const h = el.clientHeight
+    const s = Math.min(MAX, Math.max(MIN, focus.s))
+    setT(clamp({ s, x: w / 2 - focus.fx * w * s, y: h / 2 - focus.fy * h * s }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.n])
 
   useEffect(() => {
     const el = box.current

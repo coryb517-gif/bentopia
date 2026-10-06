@@ -613,4 +613,16 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 @keyframes boatride { 0% { transform: translate(0, 0); } 100% { transform: translate(var(--tx), var(--ty)); } }
 .burst { animation: burst 4.8s ease-out infinite; transform-box: fill-box; transform-origin: center; opacity: 0; }
 @keyframes burst { 0% { transform: scale(0.1); opacity: 0; } 8% { opacity: 1; } 55% { transform: scale(1.1); opacity: 0.9; } 100% { transform: scale(1.35); opacity: 0; } }
-.townmap { height: min(64vh, 560px); }
+.townmap { height: min(58vh, 520px); }
+
+/* Town navigation */
+.townchips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 12px 8px; margin: 0 -12px; scrollbar-width: none; }
+.townchips::-webkit-scrollbar { display: none; }
+.tchip { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 999px; font: inherit; font-weight: 800; font-size: 0.78rem; color: #fff; background: var(--glass); border: 1px solid var(--glass-edge); cursor: pointer; white-space: nowrap; }
+.tchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--neon, #ffd23a); box-shadow: 0 0 8px var(--neon, #ffd23a); }
+.tchip.on { background: rgba(255, 210, 58, 0.22); border-color: #ffd23a; }
+.town.visit .stage { flex: 1; min-height: 0; margin: 0 -12px; }
+.town.visit .zp { height: min(60vh, 520px); }
+.buildhero { border-radius: 22px; overflow: hidden; margin: 0 0 12px; background: linear-gradient(#1b1240, #4a2a6a); border: 1px solid var(--glass-edge); max-height: 300px; display: grid; place-items: center; }
+.buildhero svg { width: 100%; height: auto; max-height: 300px; }
+.town.visit h2 { font-size: 1.15rem; text-align: center; line-height: 1.1; }
