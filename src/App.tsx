@@ -9,12 +9,12 @@ import BoardView from './game/BoardView'
 import { claimSound, coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
 import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import Coach from './game/Coach'
-import Build from './game/Build'
 import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
 import Hub from './game/Hub'
 import Town from './game/Town'
 import AvatarCreator from './game/AvatarCreator'
+import type { StudioMode } from './game/Decorate'
 import Rewards from './game/Rewards'
 import { claimDaily, claimGoal, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext } from './game/progress'
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
@@ -30,7 +30,7 @@ import { isBomb } from './sim/engine'
 import type { GameState } from './sim/types'
 import './App.css'
 
-type Screen = 'title' | 'avatar' | 'hub' | 'decorate' | 'build' | 'town' | 'map' | 'play'
+type Screen = 'title' | 'avatar' | 'hub' | 'decorate' | 'town' | 'map' | 'play'
 
 
 function hasProgress(): boolean {
@@ -202,6 +202,7 @@ function Game() {
   const avatarBack = useRef<Screen>('title')
   const [progress, setProgress] = useState(() => loadProgress())
   const [showRewards, setShowRewards] = useState(false)
+  const [studioMode, setStudioMode] = useState<StudioMode>('furniture')
   useEffect(() => saveProgress(progress), [progress])
   useEffect(() => setProgress((p) => noteItems(p, restaurant)), [restaurant])
   const goalCtx: GoalContext = { stars, restaurant, progress }
@@ -448,11 +449,16 @@ function Game() {
         onDecorate={() => {
           setTut((t) => (t.step === 'hub' ? { ...t, step: 'decorate' } : t))
           if (hubView !== 'outside') setStorey(hubView)
+          setStudioMode('furniture')
           setScreen('decorate')
         }}
         view={hubView}
         onView={setHubView}
-        onBuild={() => setScreen('build')}
+        onBuild={() => {
+          if (hubView !== 'outside') setStorey(hubView)
+          setStudioMode('build')
+          setScreen('decorate')
+        }}
         onTown={() => setScreen('town')}
         next={(() => {
           const l = LEVELS.find((x) => !(stars[x.id] > 0)) ?? LEVELS[LEVELS.length - 1]
@@ -494,7 +500,7 @@ function Game() {
         initialTab={tut.step === 'decorate' ? 'lights' : 'seating'}
         storey={storey}
         onStorey={setStorey}
-        onBuild={() => setScreen('build')}
+        initialMode={studioMode}
       />
     )
   }
@@ -527,26 +533,6 @@ function Game() {
         }}
         onVisit={() => setProgress((p) => ({ ...p, stats: { ...p.stats, visits: p.stats.visits + 1 } }))}
         onBack={() => setScreen('hub')}
-      />,
-    )
-  }
-  if (screen === 'build') {
-    return withCoach(
-      <Build
-        r={restaurant}
-        setR={setRestaurant}
-        coins={wallet.coins}
-        spend={(n) => {
-          const paid = spend(wallet, n)
-          if (!paid) return false
-          setWallet(paid)
-          return true
-        }}
-        onBack={() => setScreen('hub')}
-        onGoto={(id) => {
-          setStorey(id)
-          setScreen('decorate')
-        }}
       />,
     )
   }

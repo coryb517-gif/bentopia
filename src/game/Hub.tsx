@@ -10,7 +10,7 @@ import ZoomPan from './ZoomPan'
 import type { Avatar } from './avatar'
 import { AvatarBadge } from './AvatarFigure'
 import { emoteSound, startAmbience, stopAmbience } from './audio'
-import { decorScore, levelOf, levelProgress, restaurantLevel, seatTotal, sizeOf, storeyView, tipsPerHour, upgradeLevel, type Restaurant } from './restaurant'
+import { decorScore, levelOf, levelProgress, restaurantLevel, sizeOf, storeyView, type Restaurant } from './restaurant'
 
 interface Props {
   r: Restaurant
@@ -52,6 +52,7 @@ const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wa
 
 export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, rewardDot }: Props) {
   const [emote, setEmote] = useState({ n: 0, e: '' })
+  const [emoteOpen, setEmoteOpen] = useState(false)
   // The restaurant hums softly while you are inside it.
   useEffect(() => {
     if (view === 'outside') return
@@ -74,7 +75,6 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           <div className="meter" aria-label={prog ? `${prog.have} of ${prog.need} to the next level` : 'Max level'}>
             <i style={{ width: `${prog ? Math.min(100, (prog.have / prog.need) * 100) : 100}%` }} />
           </div>
-          <small>{score} decor · {Math.round(tipsPerHour(score, seatTotal(r), upgradeLevel(r, 'menu')))} tips/hr</small>
         </div>
         {onRewards && <button className="giftbtn" onClick={onRewards} aria-label="Rewards">🎁{rewardDot && <i className="dot" />}</button>}
         <div className="wallet mini">
@@ -88,9 +88,14 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
       <div className="stage hubstage">
         <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} />}</ZoomPan>
         {avatar && view !== 'outside' && (
-          <div className="emotebar" aria-label="Emotes">
-            {['👋', '❤️', '🎉', '😋', '😴'].map((e) => <button key={e} onClick={() => { emoteSound(); setEmote((m) => ({ n: m.n + 1, e })) }} aria-label={`Emote ${e}`}>{e}</button>)}
-          </div>
+          <>
+            <button className={`emotetoggle${emoteOpen ? ' on' : ''}`} onClick={() => setEmoteOpen((o) => !o)} aria-label="Emotes" aria-expanded={emoteOpen}>😊</button>
+            {emoteOpen && (
+              <div className="emotebar" aria-label="Emotes">
+                {['👋', '❤️', '🎉', '😋', '😴'].map((e) => <button key={e} onClick={() => { emoteSound(); setEmote((m) => ({ n: m.n + 1, e })); setEmoteOpen(false) }} aria-label={`Emote ${e}`}>{e}</button>)}
+              </div>
+            )}
+          </>
         )}
         {tips > 0 && (
           <button className="tips" onClick={onCollect}>

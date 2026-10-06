@@ -4,6 +4,7 @@ import { coinSound, levelUpSound } from './audio'
 import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
 import StoreyTabs from './StoreyTabs'
+import BuildPanel from './BuildPanel'
 import ZoomPan from './ZoomPan'
 import {
   applyStorey, canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall, sizeOf, storeyView, type StoreyId,
@@ -12,6 +13,16 @@ import {
 } from './restaurant'
 
 export type DecorTab = Category | 'floors' | 'paint'
+export type StudioMode = 'furniture' | 'style' | 'layout' | 'build'
+
+const MODES: { id: StudioMode; name: string; icon: string }[] = [
+  { id: 'furniture', name: 'Furniture', icon: '🪑' },
+  { id: 'style', name: 'Style', icon: '🎨' },
+  { id: 'layout', name: 'Layout', icon: '✨' },
+  { id: 'build', name: 'Build', icon: '🏗️' },
+]
+
+const CAT_ICON: Record<string, string> = { seating: '🪑', kitchen: '🍳', decor: '🏮', garden: '🌿', lights: '💡', wall: '🖼️', rugs: '🧶' }
 
 interface Props {
   r: Restaurant
@@ -24,10 +35,10 @@ interface Props {
   onBought?: () => void
   /** Which shop tab to open first. */
   initialTab?: DecorTab
+  /** Which part of the studio to open on. */
+  initialMode?: StudioMode
   storey: StoreyId
   onStorey: (id: StoreyId) => void
-  /** The player tapped a floor that is not built yet. */
-  onBuild: () => void
 }
 
 type WallGhost = { type: ItemType; side: WallSide; slot: number; ignoreId?: number }
@@ -51,15 +62,16 @@ const SET_COLOR: Record<string, string> = { izakaya: '#ffb347', sushibar: '#7fe6
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', storey, onStorey, onBuild }: Props) {
+export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', initialMode = 'furniture', storey, onStorey }: Props) {
   const r = storeyView(root, storey)
   const setR = (next: Restaurant) => setRoot(applyStorey(root, storey, next))
   const [tab, setTab] = useState<DecorTab>(initialTab)
+  const [mode, setMode] = useState<StudioMode>(initialMode)
+  const [showSets, setShowSets] = useState(false)
   const [placing, setPlacing] = useState<Placing | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
   const [levelUp, setLevelUp] = useState<number | null>(null)
-  const [tidyOpen, setTidyOpen] = useState(false)
   const [undo, setUndo] = useState<{ before: Restaurant; after: Restaurant } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -91,7 +103,6 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
 
   /** Rearrange everything on this floor; one tap on Undo puts it all back. */
   const tidy = (style: LayoutStyle) => {
-    setTidyOpen(false)
     const next = autoArrange(r, grid, style)
     if (!next) return say('Not enough room to rearrange. Sell something or expand!')
     const moved = next.items.some((p, i) => { const o = r.items[i]; return !o || o.gx !== p.gx || o.gy !== p.gy || !!o.flip !== !!p.flip || o.wall !== p.wall })
@@ -238,11 +249,11 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     <main className="screen decorate">
       <header className="bar">
         <button className="btn ghost" data-coach="done" onClick={onDone}>Done</button>
-        <h2>Decorate</h2>
+        <h2>{mode === 'build' ? 'Build' : 'Studio'}</h2>
         <span className="coin"><Coin />{coins}</span>
       </header>
 
-      <StoreyTabs r={root} active={storey} onPick={(id) => { if (id === 'outside') return; setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={onBuild} />
+      <StoreyTabs r={root} active={storey} onPick={(id) => { if (id === 'outside') return; setPlacing(null); setSelectedId(null); onStorey(id); setTab(id === 'rooftop' && tab === 'wall' ? 'seating' : tab) }} onLocked={() => { setPlacing(null); setSelectedId(null); setMode('build') }} />
 
       <div className="stage">
         <ZoomPan resetKey={storey}>
@@ -262,7 +273,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
         {toast && <p className="toast" key={toast}>{toast}</p>}
       </div>
 
-      <section className="sheet" aria-label="Decorate controls">
+      <section className={`sheet studio${mode === 'build' && !placing && !selected ? ' tall' : ''}`} aria-label="Studio controls">
         {placing && placingType ? (
           <div className="placebar">
             <div>
@@ -290,75 +301,110 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
           </div>
         ) : (
           <>
-            <div className="tidyrow">
-              <button className="btn" onClick={() => setTidyOpen((o) => !o)} disabled={r.items.length < 2}>✨ Auto-arrange</button>
-              {undo && undo.after === root && <button className="btn ghost" onClick={() => { setRoot(undo.before); setUndo(null); say('Put back.') }}>Undo</button>}
-            </div>
-            {tidyOpen && (
-              <div className="tidystyles" role="group" aria-label="Layout style">
-                {LAYOUT_STYLES.map((s) => (
-                  <button key={s.id} className="btn" onClick={() => tidy(s.id)}><b>{s.name}</b><small>{s.blurb}</small></button>
-                ))}
-              </div>
-            )}
-            <div className="tabs" role="tablist">
-              {tabs.map((t) => (
-                <button key={t.id} role="tab" aria-selected={tab === t.id} className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
-                  {t.name}
+            <div className="modebar" role="tablist" aria-label="Studio">
+              {MODES.map((m) => (
+                <button key={m.id} role="tab" aria-selected={mode === m.id} data-coach={`mode-${m.id}`} className={`mode${mode === m.id ? ' on' : ''}`} onClick={() => setMode(m.id)}>
+                  <span className="mi" aria-hidden>{m.icon}</span>
+                  <span>{m.name}</span>
                 </button>
               ))}
             </div>
-            {tab !== 'floors' && tab !== 'paint' && (
-              <div className="setrow" aria-label="Collections">
-                {SETS.map((s) => {
-                  const p = sets.find((x) => x.set === s.id)!
-                  return (
-                    <span key={s.id} className={`setpill${p.rate > 0 ? ' on' : ''}`} style={{ ['--sc' as string]: SET_COLOR[s.id] }} title={s.blurb}>
-                      <i />{s.name} {p.count}{p.next ? `/${p.next}` : ''}{p.rate > 0 && <b>+{Math.round(setBonusRate(p.count) * 100)}%</b>}
-                    </span>
-                  )
-                })}
-                <span className="rlv">Level {level}</span>
-              </div>
+
+            {mode === 'furniture' && (
+              <>
+                <div className="catrow" role="tablist" aria-label="Furniture type">
+                  {tabs
+                    .filter((c) => c.id !== 'floors' && c.id !== 'paint')
+                    .map((c) => (
+                      <button key={c.id} role="tab" aria-selected={tab === c.id} className={`cat${tab === c.id ? ' on' : ''}`} onClick={() => setTab(c.id)}>
+                        <span aria-hidden>{CAT_ICON[c.id] ?? '•'}</span>
+                        {c.name}
+                      </button>
+                    ))}
+                  <button className={`cat sets${showSets ? ' on' : ''}`} aria-pressed={showSets} onClick={() => setShowSets((v) => !v)}>
+                    <span aria-hidden>🏅</span>Sets
+                  </button>
+                </div>
+                {showSets && (
+                  <div className="setrow" aria-label="Collections">
+                    {SETS.map((s) => {
+                      const p = sets.find((x) => x.set === s.id)!
+                      return (
+                        <span key={s.id} className={`setpill${p.rate > 0 ? ' on' : ''}`} style={{ ['--sc' as string]: SET_COLOR[s.id] }} title={s.blurb}>
+                          <i />{s.name} {p.count}{p.next ? `/${p.next}` : ''}{p.rate > 0 && <b>+{Math.round(setBonusRate(p.count) * 100)}%</b>}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+                <div className="cards">
+                  {shown.map((def) => {
+                    const locked = def.unlock > level
+                    const rar = rarityOf(def.price)
+                    return (
+                      <button
+                        key={def.type}
+                        data-coach={`card-${def.type}`}
+                        className={`shopcard r-${rar}${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`}
+                        onClick={() => startShop(def.type)}
+                      >
+                        <i className="setdot" style={{ background: SET_COLOR[def.set] }} aria-hidden />
+                        <DecorPreview type={def.type} size={78} />
+                        <span className="nm">{def.name}</span>
+                        <span className="pr">{locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>
+                        {!locked && completesTier(def.type) && <em className="tierup">Set bonus!</em>}
+                        {locked && <i className="lock" aria-hidden>🔒</i>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
             )}
-            <div className="cards">
-              {tab !== 'floors' && tab !== 'paint' &&
-                shown.map((def) => {
-                  const locked = def.unlock > level
-                  const rar = rarityOf(def.price)
-                  return (
-                    <button
-                      key={def.type}
-                      data-coach={`card-${def.type}`}
-                      className={`shopcard r-${rar}${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`}
-                      onClick={() => startShop(def.type)}
-                    >
-                      <i className="setdot" style={{ background: SET_COLOR[def.set] }} aria-hidden />
-                      <DecorPreview type={def.type} size={78} />
-                      <span className="nm">{def.name}</span>
-                      <span className="pr">{locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>
-                      {!locked && completesTier(def.type) && <em className="tierup">Set bonus!</em>}
-                      {locked && <i className="lock" aria-hidden>🔒</i>}
+
+            {mode === 'style' && (
+              <>
+                <h3 className="sect">Floor</h3>
+                <div className="cards">
+                  {FLOORS.map((f) => (
+                    <button key={f.id} className={`shopcard theme${r.floor === f.id ? ' equipped' : ''}`} onClick={() => pickTheme('floor', f.id, f.price)}>
+                      <span className="swatch" style={{ background: FLOOR_SWATCH[f.id] }} />
+                      <span className="nm">{f.name}</span>
+                      <span className="pr">{r.floor === f.id ? 'Equipped' : r.ownedFloors.includes(f.id) ? 'Use' : <><Coin />{f.price}</>}</span>
                     </button>
-                  )
-                })}
-              {tab === 'floors' &&
-                FLOORS.map((f) => (
-                  <button key={f.id} className={`shopcard theme${r.floor === f.id ? ' equipped' : ''}`} onClick={() => pickTheme('floor', f.id, f.price)}>
-                    <span className="swatch" style={{ background: FLOOR_SWATCH[f.id] }} />
-                    <span className="nm">{f.name}</span>
-                    <span className="pr">{r.floor === f.id ? 'Equipped' : r.ownedFloors.includes(f.id) ? 'Use' : <><Coin />{f.price}</>}</span>
-                  </button>
-                ))}
-              {tab === 'paint' &&
-                WALLS.map((w) => (
-                  <button key={w.id} className={`shopcard theme${r.wall === w.id ? ' equipped' : ''}`} onClick={() => pickTheme('wall', w.id, w.price)}>
-                    <span className="swatch" style={{ background: WALL_SWATCH[w.id] }} />
-                    <span className="nm">{w.name}</span>
-                    <span className="pr">{r.wall === w.id ? 'Equipped' : r.ownedWalls.includes(w.id) ? 'Use' : <><Coin />{w.price}</>}</span>
-                  </button>
-                ))}
-            </div>
+                  ))}
+                </div>
+                {!rooftop && (
+                  <>
+                    <h3 className="sect">Walls</h3>
+                    <div className="cards">
+                      {WALLS.map((w) => (
+                        <button key={w.id} className={`shopcard theme${r.wall === w.id ? ' equipped' : ''}`} onClick={() => pickTheme('wall', w.id, w.price)}>
+                          <span className="swatch" style={{ background: WALL_SWATCH[w.id] }} />
+                          <span className="nm">{w.name}</span>
+                          <span className="pr">{r.wall === w.id ? 'Equipped' : r.ownedWalls.includes(w.id) ? 'Use' : <><Coin />{w.price}</>}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            {mode === 'layout' && (
+              <>
+                <p className="layouthint">Rearrange everything on this floor in one tap. Nothing is sold, and you can undo it.</p>
+                <div className="tidystyles" role="group" aria-label="Layout style">
+                  {LAYOUT_STYLES.map((s) => (
+                    <button key={s.id} className="btn" disabled={r.items.length < 2} onClick={() => tidy(s.id)}><b>{s.name}</b><small>{s.blurb}</small></button>
+                  ))}
+                </div>
+                {undo && undo.after === root && <button className="btn ghost undobtn" onClick={() => { setRoot(undo.before); setUndo(null); say('Put back.') }}>↶ Undo last rearrange</button>}
+              </>
+            )}
+
+            {mode === 'build' && (
+              <BuildPanel r={root} setR={(n) => setRoot(withPeak(n))} coins={coins} spend={spend} say={say} storey={storey} onShow={(id) => { setPlacing(null); setSelectedId(null); onStorey(id) }} />
+            )}
           </>
         )}
       </section>
