@@ -408,6 +408,8 @@ export interface RoomProps {
   live?: boolean
   /** The player's character: tap the floor to walk around. */
   avatar?: Avatar
+  /** A speech-bubble emote over the avatar; change `n` to show another. */
+  emote?: { n: number; e: string }
 }
 
 type Seat = ReturnType<typeof seats>[number]
@@ -443,7 +445,14 @@ function seatSpot(r: Restaurant, s: Seat): { x: number; y: number; z: number; ke
   return { x: sx, y: sy, z: sz, key: it.gx + it.gy + fw + fd + adj }
 }
 
-export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, onTile, onItem, onHover, storey = 'ground', phase: forced, live = true, avatar }: RoomProps) {
+export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, onTile, onItem, onHover, storey = 'ground', phase: forced, live = true, avatar, emote }: RoomProps) {
+  const [bubble, setBubble] = useState<string | null>(null)
+  useEffect(() => {
+    if (!emote?.n) return
+    setBubble(emote.e)
+    const id = setTimeout(() => setBubble(null), 2200)
+    return () => clearTimeout(id)
+  }, [emote?.n])
   const rooftop = storey === 'rooftop'
   const topH = rooftop ? 78 : WALL_H
   const svg = useRef<SVGSVGElement>(null)
@@ -872,6 +881,12 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         return (
           <g pointerEvents="none">
             <g transform={`translate(${px} ${py}) scale(0.74)`}><AvatarFigure a={avatar} left={me.left} walking={me.walking} /></g>
+            {bubble && (
+              <g transform={`translate(${px} ${py - 52})`}><g className="emote">
+                <path d="M-14 -12h28a6 6 0 0 1 6 6v10a6 6 0 0 1-6 6h-10l-4 6-4-6h-10a6 6 0 0 1-6-6v-10a6 6 0 0 1 6-6z" fill="#fffdf7" stroke="#2a0f2e" strokeWidth="1.6" strokeLinejoin="round" />
+                <text y="4" textAnchor="middle" fontSize="15">{bubble}</text>
+              </g></g>
+            )}
             {front.map((p) => (
               <g key={`me-${p.id}`} transform={itemTf(p.type, p.gx, p.gy, p.flip)}>{floorArt(p.type).art()}</g>
             ))}

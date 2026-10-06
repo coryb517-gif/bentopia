@@ -437,6 +437,10 @@ function Game() {
         prefs={prefs}
         onPref={togglePref}
         avatar={avatar ?? undefined}
+        onAvatar={() => {
+          avatarBack.current = 'hub'
+          setScreen('avatar')
+        }}
       />
     )
   }
@@ -475,7 +479,10 @@ function Game() {
         onDone={(a) => {
           setAvatar(a)
           saveAvatar(a)
-          if (avatarBack.current === 'title') proceedFromTitle()
+          if (avatarBack.current === 'title') {
+            setScreen('title')
+            proceedFromTitle()
+          }
           else setScreen(avatarBack.current)
         }}
       />

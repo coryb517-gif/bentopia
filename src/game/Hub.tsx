@@ -8,6 +8,7 @@ import Room from './Room'
 import StoreyTabs, { type ViewId } from './StoreyTabs'
 import ZoomPan from './ZoomPan'
 import type { Avatar } from './avatar'
+import { AvatarBadge } from './AvatarFigure'
 import { decorScore, levelOf, levelProgress, restaurantLevel, seatTotal, sizeOf, storeyView, tipsPerHour, upgradeLevel, type Restaurant } from './restaurant'
 
 interface Props {
@@ -27,6 +28,7 @@ interface Props {
   onContinue: () => void
   prefs: Record<Pref, boolean>
   avatar?: Avatar
+  onAvatar?: () => void
   onPref: (k: Pref) => void
 }
 
@@ -45,7 +47,8 @@ const ICONS = {
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar }: Props) {
+  const [emote, setEmote] = useState({ n: 0, e: '' })
   const [sheet, setSheet] = useState<'settings' | 'pantry' | 'market' | null>(null)
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
   const score = decorScore(r)
@@ -56,6 +59,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
   return (
     <main className="screen hub">
       <header className="hubbar">
+        {avatar && <button className="abadge" onClick={onAvatar} aria-label="Change your look"><AvatarBadge a={avatar} size={42} /></button>}
         <div className="rlevel">
           <b>Lv {level}</b>
           <div className="meter" aria-label={prog ? `${prog.have} of ${prog.need} to the next level` : 'Max level'}>
@@ -72,7 +76,12 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
       <StoreyTabs r={r} outside active={view} onPick={onView} onLocked={onBuild} />
 
       <div className="stage hubstage">
-        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} />}</ZoomPan>
+        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} />}</ZoomPan>
+        {avatar && view !== 'outside' && (
+          <div className="emotebar" aria-label="Emotes">
+            {['👋', '❤️', '🎉', '😋', '😴'].map((e) => <button key={e} onClick={() => setEmote((m) => ({ n: m.n + 1, e }))} aria-label={`Emote ${e}`}>{e}</button>)}
+          </div>
+        )}
         {tips > 0 && (
           <button className="tips" onClick={onCollect}>
             <i className="coinicon" /> Collect tips <b>+{tips}</b>

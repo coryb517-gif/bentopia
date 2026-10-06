@@ -1,0 +1,14 @@
+{
+  "name": "Bentopia: Sushi Merge",
+  "short_name": "Bentopia",
+  "description": "A cozy link-and-merge puzzle game with a restaurant to build.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1240",
+  "theme_color": "#1b1240",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -75,3 +75,13 @@ export function AvatarPortrait({ a, size = 150 }: { a: Avatar; size?: number }) 
     </svg>
   )
 }
+
+/** A round head-and-shoulders badge for headers. */
+export function AvatarBadge({ a, size = 40 }: { a: Avatar; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-15 -52 30 30" aria-hidden>
+      <circle cx="0" cy="-37" r="15" fill="rgba(255,255,255,0.14)" />
+      <AvatarFigure a={a} />
+    </svg>
+  )
+}
