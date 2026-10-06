@@ -29,6 +29,8 @@ interface Props {
   prefs: Record<Pref, boolean>
   avatar?: Avatar
   onAvatar?: () => void
+  onRewards?: () => void
+  rewardDot?: boolean
   onPref: (k: Pref) => void
 }
 
@@ -47,7 +49,7 @@ const ICONS = {
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, rewardDot }: Props) {
   const [emote, setEmote] = useState({ n: 0, e: '' })
   const [sheet, setSheet] = useState<'settings' | 'pantry' | 'market' | null>(null)
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
@@ -67,6 +69,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           </div>
           <small>{score} decor · {Math.round(tipsPerHour(score, seatTotal(r), upgradeLevel(r, 'menu')))} tips/hr</small>
         </div>
+        {onRewards && <button className="giftbtn" onClick={onRewards} aria-label="Rewards">🎁{rewardDot && <i className="dot" />}</button>}
         <div className="wallet mini">
           <Hearts wallet={wallet} now={now} />
           <span className="coin"><i className="coinicon" />{wallet.coins}</span>

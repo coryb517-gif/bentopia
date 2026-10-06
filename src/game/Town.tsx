@@ -13,6 +13,7 @@ interface Props {
   r: Restaurant
   avatar: Avatar
   onEditAvatar: () => void
+  onVisit?: () => void
   onBack: () => void
 }
 
@@ -131,7 +132,7 @@ const doorFront = (l: { c: number; r: number }): V => {
   return [x + LOT / 2, y + LOT + 0.45]
 }
 
-export default function Town({ r, avatar, onEditAvatar, onBack }: Props) {
+export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props) {
   const [phase, setPhase] = useState<Phase>(() => phaseOf())
   const [sel, setSel] = useState<string | null>('mine')
   const [visiting, setVisiting] = useState<string | null>(null)
@@ -469,7 +470,7 @@ export default function Town({ r, avatar, onEditAvatar, onBack }: Props) {
             ) : (
               <>
                 <p className="ts-note">Step inside and look around. Leaving tips opens with accounts.</p>
-                <button className="btn primary" onClick={() => setVisiting(selected.id)}>Visit shop</button>
+                <button className="btn primary" onClick={() => { setVisiting(selected.id); onVisit?.() }}>Visit shop</button>
               </>
             )}
           </>

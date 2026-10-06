@@ -15,6 +15,8 @@ import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tu
 import Hub from './game/Hub'
 import Town from './game/Town'
 import AvatarCreator from './game/AvatarCreator'
+import Rewards from './game/Rewards'
+import { claimDaily, claimGoal, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext } from './game/progress'
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
@@ -198,6 +200,11 @@ function Game() {
   const [intro, setIntro] = useState(false)
   const [avatar, setAvatar] = useState<Avatar | null>(() => loadAvatar())
   const avatarBack = useRef<Screen>('title')
+  const [progress, setProgress] = useState(() => loadProgress())
+  const [showRewards, setShowRewards] = useState(false)
+  useEffect(() => saveProgress(progress), [progress])
+  useEffect(() => setProgress((p) => noteItems(p, restaurant)), [restaurant])
+  const goalCtx: GoalContext = { stars, restaurant, progress }
   const [pending, setPending] = useState<number | null>(null)
   const [storey, setStorey] = useState<StoreyId>('ground')
   const [hubView, setHubView] = useState<ViewId>('outside')
@@ -272,7 +279,10 @@ function Game() {
 
   const onState = useCallback((s: GameState) => setGame(s), [])
 
-  const onBomb = useCallback((cleared: number) => say(cleared > 4 ? 'BOOM! Fresh ingredients!' : 'Boom!', 'wow'), [say])
+  const onBomb = useCallback((cleared: number) => {
+    setProgress((p) => ({ ...p, stats: { ...p.stats, bombs: p.stats.bombs + 1 } }))
+    say(cleared > 4 ? 'BOOM! Fresh ingredients!' : 'Boom!', 'wow')
+  }, [say])
 
   const onMerge = useCallback(
     (len: number, tier: number) => {
@@ -408,8 +418,21 @@ function Game() {
     )
   }
 
+  const claimDailyReward = () => {
+    const got = claimDaily(progress, Date.now())
+    if (!got) return
+    setProgress(got.progress)
+    setWallet((w) => earn(w, got.reward))
+  }
+  const claimGoalReward = (g: Goal) => {
+    const next = claimGoal(progress, g, goalCtx)
+    if (!next) return
+    setProgress(next)
+    setWallet((w) => earn(w, g.reward))
+  }
+
   if (screen === 'hub') {
-    return withCoach(
+    return withCoach(<>
       <Hub
         r={restaurant}
         wallet={wallet}
@@ -437,12 +460,15 @@ function Game() {
         prefs={prefs}
         onPref={togglePref}
         avatar={avatar ?? undefined}
+        onRewards={() => setShowRewards(true)}
+        rewardDot={hasRewardWaiting(goalCtx, now)}
         onAvatar={() => {
           avatarBack.current = 'hub'
           setScreen('avatar')
         }}
       />
-    )
+      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClose={() => setShowRewards(false)} />}
+    </>)
   }
 
   if (screen === 'decorate') {
@@ -497,6 +523,7 @@ function Game() {
           avatarBack.current = 'town'
           setScreen('avatar')
         }}
+        onVisit={() => setProgress((p) => ({ ...p, stats: { ...p.stats, visits: p.stats.visits + 1 } }))}
         onBack={() => setScreen('hub')}
       />,
     )
