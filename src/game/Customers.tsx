@@ -19,6 +19,15 @@ export const CUSTOMERS: Customer[] = [
   { id: 'mochi', name: 'Mochi', ask: 'Meow. Fish. Immediately.', win: 'Purrrrr. You may live.', lose: 'Hmph. I am leaving.' },
 ]
 
+/** A rare guest who is not in the order rotation: she only turns up as a diner. */
+export const ASHLYNDIA: Customer = {
+  id: 'ashlyndia',
+  name: 'Ashlyndia',
+  ask: 'Something sparkly, please!',
+  win: 'Magnificent! You have outdone yourself.',
+  lose: 'Courage, chef. The stars are with you.',
+}
+
 export const customerFor = (levelId: number) => CUSTOMERS[(levelId - 1) % CUSTOMERS.length]
 
 const OL = '#2a0f2e'
@@ -182,7 +191,32 @@ function Mochi({ mood }: { mood: CustomerMood }) {
   )
 }
 
+function Ashlyndia({ mood }: { mood: CustomerMood }) {
+  return (
+    <>
+      <path d="M19 52Q12 96 33 100H67Q88 96 81 52Q81 12 50 12Q19 12 19 52Z" fill="#8a5cff" {...stroked} />
+      <path d="M10 100Q12 76 36 72H64Q88 76 90 100Z" fill="#ff8fc8" {...stroked} />
+      <path d="M38 72L50 93L62 72Z" fill="#fff3e4" {...stroked} />
+      <path d="M22 100Q38 86 50 93Q62 86 78 100" fill="none" stroke="#ffd23a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M44 62h12v12H44Z" fill={SKIN_SH} />
+      <ellipse cx="50" cy="48" rx="22" ry="24" fill={SKIN} {...stroked} />
+      <path d="M27 46Q24 22 50 22Q76 22 73 46Q66 33 50 33Q34 33 27 46Z" fill="#8a5cff" {...stroked} />
+      <path d="M50 24Q44 38 36 40M50 24Q56 38 64 40" fill="none" stroke="#6a3fe0" strokeWidth="2" strokeLinecap="round" />
+      <path d="M33 22L38 10L45 19L50 5L55 19L62 10L67 22Z" fill="#ffd23a" {...stroked} />
+      <circle cx="50" cy="16" r="3.2" fill="#ff5b8a" stroke={OL} strokeWidth="1.6" />
+      {eyes(mood, 50, 50, 10, 3.2, '#5a2fd0')}
+      {blush(50, 60, 15, '#ff7fb0')}
+      {mouth(mood, 50, 64)}
+      <g fill="#fff" stroke={OL} strokeWidth="1.2" strokeLinejoin="round">
+        <path d="M14 30l2.4 5.4 5.4 2.4-5.4 2.4L14 45.6l-2.4-5.4L6.2 37.8l5.4-2.4z" fill="#ffe27a" />
+        <path d="M88 24l1.8 4 4 1.8-4 1.8L88 35.6l-1.8-4-4-1.8 4-1.8z" fill="#fff" />
+      </g>
+    </>
+  )
+}
+
 const BODIES: Record<string, (p: { mood: CustomerMood }) => ReactNode> = {
+  ashlyndia: Ashlyndia,
   obaa: Obaa,
   hana: Hana,
   tanaka: Tanaka,

@@ -31,6 +31,7 @@ interface Props {
   avatar?: Avatar
   onAvatar?: () => void
   onRewards?: () => void
+  onGuest?: (id: string) => void
   rewardDot?: boolean
   onPref: (k: Pref) => void
 }
@@ -50,7 +51,8 @@ const ICONS = {
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, rewardDot }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, onGuest, rewardDot }: Props) {
+  const [guestMsg, setGuestMsg] = useState('')
   const [emote, setEmote] = useState({ n: 0, e: '' })
   const [emoteOpen, setEmoteOpen] = useState(false)
   // The restaurant hums softly while you are inside it.
@@ -86,7 +88,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
       <StoreyTabs r={r} outside active={view} onPick={onView} onLocked={onBuild} />
 
       <div className="stage hubstage">
-        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} />}</ZoomPan>
+        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} onGuest={(id) => { onGuest?.(id); setGuestMsg('✨ Ashlyndia stopped by for a bite!'); setTimeout(() => setGuestMsg(''), 6000) }} />}</ZoomPan>
         {avatar && view !== 'outside' && (
           <>
             <button className={`emotetoggle${emoteOpen ? ' on' : ''}`} onClick={() => setEmoteOpen((o) => !o)} aria-label="Emotes" aria-expanded={emoteOpen}>😊</button>
@@ -104,7 +106,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
         )}
         <div className="hubmascot">
           <Mascot mood={tips > 0 ? 'cheer' : 'idle'} size={64} />
-          <p className="bubble">{out ? 'Rest a moment, chef...' : tips > 0 ? 'Customers left tips!' : greeting}</p>
+          <p className="bubble">{guestMsg || (out ? 'Rest a moment, chef...' : tips > 0 ? 'Customers left tips!' : greeting)}</p>
         </div>
       </div>
 

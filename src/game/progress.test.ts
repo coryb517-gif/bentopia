@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { claimDaily, claimGoal, dailyStatus, DAILY_REWARDS, dayKey, GOALS, goalClaimable, hasRewardWaiting, newProgress, noteItems, type GoalContext } from './progress'
 import { newRestaurant } from './restaurant'
+import { ASHLYNDIA, CUSTOMERS, customerFor } from './Customers'
 
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime()
 
@@ -59,5 +60,21 @@ describe('goals and the book', () => {
     expect(hasRewardWaiting(ctx(), at(2026, 10, 6))).toBe(true) // daily is ready
     const done = claimDaily(newProgress(), at(2026, 10, 6))!.progress
     expect(hasRewardWaiting(ctx({ progress: done }), at(2026, 10, 6, 23))).toBe(false)
+  })
+})
+
+describe('Ashlyndia, the rare guest', () => {
+  it('never asks for an order, only drops by', () => {
+    expect(CUSTOMERS.some((c) => c.id === 'ashlyndia')).toBe(false)
+    expect(Array.from({ length: 48 }, (_, i) => customerFor(i + 1).id)).not.toContain('ashlyndia')
+    expect(ASHLYNDIA.name).toBe('Ashlyndia')
+  })
+
+  it('unlocks a secret goal the first time she visits', () => {
+    const goal = GOALS.find((g) => g.id === 'ash1')!
+    const base: GoalContext = { stars: {}, restaurant: newRestaurant(0), progress: newProgress() }
+    expect(goalClaimable(goal, base)).toBe(false)
+    const met = { ...base, progress: { ...base.progress, stats: { ...base.progress.stats, ashlyndia: 1 } } }
+    expect(goalClaimable(goal, met)).toBe(true)
   })
 })

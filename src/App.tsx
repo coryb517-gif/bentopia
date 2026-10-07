@@ -471,6 +471,7 @@ function Game() {
         onPref={togglePref}
         avatar={avatar ?? undefined}
         onRewards={() => setShowRewards(true)}
+        onGuest={(id) => id === 'ashlyndia' && setProgress((p) => ({ ...p, stats: { ...p.stats, ashlyndia: p.stats.ashlyndia + 1 } }))}
         rewardDot={hasRewardWaiting(goalCtx, now)}
         onAvatar={() => {
           avatarBack.current = 'hub'

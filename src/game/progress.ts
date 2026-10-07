@@ -7,6 +7,8 @@ import { allItems, decorScore, hasStorey, levelOf, seatTotal, ITEMS, type Restau
 export interface Stats {
   bombs: number
   visits: number
+  /** Times the rare guest has dropped by. */
+  ashlyndia: number
 }
 
 export interface Progress {
@@ -17,7 +19,7 @@ export interface Progress {
   seen: string[]
 }
 
-export const newProgress = (): Progress => ({ daily: { last: '', streak: 0 }, claimed: [], stats: { bombs: 0, visits: 0 }, seen: [] })
+export const newProgress = (): Progress => ({ daily: { last: '', streak: 0 }, claimed: [], stats: { bombs: 0, visits: 0, ashlyndia: 0 }, seen: [] })
 
 // ---------- daily reward ----------
 export const DAILY_REWARDS = [30, 40, 50, 60, 80, 100, 200]
@@ -78,6 +80,7 @@ export const GOALS: Goal[] = [
   ...tiers('floors', (t) => (t === 2 ? 'Two storeys' : 'Rooftop dining'), (t) => `Build ${t} floors`, [2, 3], [100, 200], floors),
   ...tiers('bombs', (t) => (t === 1 ? 'Boom!' : `${t} bombs`), (t) => `Set off ${t} Flavor Bomb${t > 1 ? 's' : ''}`, [1, 10, 30], [20, 80, 200], (c) => c.progress.stats.bombs),
   ...tiers('visit', (t) => (t === 1 ? 'Neighbourly' : `${t} visits`), (t) => `Visit ${t} neighbour shop${t > 1 ? 's' : ''}`, [1, 6], [30, 100], (c) => c.progress.stats.visits),
+  { id: 'ash1', name: 'A familiar face', blurb: 'Someone special dropped by for a bite...', target: 1, reward: 150, value: (c) => c.progress.stats.ashlyndia },
   ...tiers('book', (t) => `${t} finds`, (t) => `Discover ${t} items for your collection book`, [10, 25, ITEMS.length], [40, 120, 400], (c) => c.progress.seen.length),
 ]
 
@@ -113,7 +116,11 @@ export function loadProgress(): Progress {
     return {
       daily: { last: typeof raw.daily?.last === 'string' ? raw.daily.last : '', streak: Number.isFinite(raw.daily?.streak) ? Math.max(0, raw.daily.streak) : 0 },
       claimed: Array.isArray(raw.claimed) ? raw.claimed.filter((x: unknown) => typeof x === 'string') : base.claimed,
-      stats: { bombs: Number.isFinite(raw.stats?.bombs) ? raw.stats.bombs : 0, visits: Number.isFinite(raw.stats?.visits) ? raw.stats.visits : 0 },
+      stats: {
+        bombs: Number.isFinite(raw.stats?.bombs) ? raw.stats.bombs : 0,
+        visits: Number.isFinite(raw.stats?.visits) ? raw.stats.visits : 0,
+        ashlyndia: Number.isFinite(raw.stats?.ashlyndia) ? raw.stats.ashlyndia : 0,
+      },
       seen: Array.isArray(raw.seen) ? raw.seen.filter((x: unknown) => typeof x === 'string') : base.seen,
     }
   } catch {
