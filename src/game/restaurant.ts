@@ -203,10 +203,11 @@ export const newRestaurant = (now: number): Restaurant => ({
   ownedFloors: ['wood'],
   ownedWalls: ['cream'],
   items: [
-    { id: 1, type: 'table', gx: 2, gy: 2 },
-    { id: 2, type: 'stool', gx: 4, gy: 1 },
-    { id: 3, type: 'lamp', gx: 0, gy: 0 },
-    { id: 4, type: 'bonsai', gx: 4, gy: 4 },
+    // Greeters either side of the door, and a table with a stool across the aisle.
+    { id: 1, type: 'table', gx: 1, gy: 2 },
+    { id: 2, type: 'stool', gx: 3, gy: 2 },
+    { id: 3, type: 'lamp', gx: 3, gy: 0 },
+    { id: 4, type: 'bonsai', gx: 1, gy: 0 },
   ],
   size: 5,
   nextId: 5,

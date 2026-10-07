@@ -763,3 +763,8 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .nudge button { border-radius: 12px; border: 1px solid var(--glass-edge); background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 1.25rem; font-weight: 800; cursor: pointer; padding: 0; }
 .nudge button:active { background: rgba(255, 210, 58, 0.35); border-color: #ffd23a; }
 .nudge button:only-child, .nudge button:nth-child(-n+2):nth-last-child(-n+2) { grid-row: 1 / -1; }
+.guestcard { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.08); }
+.guestcard > div:last-child { display: grid; gap: 3px; min-width: 0; }
+.guestcard small { opacity: 0.8; font-size: 0.72rem; }
+.guestpic { flex: none; width: 64px; height: 64px; }
+.guestpic:not(.found) svg { filter: brightness(0) opacity(0.35); }

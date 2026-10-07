@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimDaily, claimGoal, dailyStatus, DAILY_REWARDS, dayKey, GOALS, goalClaimable, hasRewardWaiting, newProgress, noteItems, type GoalContext } from './progress'
+import { bumpWeekly, claimWeekly, rollWeek, weekKey, weeklyTasks, claimDaily, claimGoal, dailyStatus, DAILY_REWARDS, dayKey, GOALS, goalClaimable, hasRewardWaiting, newProgress, noteItems, type GoalContext } from './progress'
 import { newRestaurant } from './restaurant'
 import { ASHLYNDIA, CUSTOMERS, customerFor } from './Customers'
 
@@ -76,5 +76,39 @@ describe('Ashlyndia, the rare guest', () => {
     expect(goalClaimable(goal, base)).toBe(false)
     const met = { ...base, progress: { ...base.progress, stats: { ...base.progress.stats, ashlyndia: 1 } } }
     expect(goalClaimable(goal, met)).toBe(true)
+  })
+})
+
+describe('weekly goals', () => {
+  it('starts on Monday and resets when the week changes', () => {
+    expect(weekKey(at(2026, 10, 7))).toBe('2026-10-05') // a Wednesday
+    expect(weekKey(at(2026, 10, 11, 23))).toBe('2026-10-05') // Sunday night
+    expect(weekKey(at(2026, 10, 12))).toBe('2026-10-12')
+    let p = bumpWeekly(newProgress(), 'clears', 3, at(2026, 10, 7))
+    expect(p.weekly.clears).toBe(3)
+    expect(rollWeek(p, at(2026, 10, 9))).toBe(p)
+    p = bumpWeekly(p, 'clears', 1, at(2026, 10, 13))
+    expect(p.weekly.clears).toBe(1)
+  })
+
+  it('pays each task once, then a bonus for finishing all three', () => {
+    const now = at(2026, 10, 7)
+    const tasks = weeklyTasks(now)
+    let p = newProgress()
+    expect(claimWeekly(p, 'clears', now)).toBeNull()
+    for (const t of tasks) p = bumpWeekly(p, t.id, t.target, now)
+    expect(claimWeekly(p, 'bonus', now)).toBeNull() // not yet
+    for (const t of tasks) {
+      const got = claimWeekly(p, t.id, now)!
+      expect(got.reward).toBe(t.reward)
+      p = got.progress
+      expect(claimWeekly(p, t.id, now)).toBeNull()
+    }
+    expect(claimWeekly(p, 'bonus', now)!.reward).toBe(200)
+  })
+
+  it('gets steadily harder across three rotating weeks', () => {
+    const targets = [at(2026, 10, 7), at(2026, 10, 14), at(2026, 10, 21)].map((d) => weeklyTasks(d)[0].target)
+    expect(new Set(targets).size).toBe(3)
   })
 })

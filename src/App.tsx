@@ -17,7 +17,7 @@ import Town from './game/Town'
 import AvatarCreator from './game/AvatarCreator'
 import type { StudioMode } from './game/Decorate'
 import Rewards from './game/Rewards'
-import { claimDaily, claimGoal, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext } from './game/progress'
+import { bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext, type WeeklyKey } from './game/progress'
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
@@ -283,7 +283,7 @@ function Game() {
   const onState = useCallback((s: GameState) => setGame(s), [])
 
   const onBomb = useCallback((cleared: number) => {
-    setProgress((p) => ({ ...p, stats: { ...p.stats, bombs: p.stats.bombs + 1 } }))
+    setProgress((p) => bumpWeekly({ ...p, stats: { ...p.stats, bombs: p.stats.bombs + 1 } }, 'bombs', 1, Date.now()))
     say(cleared > 4 ? 'BOOM! Fresh ingredients!' : 'Boom!', 'wow')
   }, [say])
 
@@ -301,6 +301,7 @@ function Game() {
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
       if (game.level.id === 1) setTut((t) => (inLevelOne(t.step) ? { ...t, step: 'win' } : t))
+      setProgress((p) => bumpWeekly(p, 'clears', 1, Date.now()))
       const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0))
       setReward(coins)
       setWallet((w) => earn(w, coins))
@@ -428,6 +429,13 @@ function Game() {
     setWallet((w) => earn(w, got.reward))
     claimSound()
   }
+  const claimWeeklyReward = (id: WeeklyKey | 'bonus') => {
+    const got = claimWeekly(progress, id, Date.now())
+    if (!got) return
+    setProgress(got.progress)
+    setWallet((w) => earn(w, got.reward))
+    claimSound()
+  }
   const claimGoalReward = (g: Goal) => {
     const next = claimGoal(progress, g, goalCtx)
     if (!next) return
@@ -478,7 +486,7 @@ function Game() {
           setScreen('avatar')
         }}
       />
-      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClose={() => setShowRewards(false)} />}
+      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} onClose={() => setShowRewards(false)} />}
     </>)
   }
 
@@ -499,7 +507,10 @@ function Game() {
           setTut((t) => (t.step === 'placed' || t.step === 'decorate' ? { ...t, step: 'back' } : t))
           setScreen('hub')
         }}
-        onBought={() => setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))}
+        onBought={() => {
+          setProgress((p) => bumpWeekly(p, 'placed', 1, Date.now()))
+          setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))
+        }}
         initialTab={tut.step === 'decorate' ? 'lights' : 'seating'}
         storey={storey}
         onStorey={setStorey}

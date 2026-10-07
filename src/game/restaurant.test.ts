@@ -13,18 +13,18 @@ describe('placement', () => {
     expect(canPlace(r, 'bonsai', 0, 1, 5)).toBe(true)
     expect(canPlace(r, 'bonsai', -1, 0, 5)).toBe(false)
     expect(canPlace(r, 'bonsai', 5, 0, 5)).toBe(false)
-    expect(canPlace(r, 'bonsai', 2, 2, 5)).toBe(false) // starter table is there
+    expect(canPlace(r, 'bonsai', 1, 2, 5)).toBe(false) // starter table is there
   })
 
   it('checks the whole footprint of two-tile items', () => {
     expect(footprint('counter', 1, 0)).toEqual([[1, 0], [2, 0]])
     expect(canPlace(r, 'counter', 4, 0, 5)).toBe(false) // second tile off the grid
-    expect(canPlace(r, 'counter', 3, 0, 5)).toBe(true)
-    expect(canPlace(r, 'counter', 3, 1, 5)).toBe(false) // second tile hits the stool at 4,1
+    expect(canPlace(r, 'counter', 3, 3, 5)).toBe(true)
+    expect(canPlace(r, 'counter', 2, 2, 5)).toBe(false) // second tile hits the stool at 3,2
   })
 
   it('lets an item be moved onto the tile it already occupies', () => {
-    expect(canPlace(r, 'table', 2, 2, 5, 1)).toBe(true)
+    expect(canPlace(r, 'table', 1, 2, 5, 1)).toBe(true)
   })
 
   it('places, moves and removes, and selling pays half', () => {

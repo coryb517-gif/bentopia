@@ -46,6 +46,8 @@ const chefPoint = (p: Placed): [number, number] => {
 /** A diner index past the end of the list means the rare guest. */
 const ASH = CUSTOMERS.length
 
+const ASH_LINES = ['The tea here is divine.', 'Tell the chef: marvellous!', 'What a lovely little place.', 'I do adore a lantern.', 'Is that rice I smell? Bliss.', 'Keep shining, dear chef.']
+
 const WALL_H = 124
 const SLAB = 14
 const THICK = 0.16
@@ -545,6 +547,9 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
   const seatIds = seatList.map(seatKey).join('|')
   const diners = useRef<Record<string, number | null>>({})
   const [, rerender] = useReducer((x: number) => x + 1, 0)
+  const [chat, setChat] = useState<{ key: string; line: string } | null>(null)
+  const chatTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(chatTimer.current), [])
   const [coins, setCoins] = useState<{ id: number; x: number; y: number }[]>([])
   const coinId = useRef(0)
   const rRef = useRef(r)
@@ -581,7 +586,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
           }
         } else if (who == null && occupied < 10 && Math.random() < 0.22) {
           const here = Object.values(diners.current).includes(ASH)
-          const special = !here && Math.random() < 0.05
+          const special = !here && Math.random() < 0.08
           diners.current[k] = special ? ASH : Math.floor(Math.random() * CUSTOMERS.length)
           if (special) guestRef.current?.('ashlyndia')
           occupied++
@@ -656,9 +661,33 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
     drawables.push({
       key: spot.key,
       node: (
-        <g key={`c${k}-${who}`} transform={`translate(${px - 21} ${py - 40})`} pointerEvents="none">
+        <g
+          key={`c${k}-${who}`}
+          transform={`translate(${px - 21} ${py - 40})`}
+          pointerEvents={who === ASH ? 'auto' : 'none'}
+          style={who === ASH ? { cursor: 'pointer' } : undefined}
+          onPointerUp={who === ASH ? (e) => {
+            // Chatting with the rare guest, not walking: keep the tap to ourselves.
+            e.stopPropagation()
+            const pool = ASH_LINES
+            const line = pool[(Math.floor(Math.random() * pool.length) + (chat ? 1 : 0)) % pool.length]
+            setChat({ key: k, line })
+            clearTimeout(chatTimer.current)
+            chatTimer.current = setTimeout(() => setChat(null), 3600)
+          } : undefined}
+        >
           <g className="arrive">
             <ellipse cx="21" cy="42" rx="15" ry="5" fill="rgba(18,4,36,0.3)" />
+            {who === ASH && chat?.key === k && (
+              <g transform="translate(21 -6)">
+                <g className="emote">
+                  <rect x="-58" y="-22" width="116" height="26" rx="9" fill="#fffdf7" stroke="#2a0f2e" strokeWidth="1.6" />
+                  <path d="M-5 4l5 7 5-7z" fill="#fffdf7" stroke="#2a0f2e" strokeWidth="1.6" strokeLinejoin="round" />
+                  <path d="M-4 3.4h8" stroke="#fffdf7" strokeWidth="2.4" />
+                  <text y="-5" textAnchor="middle" fontSize="7.4" fontWeight="800" fill="#2a0f2e" fontFamily="'M PLUS Rounded 1c', sans-serif">{chat.line}</text>
+                </g>
+              </g>
+            )}
             {who === ASH && (
               <g className="ashaura" aria-hidden>
                 <path d="M-2 8l1.6 3.6 3.6 1.6-3.6 1.6L-2 18.4l-1.6-3.6L-7.2 13.2l3.6-1.6z" fill="#ffe27a" stroke="#2a0f2e" strokeWidth="0.8" className="twinkle" />
