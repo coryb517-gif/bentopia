@@ -4,7 +4,7 @@ import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, newGame, SIZE
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
-import { boardCanvas, boardGeometry, iceCanvas, tileCanvas, TILE_PAD } from './render'
+import { boardCanvas, boardGeometry, iceCanvas, luckCanvas, tileCanvas, TILE_PAD } from './render'
 
 interface Props {
   level: LevelDef
@@ -14,6 +14,8 @@ interface Props {
   onPreview: (t: { kind: number; tier: number } | null) => void
   /** Fired after each committed chain with its length and the tier it produced. */
   onMerge?: (len: number, tier: number) => void
+  /** Fired when a chain collected golden stars, with how many. */
+  onLucky?: (n: number) => void
   /** Fired when a Flavor Bomb goes off, with how many ingredients it cleared. */
   onBomb?: (cleared: number) => void
   /** Bump id to give a lost game 
@@ -51,11 +53,11 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, grant, hint, ping }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, onLucky, grant, hint, ping }: Props) {
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview, onMerge, onBomb, hint, ping })
-  cb.current = { onState, onPreview, onMerge, onBomb, hint, ping }
+  const cb = useRef({ onState, onPreview, onMerge, onBomb, onLucky, hint, ping })
+  cb.current = { onState, onPreview, onMerge, onBomb, onLucky, hint, ping }
 
   useEffect(() => {
     const el = host.current!
@@ -144,12 +146,22 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
 
       /** Show (or swap or remove) the frost over a tile. The face stays child 0. */
       const setIce = (node: Container, layers: number) => {
-        while (node.children.length > 1) node.removeChildAt(1).destroy()
+        for (const ch of [...node.children]) if (ch.label === 'ice') node.removeChild(ch).destroy()
         if (!layers) return
         const frost = new PixiSprite(iceTextureFor(layers))
+        frost.label = 'ice'
         frost.anchor.set(0.5)
         frost.width = frost.height = cell * 0.94 * TILE_PAD
         node.addChild(frost)
+      }
+
+      const luckTexture = () => {
+        let tex = textures.get('luck')
+        if (!tex) {
+          tex = Texture.from(luckCanvas(cell * 0.94, dpr))
+          textures.set('luck', tex)
+        }
+        return tex
       }
 
       const makeNode = (t: Tile) => {
@@ -159,6 +171,13 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         face.width = face.height = cell * 0.94 * TILE_PAD
         node.addChild(face)
         if (t.ice) setIce(node, t.ice)
+        if (t.lucky) {
+          const badge = new PixiSprite(luckTexture())
+          badge.label = 'luck'
+          badge.anchor.set(0.5)
+          badge.width = badge.height = cell * 0.94 * TILE_PAD
+          node.addChild(badge)
+        }
         tiles.addChild(node)
         return node
       }
@@ -360,6 +379,10 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         state = next
         clackSound(next.cells[next.last?.toCell ?? 0]?.tier ?? 1)
         if (next.last) cb.current.onMerge?.(chainLen, next.cells[next.last.toCell]?.tier ?? 1)
+        if (next.last?.lucky) {
+          cb.current.onLucky?.(next.last.lucky)
+          sparks(center(next.last.toCell).x, center(next.last.toCell).y, 10, [0xffd23a, 0xfff2a8, 0xffffff])
+        }
         if (next.last?.bombId) sparks(center(next.last.toCell).x, center(next.last.toCell).y, 14, [0xff8a2a, 0xffd23a])
         placeSprites(true, state.last?.resultId)
         if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)

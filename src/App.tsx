@@ -133,6 +133,7 @@ const TIPS = [
   'Stuck? Pause for a moment and a finger will trace a good chain.',
   'A finished dish takes four links, so count your moves before you start.',
   'Dishes made of different ingredients: link one of each, in any order.',
+  'Tiles with a golden star give you a bonus move when you link them into a chain.',
 ]
 
 /** The order preview: who is asking, what they want, how many moves you get. */
@@ -141,7 +142,7 @@ function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars
   const cust = customerFor(l.id)
   const got = stars[l.id] ?? 0
   const mixed = l.order.some((o) => recipeFor(o.kind, o.tier))
-  const tip = mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
+  const tip = l.luck && l.id % 3 === 1 ? TIPS[5] : mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
   const intro = CHAPTER_RANGES.some((c) => c.from === l.id) ? CHAPTER_INTROS[chapterOf(l.id) - 1] : null
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={`Level ${l.id}`} onClick={onClose}>
@@ -210,6 +211,7 @@ function Game() {
   const [now, setNow] = useState(() => Date.now())
   const [reward, setReward] = useState<number | null>(null)
   const [grant, setGrant] = useState({ id: 0, n: 0 })
+  const [showAudio, setShowAudio] = useState(false)
   const [hints, setHints] = useState({ key: '', used: 0, ping: 0 })
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
@@ -310,6 +312,10 @@ function Game() {
 
   const onState = useCallback((s: GameState) => setGame(s), [])
 
+  const onLucky = useCallback((n: number) => {
+    coinSound(3)
+    say(n > 1 ? `Lucky! +${n} moves` : 'Lucky star! +1 move', 'wow', 2200)
+  }, [say])
   const onBomb = useCallback((cleared: number) => {
     setProgress((p) => bumpWeekly({ ...p, stats: { ...p.stats, bombs: p.stats.bombs + 1 } }, 'bombs', 1, Date.now()))
     say(cleared > 4 ? 'BOOM! Fresh ingredients!' : 'Boom!', 'wow')
@@ -645,16 +651,26 @@ function Game() {
         )}
       </div>
 
-      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
+      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} onLucky={onLucky} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
 
       <footer className="foot">
-        {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
-          <button key={k} className={`chip${prefs[k] ? ' on' : ''}`} aria-pressed={prefs[k]} onClick={() => togglePref(k)}>
-            {k === 'music' ? 'Music' : k === 'sound' ? 'Sound' : 'Haptics'}
+        <div className="audiowrap">
+          <button className={`chip${showAudio ? ' on' : ''}`} aria-expanded={showAudio} aria-label="Sound settings" onClick={() => setShowAudio((v) => !v)}>
+            {prefs.sound || prefs.music ? '🔊' : '🔇'} Sound
           </button>
-        ))}
+          {showAudio && (
+            <div className="audiopop" role="group" aria-label="Sound settings">
+              {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
+                <button key={k} className={`chip${prefs[k] ? ' on' : ''}`} aria-pressed={prefs[k]} onClick={() => togglePref(k)}>
+                  {k === 'music' ? '🎵 Music' : k === 'sound' ? '🔔 Effects' : '📳 Haptics'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className="spacer" />
         <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡 Hint{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
-        <button className="chip" onClick={() => start(levelIdx)} aria-label="Restart level">Restart</button>
+        <button className="chip" onClick={() => start(levelIdx)} aria-label="Restart level">↻ Restart</button>
       </footer>
 
       {showResult && status !== 'playing' && (

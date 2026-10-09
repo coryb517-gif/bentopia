@@ -75,3 +75,31 @@ describe('chapter intros', () => {
     }
   })
 })
+
+describe('lucky tiles', () => {
+  it('pay one move back for each golden star in a chain', () => {
+    const s = board()
+    ;[9, 10, 11].forEach((c) => place(s, c, 0))
+    s.cells[9] = { ...s.cells[9]!, lucky: true }
+    s.cells[10] = { ...s.cells[10]!, lucky: true }
+    const before = s.movesLeft
+    const after = commitChain(s, [9, 10, 11])
+    expect(after.movesLeft).toBe(before - 1 + 2)
+    expect(after.last?.lucky).toBe(2)
+    const plain = board()
+    ;[9, 10, 11].forEach((c) => place(plain, c, 0))
+    expect(commitChain(plain, [9, 10, 11]).movesLeft).toBe(plain.movesLeft - 1)
+  })
+
+  it('only drop from chapter 2 on, and a crafted dish is never lucky', () => {
+    expect(LEVELS.slice(0, 12).every((l) => !l.luck)).toBe(true)
+    expect(LEVELS.slice(12).every((l) => (l.luck ?? 0) > 0)).toBe(true)
+    let stars = 0
+    for (let seed = 1; seed <= 20; seed++) stars += newGame(LEVELS[30], seed).cells.filter((t) => t?.lucky).length
+    expect(stars).toBeGreaterThan(0)
+    const s = board()
+    ;[9, 10, 11].forEach((c) => place(s, c, 0))
+    const after = commitChain(s, [9, 10, 11])
+    expect(after.cells[after.last!.toCell]?.lucky).toBeUndefined()
+  })
+})

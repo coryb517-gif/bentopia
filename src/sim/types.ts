@@ -4,6 +4,8 @@ export interface Tile {
   tier: number
   /** Layers of ice: a frozen tile cannot be linked until it thaws. */
   ice?: number
+  /** A golden star: link it for a bonus move. */
+  lucky?: boolean
 }
 
 export interface OrderItem {
@@ -22,6 +24,8 @@ export interface LevelDef {
   order: OrderItem[]
   /** How many raw tiles start frozen. */
   ice?: number
+  /** Chance (0 to 1) that a freshly dropped raw tile carries a golden star. */
+  luck?: number
 }
 
 export interface MergeEvent {
@@ -32,6 +36,8 @@ export interface MergeEvent {
   bombId?: number
   /** Frozen tiles that lost a layer of ice this move. */
   thawed?: number[]
+  /** Golden-star tiles in the chain: each one paid a bonus move. */
+  lucky?: number
 }
 
 export type Status = 'playing' | 'won' | 'lost'

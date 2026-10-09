@@ -53,7 +53,10 @@ function spawn(s: GameState): Tile {
       break
     }
   }
-  return { id: s.nextId++, kind, tier: 0 }
+  const tile: Tile = { id: s.nextId++, kind, tier: 0 }
+  // Golden stars only drop on levels that ask for them, so earlier chapters stay as they were.
+  if (level.luck && rand(s) < level.luck) tile.lucky = true
+  return tile
 }
 
 /** Compact each column segment downward, then fill the gaps with new raw tiles. */
@@ -314,6 +317,12 @@ export function commitChain(prev: GameState, path: number[]): GameState {
   s.cells[toCell] = result
   s.movesLeft--
   s.last = { removed, resultId: result.id, toCell }
+  // Each golden star in the chain pays one move back.
+  const stars = path.filter((i) => prev.cells[i]?.lucky).length
+  if (stars) {
+    s.movesLeft += stars
+    s.last.lucky = stars
+  }
   // Ice next to the cleared tiles cracks: one layer per move.
   const thawed = new Set<number>()
   for (const i of path) {

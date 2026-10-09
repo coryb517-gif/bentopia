@@ -327,3 +327,29 @@ export function iceCanvas(layers: number, plate: number, dpr: number): HTMLCanva
   ctx.fill()
   return c
 }
+
+/** A little golden star badge in the corner of a lucky tile, with a soft halo. */
+export function luckCanvas(plate: number, dpr: number): HTMLCanvasElement {
+  const size = plate * TILE_PAD
+  const { c, ctx } = canvas(size, size, dpr)
+  const cx = size / 2 + plate * 0.3
+  const cy = size / 2 - plate * 0.3
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, plate * 0.4)
+  g.addColorStop(0, 'rgba(255, 236, 140, 0.9)')
+  g.addColorStop(1, 'rgba(255, 210, 58, 0)')
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(cx, cy, plate * 0.4, 0, Math.PI * 2)
+  ctx.fill()
+  star(ctx, cx, cy, plate * 0.2, plate * 0.09)
+  ctx.fillStyle = '#ffd23a'
+  ctx.fill()
+  ctx.lineWidth = Math.max(1.4, plate * 0.04)
+  ctx.strokeStyle = '#2a0f2e'
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  star(ctx, cx - plate * 0.03, cy - plate * 0.03, plate * 0.08, plate * 0.035)
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'
+  ctx.fill()
+  return c
+}

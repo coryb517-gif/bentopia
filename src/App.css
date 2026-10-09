@@ -776,3 +776,10 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .chapterintro p { margin: 0; font-style: italic; font-size: 0.82rem; line-height: 1.25; }
 .chapterintro b { font-size: 0.76rem; color: #6dffc0; line-height: 1.25; }
 .hintchip:disabled { opacity: 0.45; }
+
+/* Play footer: one sound button that opens the three toggles */
+.foot { gap: 8px; }
+.foot .spacer { flex: 1; }
+.audiowrap { position: relative; }
+.audiopop { position: absolute; left: 0; bottom: calc(100% + 8px); display: grid; gap: 6px; padding: 8px; border-radius: 16px; background: rgba(27, 18, 64, 0.96); border: 1px solid var(--glass-edge); box-shadow: 0 10px 30px rgba(10, 0, 30, 0.5); z-index: 5; }
+.audiopop .chip { justify-content: flex-start; white-space: nowrap; }

@@ -92,6 +92,9 @@ function defaultSlack(order: OrderItem[]): number {
 /** Frozen tiles arrive in the last two chapters and build up slowly. */
 const iceFor = (id: number): number => (id < 25 ? 0 : id <= 36 ? 2 + Math.floor((id - 25) / 4) : 4 + Math.floor((id - 37) / 3))
 
+/** Golden stars start dropping in chapter 2 and become a little more common later on. */
+const luckFor = (id: number): number => (id < 13 ? 0 : id < 25 ? 0.05 : 0.07)
+
 export const LEVELS: LevelDef[] = SPECS.map(([name, shape, kinds, order, slack], i) => ({
   id: i + 1,
   name,
@@ -100,6 +103,7 @@ export const LEVELS: LevelDef[] = SPECS.map(([name, shape, kinds, order, slack],
   order,
   moves: Math.ceil(minLinks(order) * (slack ?? defaultSlack(order))) + 3 + Math.ceil(iceFor(i + 1) * 0.7),
   ...(iceFor(i + 1) ? { ice: iceFor(i + 1) } : {}),
+  ...(luckFor(i + 1) ? { luck: luckFor(i + 1) } : {}),
 }))
 
 /** Chapter boundaries (inclusive level ids), shared by the map and the hub. */
