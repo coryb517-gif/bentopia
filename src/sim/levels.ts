@@ -110,6 +110,14 @@ export const CHAPTER_RANGES: { title: string; sub: string; from: number; to: num
   { title: 'Chapter 4', sub: 'Master chef', from: 37, to: 48 },
 ]
 
+/** A line from one character and the new idea, shown when a chapter's first level is previewed. */
+export const CHAPTER_INTROS: { speaker: string; line: string; idea: string }[] = [
+  { speaker: 'obaa', line: 'Welcome, dear. Every great kitchen starts with one good dish.', idea: 'Drag across 3 or more matching ingredients to cook them into a dish.' },
+  { speaker: 'tanaka', line: 'Lunch rush! Some orders need a bit of everything.', idea: 'Dishes made of different ingredients: link one of each, in any order.' },
+  { speaker: 'ronin', line: 'The kitchen is cold tonight. Some ingredients are frozen solid.', idea: 'Clear a chain next to a frozen tile to crack its ice. A Flavor Bomb shatters it outright.' },
+  { speaker: 'rx9', line: 'Final exam. Thick ice detected. Probability of success: high.', idea: 'Some tiles are frozen under two layers. Crack them one move at a time, or use a bomb.' },
+]
+
 /** The last level of each chapter is a boss: a bigger order to finish the chapter. */
 export const isBoss = (levelId: number) => CHAPTER_RANGES.some((c) => c.to === levelId)
 

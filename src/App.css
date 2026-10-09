@@ -768,3 +768,11 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .guestcard small { opacity: 0.8; font-size: 0.72rem; }
 .guestpic { flex: none; width: 64px; height: 64px; }
 .guestpic:not(.found) svg { filter: brightness(0) opacity(0.35); }
+
+/* Chapter intro and hint */
+.chapterintro { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px; margin-bottom: 8px; border-radius: 16px; background: linear-gradient(135deg, rgba(255, 210, 58, 0.2), rgba(255, 127, 176, 0.18)); border: 1px solid rgba(255, 210, 58, 0.5); }
+.chapterintro > div { display: grid; gap: 3px; min-width: 0; }
+.chapterintro small { font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #ffd23a; font-size: 0.64rem; }
+.chapterintro p { margin: 0; font-style: italic; font-size: 0.82rem; line-height: 1.25; }
+.chapterintro b { font-size: 0.76rem; color: #6dffc0; line-height: 1.25; }
+.hintchip:disabled { opacity: 0.45; }

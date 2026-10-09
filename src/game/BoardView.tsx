@@ -21,6 +21,8 @@ interface Props {
   grant?: { id: number; n: number }
   /** Show a finger tracing a good chain: always (tutorial), after a few idle seconds, or never. */
   hint?: 'off' | 'auto' | 'always'
+  /** Change this number to show a hint right now. */
+  ping?: number
 }
 
 interface Sprite {
@@ -49,11 +51,11 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, grant, hint }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, grant, hint, ping }: Props) {
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview, onMerge, onBomb, hint })
-  cb.current = { onState, onPreview, onMerge, onBomb, hint }
+  const cb = useRef({ onState, onPreview, onMerge, onBomb, hint, ping })
+  cb.current = { onState, onPreview, onMerge, onBomb, hint, ping }
 
   useEffect(() => {
     const el = host.current!
@@ -429,8 +431,15 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         // A lone tapped tile stays selected so the player can tap the rest of the chain.
       }
       // A finger tracing a good chain, for the tutorial and for players who pause for a while.
+      let lastPing = cb.current.ping
       app.ticker.add(() => {
         hintG.clear()
+        if (cb.current.ping !== lastPing) {
+          // Asked for: pretend the player has been idle for a while.
+          lastPing = cb.current.ping
+          lastInput = performance.now() - 10_000
+          hintFor = null
+        }
         const mode = cb.current.hint ?? 'off'
         if (mode === 'off' || dragging || path.length || state.status !== 'playing') return
         const t = performance.now()

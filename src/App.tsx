@@ -21,10 +21,10 @@ import { bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadP
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
-import CustomerPortrait, { customerFor, type CustomerMood } from './game/Customers'
+import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
-import { chapterOf, isBoss, LEVELS } from './sim/levels'
+import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS } from './sim/levels'
 import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
 import { isBomb } from './sim/engine'
@@ -125,6 +125,8 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
   )
 }
 
+const HINT_COST = 10
+
 const TIPS = [
   'Link five or more of one ingredient and you leave a Flavor Bomb. Tap it to clear its row and column.',
   'Land each crafted dish next to its siblings, so the next chain is one short drag away.',
@@ -140,9 +142,20 @@ function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars
   const got = stars[l.id] ?? 0
   const mixed = l.order.some((o) => recipeFor(o.kind, o.tier))
   const tip = mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
+  const intro = CHAPTER_RANGES.some((c) => c.from === l.id) ? CHAPTER_INTROS[chapterOf(l.id) - 1] : null
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={`Level ${l.id}`} onClick={onClose}>
       <div className="card prelevel" onClick={(e) => e.stopPropagation()}>
+        {intro && (
+          <div className="chapterintro">
+            <CustomerPortrait customer={CUSTOMERS.find((c) => c.id === intro.speaker) ?? cust} mood="happy" size={54} />
+            <div>
+              <small>{CHAPTER_RANGES[chapterOf(l.id) - 1].title} · {CHAPTER_RANGES[chapterOf(l.id) - 1].sub}</small>
+              <p>“{intro.line}”</p>
+              <b>New: {intro.idea}</b>
+            </div>
+          </div>
+        )}
         <CustomerPortrait customer={cust} mood="idle" size={86} />
         <p className="ask solo"><b>{cust.name}</b>{cust.ask}</p>
         <h2>Level {l.id}{isBoss(l.id) && <span className="bosstag">Boss</span>}</h2>
@@ -197,6 +210,7 @@ function Game() {
   const [now, setNow] = useState(() => Date.now())
   const [reward, setReward] = useState<number | null>(null)
   const [grant, setGrant] = useState({ id: 0, n: 0 })
+  const [hints, setHints] = useState({ key: '', used: 0, ping: 0 })
   const [restaurant, setRestaurant] = useState(() => loadRestaurant(Date.now()))
   const [tut, setTut] = useState(() => loadTutorial(hasProgress()))
   const [intro, setIntro] = useState(false)
@@ -222,6 +236,20 @@ function Game() {
 
   const level = LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
+  const boardKey = `${level.id}-${attempt}`
+  const hintsUsed = hints.key === boardKey ? hints.used : 0
+  /** The first hint on each try is free; after that a small fee. */
+  const hintCost = hintsUsed === 0 ? 0 : HINT_COST
+  const askHint = () => {
+    if (!game || game.status !== 'playing') return
+    if (hintCost > 0) {
+      const paid = spend(wallet, hintCost)
+      if (!paid) return
+      setWallet(paid)
+    }
+    coinSound(1)
+    setHints((h) => ({ key: boardKey, used: (h.key === boardKey ? h.used : 0) + 1, ping: h.ping + 1 }))
+  }
 
   // Screens with a HUD at the top calm the backdrop so coins and buttons stay readable.
   useEffect(() => {
@@ -617,7 +645,7 @@ function Game() {
         )}
       </div>
 
-      <BoardView key={`${level.id}-${attempt}`} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} />
+      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
 
       <footer className="foot">
         {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
@@ -625,6 +653,7 @@ function Game() {
             {k === 'music' ? 'Music' : k === 'sound' ? 'Sound' : 'Haptics'}
           </button>
         ))}
+        <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡 Hint{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
         <button className="chip" onClick={() => start(levelIdx)} aria-label="Restart level">Restart</button>
       </footer>
 

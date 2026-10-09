@@ -61,3 +61,17 @@ describe('frozen tiles', () => {
     expect(LEVELS[47].ice!).toBeGreaterThan(LEVELS[24].ice!)
   })
 })
+
+import { CHAPTER_INTROS, CHAPTER_RANGES } from './levels'
+import { CUSTOMERS } from '../game/Customers'
+
+describe('chapter intros', () => {
+  it('each chapter has an intro spoken by a real character', () => {
+    expect(CHAPTER_INTROS).toHaveLength(CHAPTER_RANGES.length)
+    for (const i of CHAPTER_INTROS) {
+      expect(CUSTOMERS.some((c) => c.id === i.speaker)).toBe(true)
+      expect(i.line.length).toBeGreaterThan(10)
+      expect(i.idea.length).toBeGreaterThan(10)
+    }
+  })
+})
