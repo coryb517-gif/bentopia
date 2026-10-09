@@ -783,3 +783,7 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .audiowrap { position: relative; }
 .audiopop { position: absolute; left: 0; bottom: calc(100% + 8px); display: grid; gap: 6px; padding: 8px; border-radius: 16px; background: rgba(27, 18, 64, 0.96); border: 1px solid var(--glass-edge); box-shadow: 0 10px 30px rgba(10, 0, 30, 0.5); z-index: 5; }
 .audiopop .chip { justify-content: flex-start; white-space: nowrap; }
+@media (max-width: 400px) {
+  .foot { gap: 6px; }
+  .foot .chip { padding-inline: 10px; font-size: 0.8rem; white-space: nowrap; }
+}
