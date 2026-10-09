@@ -18,6 +18,8 @@ export const CHAINS: Chain[] = [
   { names: ['', '', 'Rainbow maki'], emoji: ['', '', '🍣'] },
   // Kind 10 is the Flavor Bomb.
   { names: ['Flavor Bomb', '', ''], emoji: ['💣', '', ''] },
+  // Kind 11 is the Chef's Special, a wild tile.
+  { names: ["Chef's Special", '', ''], emoji: ['👨‍🍳', '', ''] },
 ]
 
 export const MAX_TIER = 2
@@ -27,6 +29,8 @@ export const FIRST_MIXED_KIND = 6
 
 /** The special tile left behind by a chain of five or more. */
 export const BOMB_KIND = 10
+/** The Chef's Special: links with any raw ingredient. */
+export const WILD_KIND = 11
 
 export interface ItemRef {
   kind: number

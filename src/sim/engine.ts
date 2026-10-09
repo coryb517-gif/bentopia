@@ -1,4 +1,4 @@
-import { BOMB_KIND, FIRST_MIXED_KIND, MAX_TIER, RECIPES, type ItemRef } from './items'
+import { BOMB_KIND, WILD_KIND, FIRST_MIXED_KIND, MAX_TIER, RECIPES, type ItemRef } from './items'
 import { nextRandom } from './rng'
 import type { GameState, LevelDef, Tile } from './types'
 
@@ -85,16 +85,17 @@ function settle(s: GameState) {
 }
 
 export const isBomb = (t: Tile | null | undefined): boolean => !!t && t.kind === BOMB_KIND
+export const isWild = (t: Tile | null | undefined): boolean => !!t && t.kind === WILD_KIND
 
 function canLink(a: Tile | null, b: Tile | null): boolean {
-  return !!a && !!b && !isBomb(a) && !a.ice && !b.ice && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
+  return !!a && !!b && !isBomb(a) && !isWild(a) && !isWild(b) && !a.ice && !b.ice && a.kind === b.kind && a.tier === b.tier && a.tier < MAX_TIER
 }
 
 export function hasLink(s: GameState): boolean {
   const seen = new Array<boolean>(CELLS).fill(false)
   for (let i = 0; i < CELLS; i++) {
     const t = s.cells[i]
-    if (seen[i] || !t || t.tier >= MAX_TIER || t.ice) continue
+    if (seen[i] || !t || t.tier >= MAX_TIER || t.ice || isWild(t)) continue
     let size = 0
     const stack = [i]
     seen[i] = true
@@ -109,6 +110,13 @@ export function hasLink(s: GameState): boolean {
       }
     }
     if (size >= 3) return true
+  }
+  // A Chef's Special joins any ingredient, so look at every trio when one is on the board.
+  if (s.cells.some(isWild)) {
+    for (let a = 0; a < CELLS; a++) {
+      if (!s.cells[a]) continue
+      for (const b of neighbors(a)) for (const c of neighbors(b)) if (c !== a && chainOutcome(s, [a, b, c])) return true
+    }
   }
   // Mixed recipes: any adjacent trio that matches one.
   for (let a = 0; a < CELLS; a++) {
@@ -149,7 +157,7 @@ function freezeSome(s: GameState) {
   const raw: number[] = []
   for (let i = 0; i < CELLS; i++) {
     const t = s.cells[i]
-    if (t && t.tier === 0 && !isBomb(t)) raw.push(i)
+    if (t && t.tier === 0 && !isBomb(t) && !isWild(t)) raw.push(i)
   }
   for (let k = 0; k < n && raw.length; k++) {
     const pick = raw.splice(Math.floor(rand(s) * raw.length), 1)[0]
@@ -213,6 +221,12 @@ export function chainOutcome(s: GameState, path: number[]): ItemRef | null {
   for (let i = 1; i < path.length; i++) if (!neighbors(path[i - 1]).includes(path[i])) return null
   const tiles = path.map((i) => s.cells[i])
   if (tiles.some((t) => !t || isBomb(t) || t.ice)) return null
+  const real = (tiles as Tile[]).filter((x) => !isWild(x))
+  if (real.length < tiles.length) {
+    // With a Chef's Special in the chain, the rest must be one raw ingredient.
+    if (!real.length) return null
+    return real.every((x) => x.kind === real[0].kind && x.tier === 0) ? { kind: real[0].kind, tier: 1 } : null
+  }
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) {
     return first.tier < MAX_TIER ? { kind: first.kind, tier: first.tier + 1 } : null
@@ -228,6 +242,8 @@ export function canExtend(s: GameState, path: number[], cell: number): boolean {
   if (!neighbors(last).includes(cell)) return false
   const tiles = [...path, cell].map((i) => s.cells[i])
   if (tiles.some((t) => !t || isBomb(t) || t.ice)) return false
+  const real = (tiles as Tile[]).filter((x) => !isWild(x))
+  if (real.length < tiles.length) return real.every((x) => x.kind === (real[0]?.kind ?? x.kind) && x.tier === 0)
   const first = tiles[0]!
   if (tiles.every((t) => t!.kind === first.kind && t!.tier === first.tier)) return first.tier < MAX_TIER
   return recipeCouldInclude(tiles as Tile[])
@@ -312,7 +328,7 @@ export function commitChain(prev: GameState, path: number[]): GameState {
   const result: Tile = { id: s.nextId++, kind: out.kind, tier: out.tier }
   const removed = path.map((i) => s.cells[i]!.id)
   const firstKind = s.cells[path[0]]!.kind
-  const singleKind = path.every((i) => s.cells[i]!.kind === firstKind)
+  const singleKind = path.some((i) => isWild(s.cells[i])) || path.every((i) => s.cells[i]!.kind === firstKind)
   for (const i of path) s.cells[i] = null
   s.cells[toCell] = result
   s.movesLeft--
@@ -342,6 +358,16 @@ export function commitChain(prev: GameState, path: number[]): GameState {
     const bomb: Tile = { id: s.nextId++, kind: BOMB_KIND, tier: 0 }
     s.cells[spot] = bomb
     s.last.bombId = bomb.id
+  }
+  // An extra-long chain (7+) also leaves a Chef's Special, a wild tile, on another vacated cell.
+  if (singleKind && path.length >= 7) {
+    const free = path.slice(0, -1).filter((i) => s.cells[i] === null)
+    if (free.length) {
+      const spot = free[Math.floor(rand(s) * free.length)]
+      const wild: Tile = { id: s.nextId++, kind: WILD_KIND, tier: 0 }
+      s.cells[spot] = wild
+      s.last.wildId = wild.id
+    }
   }
 
   s.level.order.forEach((o, idx) => {

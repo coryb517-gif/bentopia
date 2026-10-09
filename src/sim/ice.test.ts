@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { canExtend, chainOutcome, commitChain, hasLink, newGame, tapBomb } from './engine'
+import { canExtend, chainOutcome, commitChain, hasLink, isWild, newGame, tapBomb } from './engine'
 import { LEVELS } from './levels'
-import { BOMB_KIND } from './items'
+import { BOMB_KIND, WILD_KIND } from './items'
 import type { GameState } from './types'
 
 /** An empty-ish board of one ingredient we can arrange by hand. */
@@ -101,5 +101,53 @@ describe('lucky tiles', () => {
     ;[9, 10, 11].forEach((c) => place(s, c, 0))
     const after = commitChain(s, [9, 10, 11])
     expect(after.cells[after.last!.toCell]?.lucky).toBeUndefined()
+  })
+})
+
+describe("Chef's Special (wild)", () => {
+  const wild = (s: GameState, cell: number) => {
+    s.cells[cell] = { id: 700 + cell, kind: WILD_KIND, tier: 0 }
+  }
+
+  it('stands in for any raw ingredient in a single-kind chain', () => {
+    const s = board()
+    ;[9, 10].forEach((c) => place(s, c, 0))
+    wild(s, 11)
+    expect(chainOutcome(s, [9, 10, 11])).toEqual({ kind: 0, tier: 1 })
+    expect(canExtend(s, [9, 10], 11)).toBe(true)
+    place(s, 10, 1) // a different ingredient breaks it
+    expect(chainOutcome(s, [9, 10, 11])).toBeNull()
+    expect(canExtend(s, [9, 10], 11)).toBe(false)
+  })
+
+  it('does not join crafted dishes, bombs or ice', () => {
+    const s = board()
+    ;[9, 10].forEach((c) => (s.cells[c] = { id: 800 + c, kind: 0, tier: 1 }))
+    wild(s, 11)
+    expect(chainOutcome(s, [9, 10, 11])).toBeNull()
+    const t = board()
+    place(t, 9, 0, 1) // frozen
+    place(t, 10, 0)
+    wild(t, 11)
+    expect(chainOutcome(t, [9, 10, 11])).toBeNull()
+  })
+
+  it('counts on its own when checking for a move, and is left by a chain of seven', () => {
+    const s = board()
+    s.cells = s.cells.map((_, i) => ({ id: 100 + i, kind: 1 + ((i + Math.floor(i / 8)) % 3), tier: 0 }))
+    expect(hasLink(s)).toBe(true)
+    const long = board()
+    ;[0, 1, 2, 3, 4, 5, 6].forEach((c) => place(long, c, 0))
+    const after = commitChain(long, [0, 1, 2, 3, 4, 5, 6])
+    expect(after.last?.wildId).toBeDefined()
+    expect(after.last?.bombId).toBeDefined()
+    expect(after.cells.some((t) => isWild(t))).toBe(true)
+    const short = board()
+    ;[0, 1, 2, 3, 4, 5].forEach((c) => place(short, c, 0))
+    expect(commitChain(short, [0, 1, 2, 3, 4, 5]).last?.wildId).toBeUndefined()
+  })
+
+  it('never starts a level frozen or spawns on its own', () => {
+    for (let seed = 1; seed <= 10; seed++) expect(newGame(LEVELS[40], seed).cells.some((t) => isWild(t))).toBe(false)
   })
 })

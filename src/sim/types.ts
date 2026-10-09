@@ -36,6 +36,8 @@ export interface MergeEvent {
   bombId?: number
   /** Frozen tiles that lost a layer of ice this move. */
   thawed?: number[]
+  /** Set when a very long chain also left a Chef's Special behind. */
+  wildId?: number
   /** Golden-star tiles in the chain: each one paid a bonus move. */
   lucky?: number
 }

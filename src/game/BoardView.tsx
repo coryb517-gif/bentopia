@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, newGame, SIZE, suggestChain, tapBomb } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, isWild, newGame, SIZE, suggestChain, tapBomb } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
@@ -193,7 +193,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           if (!sp) {
             const node = makeNode(t)
             const fs = (node.children[0] as PixiSprite).scale.x
-            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t), ice: t.ice ?? 0 }
+            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t) || isWild(t), ice: t.ice ?? 0 }
             node.x = p.x
             node.y = spawnFromAbove && t.id !== popId ? -cell * (1 + Math.random() * 2) : p.y
             node.scale.set(t.id === popId ? 0.5 : 1)
@@ -383,6 +383,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           cb.current.onLucky?.(next.last.lucky)
           sparks(center(next.last.toCell).x, center(next.last.toCell).y, 10, [0xffd23a, 0xfff2a8, 0xffffff])
         }
+        if (next.last?.wildId) sparks(center(next.last.toCell).x, center(next.last.toCell).y, 14, [0xff6f91, 0xffd45e, 0x6dffc0, 0x7fe6ff])
         if (next.last?.bombId) sparks(center(next.last.toCell).x, center(next.last.toCell).y, 14, [0xff8a2a, 0xffd23a])
         placeSprites(true, state.last?.resultId)
         if (state.last) burst(state.last.toCell, state.cells[state.last.toCell]?.tier ?? 1)

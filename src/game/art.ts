@@ -257,6 +257,19 @@ Object.assign(items, {
     `<g class="spark"><path d="M74 2l3 5l5 3l-5 3l-3 5l-3 -5l-5 -3l5 -3z" fill="#ffe070" stroke="#ff8a2a" stroke-width="1.6" stroke-linejoin="round"/><circle cx="74" cy="10" r="2" fill="#fff"/></g>`,
 })
 
+// The Chef's Special: a puffy white toque with a rainbow band, for a tile that joins any ingredient.
+Object.assign(items, {
+  '11-0': () =>
+    cel(circ(30, 40, 17), '#ffffff', '#d4daf0') +
+    cel(circ(70, 40, 17), '#ffffff', '#d4daf0') +
+    cel(circ(50, 28, 20), '#ffffff', '#d4daf0') +
+    cel(rrect(26, 48, 48, 36, 7), '#ffffff', '#d4daf0') +
+    stroke('M30 78H70', '#ff6f91', 3.4) +
+    stroke('M30 82.6H70', '#ffd45e', 3.4) +
+    stroke('M32 87H68', '#6dffc0', 3.4) +
+    `<g class="spark"><path d="M82 8l2.6 5.2l5.2 2.6l-5.2 2.6L82 23.6l-2.6-5.2L74.2 15.8l5.2-2.6z" fill="#fff" stroke="#ffc233" stroke-width="1.6" stroke-linejoin="round"/></g>`,
+})
+
 /** Every illustration that exists, as [kind, tier] pairs. */
 export const ART_PAIRS: [number, number][] = Object.keys(items).map((k) => k.split('-').map(Number) as [number, number])
 export const hasArt = (kind: number, tier: number) => `${kind}-${tier}` in items
@@ -288,6 +301,7 @@ const FACES: Record<string, number[]> = {
   '5-1': [52, 48, 0.55],
   '5-2': [50, 30, 0.8],
   '10-0': [50, 54, 1.05],
+  '11-0': [50, 62, 0.85],
 }
 
 const sparkle = (x: number, y: number, r: number) =>

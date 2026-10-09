@@ -27,7 +27,7 @@ import Mascot, { type Mood } from './game/Mascot'
 import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS } from './sim/levels'
 import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
-import { isBomb } from './sim/engine'
+import { isBomb, isWild } from './sim/engine'
 import type { GameState } from './sim/types'
 import './App.css'
 
@@ -134,6 +134,7 @@ const TIPS = [
   'A finished dish takes four links, so count your moves before you start.',
   'Dishes made of different ingredients: link one of each, in any order.',
   'Tiles with a golden star give you a bonus move when you link them into a chain.',
+  "Link seven or more of one ingredient and you also leave a Chef's Special. It joins any ingredient, so a long chain is never wasted.",
 ]
 
 /** The order preview: who is asking, what they want, how many moves you get. */
@@ -142,7 +143,7 @@ function PreLevel({ idx, stars, resting, onPlay, onClose }: { idx: number; stars
   const cust = customerFor(l.id)
   const got = stars[l.id] ?? 0
   const mixed = l.order.some((o) => recipeFor(o.kind, o.tier))
-  const tip = l.luck && l.id % 3 === 1 ? TIPS[5] : mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
+  const tip = l.luck && l.id % 3 === 1 ? TIPS[5] : l.luck && l.id % 3 === 2 ? TIPS[6] : mixed && l.id % 2 === 0 ? TIPS[4] : TIPS[l.id % 4]
   const intro = CHAPTER_RANGES.some((c) => c.from === l.id) ? CHAPTER_INTROS[chapterOf(l.id) - 1] : null
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={`Level ${l.id}`} onClick={onClose}>
@@ -647,7 +648,7 @@ function Game() {
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
+          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some(isWild) ? <b>The Chef's Special links with any ingredient!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
         )}
       </div>
 
