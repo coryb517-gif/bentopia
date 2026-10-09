@@ -429,7 +429,7 @@ function Game() {
   } else if (screen === 'hub' && tut.step === 'hub') {
     coachEl = <Coach target='[data-coach="decorate"]' side="above" text="This is your restaurant! Tap Decorate to make it yours." onSkip={skipTutorial} />
   } else if (screen === 'decorate' && tut.step === 'decorate') {
-    coachEl = <Coach target='[data-coach="place"], [data-coach="card-lamp"]' side="above" text="Tap the paper lantern to buy it, then press Place. It lights up the room!" onSkip={skipTutorial} />
+    coachEl = <Coach target='[data-coach="place"], [data-coach="card-lamp"]' side="above" text="Tap the paper lantern to buy it, then press the gold Place button. You can drag it first to pick the spot!" onSkip={skipTutorial} />
   } else if (screen === 'decorate' && tut.step === 'placed') {
     coachEl = <Coach target='[data-coach="done"]' side="below" text="Beautiful! Tap Done to head back." onSkip={skipTutorial} />
   } else if (screen === 'hub' && tut.step === 'back') {
