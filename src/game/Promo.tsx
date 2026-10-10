@@ -14,6 +14,11 @@ export default function Promo() {
     })
   }, [])
   if (!art) return null
+  const q = new URLSearchParams(location.search)
+  // /?promo&orbs: the loose orb pictures as data URLs, for building the animated tile on the website.
+  if (q.has('orbs')) return <pre id="out" style={{ color: '#000', background: '#fff', whiteSpace: 'pre-wrap' }}>{JSON.stringify(art)}</pre>
+  // /?promo&bg: only the scene behind the animated parts.
+  const bgOnly = q.has('bg')
 
   const orb = (src: string, x: number, y: number, size: number, extra: React.CSSProperties = {}) => (
     <img src={src} alt="" style={{ position: 'absolute', left: x - size / 2, top: y - size / 2, width: size * 1.3, height: size * 1.3, margin: -size * 0.15, ...extra }} />
@@ -30,6 +35,7 @@ export default function Promo() {
       </div>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 74% 48%, rgba(255,111,145,0.28), rgba(120,60,200,0.18) 38%, rgba(10,4,30,0) 68%), linear-gradient(180deg, rgba(8,3,26,0.5) 0%, rgba(8,3,26,0) 38%)' }} />
 
+      {!bgOnly && <>
       {/* far, soft ingredients for depth */}
       {orb(art.fish, 560, 930, 130, { filter: 'blur(3px)', opacity: 0.75, transform: 'rotate(-14deg)' })}
       {orb(art.cuke, 600, 520, 100, { filter: 'blur(5px)', opacity: 0.6, transform: 'rotate(18deg)' })}
@@ -68,6 +74,7 @@ export default function Promo() {
           <path key={i} d={`M${x} ${y - r}Q${x + r * 0.2} ${y - r * 0.2} ${x + r} ${y}Q${x + r * 0.2} ${y + r * 0.2} ${x} ${y + r}Q${x - r * 0.2} ${y + r * 0.2} ${x - r} ${y}Q${x - r * 0.2} ${y - r * 0.2} ${x} ${y - r}Z`} fill="#fff" opacity="0.92" />
         ))}
       </svg>
+      </>}
     </main>
   )
 }
