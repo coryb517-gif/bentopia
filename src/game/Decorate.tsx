@@ -16,11 +16,11 @@ import {
 export type DecorTab = Category | 'floors' | 'paint'
 export type StudioMode = 'furniture' | 'style' | 'layout' | 'build'
 
+/** Build lives on the bottom bar, so the in-panel tabs only cover decorating. */
 const MODES: { id: StudioMode; name: string; icon: string }[] = [
   { id: 'furniture', name: 'Furniture', icon: '🪑' },
   { id: 'style', name: 'Style', icon: '🎨' },
   { id: 'layout', name: 'Layout', icon: '✨' },
-  { id: 'build', name: 'Build', icon: '🏗️' },
 ]
 
 const CAT_ICON: Record<string, string> = { seating: '🪑', kitchen: '🍳', decor: '🏮', garden: '🌿', lights: '💡', wall: '🖼️', rugs: '🧶' }
@@ -370,14 +370,14 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
           </div>
         ) : (
           <>
-            <div className="modebar" role="tablist" aria-label="Studio">
+            {mode !== 'build' && <div className="modebar" role="tablist" aria-label="Studio">
               {MODES.map((m) => (
                 <button key={m.id} role="tab" aria-selected={mode === m.id} data-coach={`mode-${m.id}`} className={`mode${mode === m.id ? ' on' : ''}`} onClick={() => setMode(m.id)}>
                   <span className="mi" aria-hidden>{m.icon}</span>
                   <span>{m.name}</span>
                 </button>
               ))}
-            </div>
+            </div>}
 
             {mode === 'furniture' && (
               <>
