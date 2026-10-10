@@ -815,3 +815,43 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .hearts.compact { gap: 5px; }
 .hearts.compact b { font-size: 1.1rem; font-weight: 800; }
 .hubbar .wallet.mini { gap: 10px; padding: 6px 12px; }
+
+/* ---- One bottom bar everywhere: the section you are in lights up ---- */
+.dock button.on { color: #ffd23a; }
+.dock button.on::after { content: ""; display: block; width: 20px; height: 3px; border-radius: 2px; background: #ffd23a; margin-top: 1px; box-shadow: 0 0 8px rgba(255, 210, 58, 0.9); }
+.dock.compact { padding: 4px 10px calc(6px + env(safe-area-inset-bottom)); }
+.dock.compact button { padding: 3px 0; }
+.dock.compact button svg { width: 22px; height: 22px; }
+.dock.compact button span { font-size: 0.62rem; }
+.dock.compact .playbtn { margin-top: -14px; padding: 8px 0 6px; border-radius: 20px; }
+.dock.compact .playbtn svg { width: 26px; height: 26px; }
+.screen.withdock { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.screen.withdock.decorate { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+.studio.tall { max-height: 44vh; }
+
+/* ---- Town: visiting and ideas ---- */
+.tchip.done { border-color: rgba(109, 255, 192, 0.6); }
+.tchip.done i { box-shadow: 0 0 8px #6dffc0; background: #6dffc0; }
+.visitbonus { margin: 0; padding: 8px 12px; border-radius: 12px; background: rgba(255, 210, 58, 0.2); border: 1px solid #ffd23a; color: #ffe9a0; font-weight: 800; font-size: 0.85rem; text-align: center; animation: rise 0.4s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.ideas { display: flex; flex-wrap: wrap; gap: 6px; }
+.idea { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; background: rgba(255, 255, 255, 0.1); border: 1px solid var(--glass-edge); }
+.idea small { opacity: 0.8; font-size: 0.68rem; }
+
+/* Build panel: stats become one slim strip so the floor list gets the room */
+.buildpanel .statrow { display: flex; gap: 4px; }
+.buildpanel .statrow > div { flex: 1; display: flex; gap: 4px; align-items: baseline; justify-content: center; padding: 4px 4px; border-radius: 10px; }
+.buildpanel .statrow b { font-size: 0.95rem; }
+.buildpanel .statrow small { font-size: 0.6rem; }
+.mode { padding: 4px 2px 5px; }
+.mode .mi { font-size: 1.05rem; }
+
+/* Town: the map takes whatever room is left above the info card and the bottom bar */
+.screen.town { min-height: 100dvh; }
+.screen.town .townstage { flex: 1 1 auto; min-height: 240px; display: block; }
+.screen.town .townstage .zp { height: 100%; min-height: 240px; }
+.screen.town .townstage .zp-content { height: 100%; }
+.screen.town .townmap { height: 100%; width: 100%; }
+.screen.town.visit .townstage { display: block; }
+.screen.town.visit .stage .zp { height: min(52vh, 480px); }
+.screen.town:not(.visit) .townstage { display: flex; flex-direction: column; }
+.screen.town:not(.visit) .townstage .zp { flex: 1 1 auto; height: auto; min-height: 240px; }

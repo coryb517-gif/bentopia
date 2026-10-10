@@ -5,6 +5,7 @@ import Mascot from './Mascot'
 import Room, { DecorPreview, type Ghost } from './Room'
 import StoreyTabs from './StoreyTabs'
 import BuildPanel from './BuildPanel'
+import Dock from './Dock'
 import ZoomPan from './ZoomPan'
 import {
   applyStorey, canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall, sizeOf, storeyView, type StoreyId,
@@ -37,6 +38,10 @@ interface Props {
   initialTab?: DecorTab
   /** Which part of the studio to open on. */
   initialMode?: StudioMode
+  onTown: () => void
+  onPlay: () => void
+  onSettings: () => void
+  resting?: boolean
   storey: StoreyId
   onStorey: (id: StoreyId) => void
 }
@@ -62,7 +67,7 @@ const SET_COLOR: Record<string, string> = { izakaya: '#ffb347', sushibar: '#7fe6
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', initialMode = 'furniture', storey, onStorey }: Props) {
+export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', initialMode = 'furniture', storey, onStorey, onTown, onPlay, onSettings, resting }: Props) {
   const r = storeyView(root, storey)
   const setR = (next: Restaurant) => setRoot(applyStorey(root, storey, next))
   const [tab, setTab] = useState<DecorTab>(initialTab)
@@ -287,7 +292,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
   void fixedSlots
 
   return (
-    <main className="screen decorate">
+    <main className="screen decorate withdock">
       <header className="bar">
         <button className="btn ghost" data-coach="done" onClick={onDone}>Done</button>
         <h2>{mode === 'build' ? 'Build' : 'Studio'}</h2>
@@ -472,6 +477,17 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
           </>
         )}
       </section>
+
+      <Dock
+        compact
+        active={mode === 'build' ? 'build' : 'decorate'}
+        onDecorate={() => { setPlacing(null); setSelectedId(null); setMode((m) => (m === 'build' ? 'furniture' : m)) }}
+        onBuild={() => { setPlacing(null); setSelectedId(null); setMode('build') }}
+        onTown={onTown}
+        onPlay={onPlay}
+        onSettings={onSettings}
+        resting={resting}
+      />
 
       {levelUp && (
         <div className="overlay" role="dialog" aria-modal="true">

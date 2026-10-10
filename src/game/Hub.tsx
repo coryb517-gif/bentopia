@@ -1,5 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { type Pref } from './audio'
+import { useEffect, useState } from 'react'
 import CustomerPortrait, { customerFor } from './Customers'
 import Hearts from './Hearts'
 import Mascot from './Mascot'
@@ -7,6 +6,7 @@ import Exterior from './Exterior'
 import Room from './Room'
 import StoreyTabs, { type ViewId } from './StoreyTabs'
 import ZoomPan from './ZoomPan'
+import Dock from './Dock'
 import type { Avatar } from './avatar'
 import { AvatarBadge } from './AvatarFigure'
 import { emoteSound, startAmbience, stopAmbience } from './audio'
@@ -27,26 +27,12 @@ interface Props {
   /** The next level to play, for the Continue card. */
   next: { id: number; name: string; chapter: number }
   onContinue: () => void
-  prefs: Record<Pref, boolean>
   avatar?: Avatar
   onAvatar?: () => void
   onRewards?: () => void
   onGuest?: (id: string) => void
   rewardDot?: boolean
-  onPref: (k: Pref) => void
-}
-
-const icon = (d: ReactNode) => (
-  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    {d}
-  </svg>
-)
-
-const ICONS = {
-  decorate: icon(<><path d="M4 20l4-1 10-10-3-3L5 16z" /><path d="M14 7l3 3" /></>),
-  build: icon(<><path d="M3 21h18" /><path d="M5 21V9l7-5 7 5v12" /><path d="M10 21v-6h4v6" /></>),
-  market: icon(<><path d="M12 3c3 0 5 3 5 7s-2 7-5 7-5-3-5-7 2-7 5-7z" /><path d="M12 17v3M10 3h4" /></>),
-  settings: icon(<><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></>),
+  onSettings: () => void
 }
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
@@ -54,7 +40,7 @@ const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wa
 /** Whole numbers up to 99,999, then 123k, 1.2M. Keeps the header from growing. */
 export const shortNumber = (n: number): string => (n < 100_000 ? String(n) : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n))
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, onGuest, rewardDot }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, avatar, onAvatar, onRewards, onGuest, onSettings, rewardDot }: Props) {
   const [guestMsg, setGuestMsg] = useState('')
   const [emote, setEmote] = useState({ n: 0, e: '' })
   const [emoteOpen, setEmoteOpen] = useState(false)
@@ -64,7 +50,6 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
     startAmbience()
     return stopAmbience
   }, [view])
-  const [sheet, setSheet] = useState<'settings' | 'pantry' | 'market' | null>(null)
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
   const score = decorScore(r)
   const level = levelOf(r)
@@ -125,48 +110,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
         <button className="btn primary" onClick={onContinue} disabled={out}>{out ? 'Resting' : `Play ${next.id}`}</button>
       </section>
 
-      <nav className="dock" aria-label="Main">
-        <button data-coach="decorate" onClick={onDecorate}>{ICONS.decorate}<span>Decorate</span></button>
-        <button data-coach="build" onClick={onBuild}>{ICONS.build}<span>Build</span></button>
-        <button className="playbtn" data-coach="play" onClick={onPlay} disabled={out} aria-label="Play">
-          <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
-          <span>{out ? 'Resting' : 'Play'}</span>
-        </button>
-        <button data-coach="town" onClick={onTown}>{ICONS.market}<span>Town</span></button>
-        <button onClick={() => setSheet('settings')}>{ICONS.settings}<span>Settings</span></button>
-      </nav>
-
-      {sheet && (
-        <div className="overlay" role="dialog" aria-modal="true" onClick={() => setSheet(null)}>
-          <div className="card" onClick={(e) => e.stopPropagation()}>
-            {sheet === 'settings' ? (
-              <>
-                <h2>Settings</h2>
-                <div className="chips">
-                  {(['music', 'sound', 'haptics'] as Pref[]).map((k) => (
-                    <button key={k} className={`chip${prefs[k] ? ' on' : ''}`} aria-pressed={prefs[k]} onClick={() => onPref(k)}>
-                      {k === 'music' ? 'Music' : k === 'sound' ? 'Sound' : 'Haptics'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <Mascot mood="cheer" size={110} />
-                <h2>{sheet === 'pantry' ? 'Pantry' : 'Night Market'}</h2>
-                <p>
-                  {sheet === 'pantry'
-                    ? 'Delivery crates and rare ingredients are coming soon. Keep clearing levels to earn them!'
-                    : 'Visit other restaurants and leave tips. It opens when you reach player level 5.'}
-                </p>
-              </>
-            )}
-            <div className="actions">
-              <button className="btn primary" onClick={() => setSheet(null)}>Got it</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dock onDecorate={onDecorate} onBuild={onBuild} onTown={onTown} onPlay={onPlay} onSettings={onSettings} resting={out} />
     </main>
   )
 }

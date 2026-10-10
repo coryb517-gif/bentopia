@@ -20,7 +20,14 @@ export interface Weekly {
   claimed: string[]
 }
 
+export interface Visits {
+  /** The day these visits happened (local date key). */
+  day: string
+  ids: string[]
+}
+
 export interface Progress {
+  visits: Visits
   daily: { last: string; streak: number }
   weekly: Weekly
   claimed: string[]
@@ -31,7 +38,7 @@ export interface Progress {
 
 export const newWeekly = (week = ''): Weekly => ({ week, clears: 0, placed: 0, bombs: 0, claimed: [] })
 
-export const newProgress = (): Progress => ({ daily: { last: '', streak: 0 }, weekly: newWeekly(), claimed: [], stats: { bombs: 0, visits: 0, ashlyndia: 0 }, seen: [] })
+export const newProgress = (): Progress => ({ visits: { day: '', ids: [] }, daily: { last: '', streak: 0 }, weekly: newWeekly(), claimed: [], stats: { bombs: 0, visits: 0, ashlyndia: 0 }, seen: [] })
 
 // ---------- daily reward ----------
 export const DAILY_REWARDS = [30, 40, 50, 60, 80, 100, 200]
@@ -58,6 +65,24 @@ export function claimDaily(p: Progress, now: number): { progress: Progress; rewa
   const s = dailyStatus(p, now)
   if (!s.canClaim) return null
   return { progress: { ...p, daily: { last: dayKey(now), streak: s.streak + 1 } }, reward: s.reward }
+}
+
+// ---------- visiting neighbours ----------
+/** Coins for the first visit to each neighbouring shop on any given day. */
+export const VISIT_BONUS = 12
+
+/** Which shops you have already called on today. */
+export const visitedToday = (p: Progress, now: number): string[] => (p.visits.day === dayKey(now) ? p.visits.ids : [])
+
+/** Record a visit. The bonus is only paid the first time you visit that shop today. */
+export function visitShop(p: Progress, id: string, now: number): { progress: Progress; bonus: number } {
+  const day = dayKey(now)
+  const have = visitedToday(p, now)
+  const first = !have.includes(id)
+  return {
+    progress: { ...p, stats: { ...p.stats, visits: p.stats.visits + 1 }, visits: first ? { day, ids: [...have, id] } : { day, ids: have } },
+    bonus: first ? VISIT_BONUS : 0,
+  }
 }
 
 // ---------- weekly goals ----------
@@ -191,6 +216,7 @@ export function loadProgress(): Progress {
     const base = newProgress()
     const wk = raw.weekly ?? {}
     return {
+      visits: { day: typeof raw.visits?.day === 'string' ? raw.visits.day : '', ids: Array.isArray(raw.visits?.ids) ? raw.visits.ids.filter((x: unknown) => typeof x === 'string') : [] },
       weekly: {
         week: typeof wk.week === 'string' ? wk.week : '',
         clears: Number.isFinite(wk.clears) ? wk.clears : 0,

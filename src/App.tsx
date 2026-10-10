@@ -18,7 +18,8 @@ import Town from './game/Town'
 import AvatarCreator from './game/AvatarCreator'
 import type { StudioMode } from './game/Decorate'
 import Rewards from './game/Rewards'
-import { bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext, type WeeklyKey } from './game/progress'
+import SettingsSheet from './game/SettingsSheet'
+import { visitedToday as visitedList, visitShop, bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext, type WeeklyKey } from './game/progress'
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
@@ -223,6 +224,7 @@ function Game() {
   const avatarBack = useRef<Screen>('title')
   const [progress, setProgress] = useState(() => loadProgress())
   const [showRewards, setShowRewards] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [studioMode, setStudioMode] = useState<StudioMode>('furniture')
   useEffect(() => saveProgress(progress), [progress])
   useEffect(() => setProgress((p) => noteItems(p, restaurant)), [restaurant])
@@ -512,8 +514,7 @@ function Game() {
           return { id: l.id, name: l.name, chapter: chapterOf(l.id) }
         })()}
         onContinue={() => start(LEVELS.findIndex((x) => !(stars[x.id] > 0)) >= 0 ? LEVELS.findIndex((x) => !(stars[x.id] > 0)) : LEVELS.length - 1)}
-        prefs={prefs}
-        onPref={togglePref}
+        onSettings={() => setShowSettings(true)}
         avatar={avatar ?? undefined}
         onRewards={() => setShowRewards(true)}
         onGuest={(id) => id === 'ashlyndia' && setProgress((p) => ({ ...p, stats: { ...p.stats, ashlyndia: p.stats.ashlyndia + 1 } }))}
@@ -523,12 +524,14 @@ function Game() {
           setScreen('avatar')
         }}
       />
+      {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
       {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} onClose={() => setShowRewards(false)} />}
     </>)
   }
 
   if (screen === 'decorate') {
     return withCoach(
+      <>
       <Decorate
         r={restaurant}
         setR={setRestaurant}
@@ -552,8 +555,13 @@ function Game() {
         storey={storey}
         onStorey={setStorey}
         initialMode={studioMode}
+        onTown={() => setScreen('town')}
+        onPlay={() => setScreen('map')}
+        onSettings={() => setShowSettings(true)}
+        resting={wallet.hearts <= 0}
       />
-    )
+      {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
+    </>)
   }
   if (screen === 'avatar') {
     return (
@@ -575,6 +583,7 @@ function Game() {
   }
   if (screen === 'town') {
     return withCoach(
+      <>
       <Town
         r={restaurant}
         avatar={avatar ?? DEFAULT_AVATAR}
@@ -582,9 +591,33 @@ function Game() {
           avatarBack.current = 'town'
           setScreen('avatar')
         }}
-        onVisit={() => setProgress((p) => ({ ...p, stats: { ...p.stats, visits: p.stats.visits + 1 } }))}
+        onVisit={(id) => {
+          const res = visitShop(progress, id, Date.now())
+          setProgress(res.progress)
+          if (res.bonus) {
+            setWallet((w) => earn(w, res.bonus))
+            claimSound()
+          }
+          return res.bonus
+        }}
+        visitedToday={visitedList(progress, now)}
+        onDecorate={() => {
+          setStudioMode('furniture')
+          if (hubView !== 'outside') setStorey(hubView)
+          setScreen('decorate')
+        }}
+        onBuild={() => {
+          setStudioMode('build')
+          if (hubView !== 'outside') setStorey(hubView)
+          setScreen('decorate')
+        }}
+        onPlay={() => setScreen('map')}
+        onSettings={() => setShowSettings(true)}
+        resting={wallet.hearts <= 0}
         onBack={() => setScreen('hub')}
-      />,
+      />
+      {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
+      </>,
     )
   }
   if (screen === 'map') {

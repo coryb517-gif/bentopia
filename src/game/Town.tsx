@@ -8,13 +8,21 @@ import { stepSound } from './audio'
 import { avatarName, type Avatar } from './avatar'
 import { along, findRoute, routeLength, type TownGeometry, type V } from './townwalk'
 import { HipRoof } from './Exterior'
-import { decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
+import Dock from './Dock'
+import { allItems, itemDef, decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
 
 interface Props {
   r: Restaurant
   avatar: Avatar
   onEditAvatar: () => void
-  onVisit?: () => void
+  /** Called when you step into a shop. Returns the welcome bonus paid (0 if you already called today). */
+  onVisit: (id: string) => number
+  visitedToday: string[]
+  onDecorate: () => void
+  onBuild: () => void
+  onPlay: () => void
+  onSettings: () => void
+  resting?: boolean
   onBack: () => void
 }
 
@@ -133,7 +141,15 @@ const doorFront = (l: { c: number; r: number }): V => {
   return [x + LOT / 2, y + LOT + 0.45]
 }
 
-export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props) {
+export default function Town({ r, avatar, onEditAvatar, onVisit, visitedToday, onDecorate, onBuild, onPlay, onSettings, resting, onBack }: Props) {
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
+  const say = (text: string) => {
+    clearTimeout(toastTimer.current)
+    setToast(text)
+    toastTimer.current = setTimeout(() => setToast(''), 3200)
+  }
   const [phase, setPhase] = useState<Phase>(() => phaseOf())
   const [sel, setSel] = useState<string | null>('mine')
   const [visiting, setVisiting] = useState<string | null>(null)
@@ -229,8 +245,17 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
     const bw = zp?.clientWidth ?? sw
     const bh = zp?.clientHeight ?? sh
     const k = Math.min(sw / vw, sh / vh)
-    setFocus({ fx: ((sw - vw * k) / 2 + (px - minX) * k) / bw, fy: ((sh - vh * k) / 2 + (py - minY) * k) / bh, s: 2.4, n: (focus?.n ?? 0) + 1 })
+    setFocus({ fx: ((sw - vw * k) / 2 + (px - minX) * k) / bw, fy: ((sh - vh * k) / 2 + (py - minY) * k) / bh, s: 2.0, n: (focus?.n ?? 0) + 1 })
   }
+  // Open with the camera on your own shop, close enough to see the street.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const mine = lots.find((l) => l.mine)
+      if (mine) goTo(mine)
+    }, 90)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const labelOf = (l: Lot): [string, string] => (l.mine ? [myTop, myBottom] : nameOf(l.name))
 
   const props: { type: 'lamp' | 'sakura' | 'ramencart' | 'stonelantern' | 'vending' | 'bench' | 'torii'; x: number; y: number }[] = [
@@ -328,6 +353,9 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
   if (visited) {
     const [vTop, vBottom] = labelOf(visited)
     const inside = neighbourRestaurant(Number(visited.id.slice(1)) + 1, visited.level)
+    const owned = new Set(allItems(r).map((p) => p.type))
+    const myLevel = levelOf(r)
+    const ideas = [...new Set(inside.items.map((p) => p.type))].filter((ty) => !owned.has(ty)).map((ty) => itemDef(ty)).slice(0, 8)
     return (
       <main className="screen town visit">
         <header className="bar">
@@ -348,14 +376,27 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
             </div>
             <span className="stars" aria-label={`${visited.stars} of 5 stars`}>{'★'.repeat(visited.stars)}<span className="dim">{'★'.repeat(5 - visited.stars)}</span></span>
           </div>
-          <p className="ts-note">Pick up ideas for your own place. Leaving a tip opens with accounts.</p>
+          {toast && <p className="visitbonus" key={toast}>{toast}</p>}
+          {ideas.length > 0 ? (
+            <>
+              <p className="ts-note">Ideas for your place: {ideas.length} piece{ideas.length > 1 ? 's' : ''} you don't have yet.</p>
+              <div className="ideas">
+                {ideas.map((d) => (
+                  <span key={d.type} className="idea">{d.name}<small>{d.unlock > myLevel ? `🔒 Lv ${d.unlock}` : `🪙 ${d.price}`}</small></span>
+                ))}
+              </div>
+              <button className="btn primary" onClick={onDecorate}>Shop for ideas</button>
+            </>
+          ) : (
+            <p className="ts-note">You already own everything in here. Nicely done!</p>
+          )}
         </section>
       </main>
     )
   }
 
   return (
-    <main className="screen town">
+    <main className="screen town withdock">
       <header className="bar">
         <button className="btn ghost" onClick={onBack}>Back</button>
         <h2>Night Market</h2>
@@ -363,9 +404,10 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
       </header>
 
       <nav className="townchips" aria-label="Places">
+        <button className="tchip" onClick={() => setFocus({ fx: 0.5, fy: 0.5, s: 1, n: (focus?.n ?? 0) + 1 })}><i aria-hidden />🗺 Overview</button>
         {[...lots].sort((a, b) => Number(!!b.mine) - Number(!!a.mine) || a.r - b.r || a.c - b.c).map((l) => (
-          <button key={l.id} className={`tchip${sel === l.id ? ' on' : ''}`} onClick={() => visitLot(l)} style={{ ['--neon' as string]: l.neon } as CSSProperties}>
-            <i aria-hidden />{l.mine ? 'My shop' : labelOf(l)[0]}
+          <button key={l.id} className={`tchip${sel === l.id ? ' on' : ''}${visitedToday.includes(l.id) ? ' done' : ''}`} onClick={() => visitLot(l)} style={{ ['--neon' as string]: l.neon } as CSSProperties}>
+            <i aria-hidden />{l.mine ? '🏠 My shop' : labelOf(l)[0]}{visitedToday.includes(l.id) && ' ✓'}
           </button>
         ))}
         <button className="tchip me" onClick={onEditAvatar}><i aria-hidden />Change look</button>
@@ -378,7 +420,7 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
             <defs>
               <radialGradient id="lampPool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stopColor="#ffd9a0" stopOpacity="0.5" /><stop offset="1" stopColor="#ffd9a0" stopOpacity="0" /></radialGradient>
               <linearGradient id="townWin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff0b8" /><stop offset="1" stopColor="#ff9a4e" /></linearGradient>
-              <radialGradient id="townFadeG" cx="0.5" cy="0.5" r="0.66"><stop offset="0.6" stopColor="#fff" /><stop offset="1" stopColor="#000" /></radialGradient>
+              <radialGradient id="townFadeG" cx="0.5" cy="0.5" r="0.66"><stop offset="0.82" stopColor="#fff" /><stop offset="1" stopColor="#000" /></radialGradient>
               <mask id="townFade" maskUnits="userSpaceOnUse" x={minX} y={minY} width={maxX - minX} height={maxY - minY}><rect x={minX} y={minY} width={maxX - minX} height={maxY - minY} fill="url(#townFadeG)" /></mask>
             </defs>
             <g mask="url(#townFade)">
@@ -471,12 +513,12 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
             {selected.mine ? (
               <>
                 <p className="ts-note">{hasStorey(r, 'rooftop') ? 'Three floors' : hasStorey(r, 'upstairs') ? 'Two floors' : 'One floor'}, {sizeOf(r, 'ground')}×{sizeOf(r, 'ground')} tiles, {seatTotal(r)} seats.</p>
-                <button className="btn primary" onClick={onBack}>Go home</button>
+                <button className="btn primary" onClick={onBack}>Open my restaurant</button>
               </>
             ) : (
               <>
-                <p className="ts-note">Step inside and look around. Leaving tips opens with accounts.</p>
-                <button className="btn primary" onClick={() => { setVisiting(selected.id); onVisit?.() }}>Visit shop</button>
+                <p className="ts-note">{visitedToday.includes(selected.id) ? 'You called here today. Come back tomorrow for another welcome bonus.' : 'Step inside and look around. First visit today earns a welcome bonus.'}</p>
+                <button className="btn primary" onClick={() => { const bonus = onVisit(selected.id); setVisiting(selected.id); say(bonus ? `Welcome bonus +${bonus} coins!` : 'Welcome back!') }}>Visit shop</button>
               </>
             )}
           </>
@@ -484,6 +526,8 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, onBack }: Props
           <p className="ts-note">Tap a shop to see who runs it.</p>
         )}
       </section>
+
+      <Dock active="town" onDecorate={onDecorate} onBuild={onBuild} onTown={() => { const mine = lots.find((l) => l.mine); if (mine) visitLot(mine) }} onPlay={onPlay} onSettings={onSettings} resting={resting} />
     </main>
   )
 }

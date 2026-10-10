@@ -112,3 +112,23 @@ describe('weekly goals', () => {
     expect(new Set(targets).size).toBe(3)
   })
 })
+
+describe('visiting neighbours', () => {
+  it('pays a welcome bonus once per shop per day, but always counts the visit', async () => {
+    const { visitShop, visitedToday, VISIT_BONUS } = await import('./progress')
+    const now = at(2026, 10, 12)
+    let p = newProgress()
+    const a = visitShop(p, 'b0', now)
+    expect(a.bonus).toBe(VISIT_BONUS)
+    p = a.progress
+    expect(visitedToday(p, now)).toEqual(['b0'])
+    const again = visitShop(p, 'b0', now)
+    expect(again.bonus).toBe(0)
+    expect(again.progress.stats.visits).toBe(2)
+    expect(visitShop(again.progress, 'b1', now).bonus).toBe(VISIT_BONUS)
+    // a new day starts fresh
+    const tomorrow = at(2026, 10, 13)
+    expect(visitedToday(p, tomorrow)).toEqual([])
+    expect(visitShop(p, 'b0', tomorrow).bonus).toBe(VISIT_BONUS)
+  })
+})
