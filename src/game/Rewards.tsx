@@ -46,6 +46,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Rewards" onClick={onClose}>
       <div className="card rewards" onClick={(e) => e.stopPropagation()}>
+        <button className="xclose" aria-label="Close" onClick={onClose}>✕</button>
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'daily'} className={tab === 'daily' ? 'on' : ''} onClick={() => setTab('daily')}>Daily{daily.canClaim && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'weekly'} className={tab === 'weekly' ? 'on' : ''} onClick={() => setTab('weekly')}>Weekly{weeklyWaiting && <i className="dot" />}</button>
@@ -53,6 +54,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
           <button role="tab" aria-selected={tab === 'book'} className={tab === 'book' ? 'on' : ''} onClick={() => setTab('book')}>Book</button>
         </div>
 
+        <div className="rbody">
         {tab === 'daily' && (
           <>
             <h2>Daily gift</h2>
@@ -151,7 +153,8 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
           </>
         )}
 
-        <div className="actions"><button className="btn ghost" onClick={onClose}>Close</button></div>
+        </div>
+        <div className="actions"><button className="btn primary" onClick={onClose}>Done</button></div>
       </div>
     </div>
   )

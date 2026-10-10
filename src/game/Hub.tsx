@@ -71,14 +71,16 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
   return (
     <main className="screen hub">
       <header className="hubbar">
-        {avatar && <button className="abadge" onClick={onAvatar} aria-label="Change your look"><AvatarBadge a={avatar} size={42} /></button>}
-        <div className="rlevel">
+        <div className="hubleft">
+          {avatar && <button className="abadge" onClick={onAvatar} aria-label="Change your look"><AvatarBadge a={avatar} size={42} /></button>}
+          <div className="rlevel">
           <b>Lv {level}</b>
           <div className="meter" aria-label={prog ? `${prog.have} of ${prog.need} to the next level` : 'Max level'}>
             <i style={{ width: `${prog ? Math.min(100, (prog.have / prog.need) * 100) : 100}%` }} />
           </div>
         </div>
-        {onRewards && <button className="giftbtn" onClick={onRewards} aria-label="Rewards">🎁{rewardDot && <i className="dot" />}</button>}
+          {onRewards && <button className="giftbtn" onClick={onRewards} aria-label="Rewards">🎁{rewardDot && <i className="dot" />}</button>}
+        </div>
         <div className="wallet mini">
           <Hearts wallet={wallet} now={now} />
           <span className="coin"><i className="coinicon" />{wallet.coins}</span>

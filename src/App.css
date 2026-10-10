@@ -787,3 +787,28 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
   .foot { gap: 6px; }
   .foot .chip { padding-inline: 10px; font-size: 0.8rem; white-space: nowrap; }
 }
+
+/* ---- Navigation fixes: header never overlaps, sheets keep their buttons in reach ---- */
+.hubbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hubleft { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.hubbar .rlevel { display: grid; grid-template-columns: 1fr; gap: 4px; flex: 1; min-width: 44px; max-width: 120px; }
+.hubbar .rlevel b { font-size: 1.15rem; line-height: 1; white-space: nowrap; }
+.hubbar .rlevel .meter { height: 8px; }
+.hubbar .abadge, .hubbar .giftbtn { flex: none; }
+.hubbar .wallet.mini { flex: none; }
+
+/* Sheets: tabs and the Done button stay on screen, only the middle scrolls. */
+.card.rewards { display: flex; flex-direction: column; gap: 8px; max-height: min(88dvh, 760px); overflow: hidden; padding: 16px 18px 14px; position: relative; text-align: left; }
+.card.rewards .tabs { flex: none; padding-right: 30px; }
+.card.rewards .rbody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.card.rewards .actions { flex: none; width: 100%; display: flex; justify-content: center; }
+.card.rewards .actions .btn { width: 100%; }
+.card.rewards .rbody .actions { margin-top: 10px; }
+.xclose { position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--glass-edge); background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 1rem; cursor: pointer; z-index: 3; display: grid; place-items: center; padding: 0; }
+
+/* Any other popup card that grows tall scrolls inside the screen, with its buttons pinned at the bottom. */
+.overlay .card:not(.rewards) { max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+.overlay .card:not(.rewards) .actions { position: sticky; bottom: -14px; width: 100%; padding: 12px 0 4px; background: linear-gradient(to top, rgba(44, 28, 88, 0.97) 65%, rgba(44, 28, 88, 0)); z-index: 2; }
+
+/* The level map is long: keep its top bar (Back) in view while scrolling. */
+.screen.map .bar { position: sticky; top: 0; z-index: 6; margin: 0 -16px; padding: 8px 16px; background: linear-gradient(to bottom, rgba(20, 8, 48, 0.96) 70%, rgba(20, 8, 48, 0)); }
