@@ -4,6 +4,7 @@ import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
 import Hero from './game/Hero'
 import Og from './game/Og'
+import Promo from './game/Promo'
 import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
@@ -188,12 +189,13 @@ export default function App() {
   if (new URLSearchParams(location.search).has('art')) return <ArtGallery />
   const hero = new URLSearchParams(location.search).has('hero')
   const og = new URLSearchParams(location.search).has('og')
+  const promo = new URLSearchParams(location.search).has('promo')
   if (new URLSearchParams(location.search).has('room')) return <><Backdrop /><RoomLab /></>
   if (new URLSearchParams(location.search).has('exterior')) return <><Backdrop /><ExteriorLab /></>
   return (
     <>
       <Backdrop />
-      {og ? <Og /> : hero ? <Hero /> : <Game />}
+      {promo ? <Promo /> : og ? <Og /> : hero ? <Hero /> : <Game />}
     </>
   )
 }
