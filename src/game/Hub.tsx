@@ -51,6 +51,9 @@ const ICONS = {
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
 
+/** Whole numbers up to 99,999, then 123k, 1.2M. Keeps the header from growing. */
+export const shortNumber = (n: number): string => (n < 100_000 ? String(n) : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n))
+
 export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, prefs, onPref, avatar, onAvatar, onRewards, onGuest, rewardDot }: Props) {
   const [guestMsg, setGuestMsg] = useState('')
   const [emote, setEmote] = useState({ n: 0, e: '' })
@@ -82,8 +85,8 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           {onRewards && <button className="giftbtn" onClick={onRewards} aria-label="Rewards">🎁{rewardDot && <i className="dot" />}</button>}
         </div>
         <div className="wallet mini">
-          <Hearts wallet={wallet} now={now} />
-          <span className="coin"><i className="coinicon" />{wallet.coins}</span>
+          <Hearts wallet={wallet} now={now} compact />
+          <span className="coin"><i className="coinicon" />{shortNumber(wallet.coins)}</span>
         </div>
       </header>
 
