@@ -855,3 +855,5 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .screen.town.visit .stage .zp { height: min(52vh, 480px); }
 .screen.town:not(.visit) .townstage { display: flex; flex-direction: column; }
 .screen.town:not(.visit) .townstage .zp { flex: 1 1 auto; height: auto; min-height: 240px; }
+
+.installhelp { margin: 8px 0 0; font-size: 0.85rem; opacity: 0.85; text-align: center; }
