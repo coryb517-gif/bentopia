@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import ArtGallery from './game/ArtGallery'
 import { svgUrl } from './game/art'
 import Backdrop from './game/Backdrop'
@@ -19,13 +19,15 @@ import AvatarCreator from './game/AvatarCreator'
 import type { StudioMode } from './game/Decorate'
 import Rewards from './game/Rewards'
 import SettingsSheet from './game/SettingsSheet'
-import { visitedToday as visitedList, visitShop, bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext, type WeeklyKey } from './game/progress'
+import { dayKey, visitedToday as visitedList, visitShop, bumpWeekly, claimDaily, claimGoal, claimWeekly, hasRewardWaiting, loadProgress, noteItems, saveProgress, type Goal, type GoalContext, type WeeklyKey } from './game/progress'
 import { DEFAULT_AVATAR, loadAvatar, saveAvatar, type Avatar } from './game/avatar'
 import { collectTips, loadRestaurant, saveRestaurant, tipsAccrued, type StoreyId } from './game/restaurant'
 import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
+import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
+import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
 import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS } from './sim/levels'
 import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
@@ -241,9 +243,16 @@ function Game() {
   const moodTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const quipCount = useRef(0)
 
-  const level = LEVELS[levelIdx]
+  const [dailyDay, setDailyDay] = useState<string | null>(null)
+  const [dailyRec, setDailyRec] = useState(loadDailyRecord)
+  const [shared, setShared] = useState('')
+  const dailyLvl = useMemo(() => (dailyDay ? dailyLevel(dailyDay) : null), [dailyDay])
+  const dailyRef = useRef({ day: dailyDay, rec: dailyRec })
+  dailyRef.current = { day: dailyDay, rec: dailyRec }
+  useEffect(() => saveDailyRecord(dailyRec), [dailyRec])
+  const level = dailyLvl ?? LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
-  const boardKey = `${level.id}-${attempt}`
+  const boardKey = `${dailyDay ?? level.id}-${attempt}`
   const hintsUsed = hints.key === boardKey ? hints.used : 0
   /** The first hint on each try is free; after that a small fee. */
   const hintCost = hintsUsed === 0 ? 0 : HINT_COST
@@ -288,7 +297,7 @@ function Game() {
     setPref(k, on)
     setPrefs((p) => ({ ...p, [k]: on }))
   }
-  const customer = customerFor(level.id)
+  const customer = customerFor(dailyDay ? dailyNumber(dailyDay) : level.id)
 
   const say = useCallback((text: string, m: Mood, ms = 1300) => {
     clearTimeout(moodTimer.current)
@@ -300,10 +309,27 @@ function Game() {
     }, ms)
   }, [])
 
+  const startDaily = () => {
+    if (wallet.hearts <= 0) return
+    const day = dayKey(Date.now())
+    startMusic()
+    setReward(null)
+    setShared('')
+    setDailyDay(day)
+    setSeed(dailySeed(day))
+    setAttempt((a) => a + 1)
+    setGame(null)
+    setPreview(null)
+    setShowResult(false)
+    setScreen('play')
+    say('Same board for everyone today!', 'cheer', 2600)
+  }
+
   const start = (idx: number) => {
     if (wallet.hearts <= 0) return
     startMusic()
     setReward(null)
+    setDailyDay(null)
     setLevelIdx(idx)
     setSeed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
     setAttempt((a) => a + 1)
@@ -339,6 +365,19 @@ function Game() {
     if (!game || game.status === 'playing') return
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
+      const dc = dailyRef.current
+      if (dc.day) {
+        const { next, first } = recordWin(dc.rec, dc.day, game.stars, game.movesLeft)
+        setDailyRec(next)
+        const coins = first ? DAILY_COINS + game.stars * 10 : 0
+        setReward(coins)
+        if (coins) {
+          setWallet((w) => earn(w, coins))
+          coinSound(2)
+        }
+        const t = setTimeout(() => setShowResult(true), 800)
+        return () => clearTimeout(t)
+      }
       if (game.level.id === 1) setTut((t) => (inLevelOne(t.step) ? { ...t, step: 'win' } : t))
       setProgress((p) => bumpWeekly(p, 'clears', 1, Date.now()))
       const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0))
@@ -515,6 +554,11 @@ function Game() {
         })()}
         onContinue={() => start(LEVELS.findIndex((x) => !(stars[x.id] > 0)) >= 0 ? LEVELS.findIndex((x) => !(stars[x.id] > 0)) : LEVELS.length - 1)}
         onSettings={() => setShowSettings(true)}
+        daily={(() => {
+          const today = dayKey(now)
+          return { number: dailyNumber(today), done: wonToday(dailyRec, today), stars: dailyRec.stars, streak: streakNow(dailyRec, today) }
+        })()}
+        onDaily={startDaily}
         avatar={avatar ?? undefined}
         onRewards={() => setShowRewards(true)}
         onGuest={(id) => id === 'ashlyndia' && setProgress((p) => ({ ...p, stats: { ...p.stats, ashlyndia: p.stats.ashlyndia + 1 } }))}
@@ -642,13 +686,28 @@ function Game() {
   const status = game?.status ?? 'playing'
   const custMood: CustomerMood = status === 'won' ? 'happy' : status === 'lost' ? 'sad' : flash ? 'happy' : 'idle'
   const custLine = status === 'won' ? customer.win : status === 'lost' ? customer.lose : customer.ask
-  const hasNext = levelIdx + 1 < LEVELS.length
+  const hasNext = !dailyDay && levelIdx + 1 < LEVELS.length
+  const again = () => (dailyDay ? startDaily() : start(levelIdx))
+  const label = dailyDay ? 'the Daily Challenge' : `level ${level.id}`
+  const shareDaily = async () => {
+    if (!dailyDay) return
+    const text = shareText(dailyDay, dailyRec.stars, dailyRec.movesLeft, dailyRec.streak)
+    try {
+      if (navigator.share) await navigator.share({ text })
+      else {
+        await navigator.clipboard.writeText(text)
+        setShared('Copied! Paste it in a message.')
+      }
+    } catch {
+      /* share was cancelled */
+    }
+  }
 
   return withCoach(
     <main className="screen play">
       <header className="hud">
-        <button className="btn ghost round" onClick={() => setScreen('map')} aria-label="Leave level">✕</button>
-        <div className="levelname">Level {level.id}<small>{level.name}</small></div>
+        <button className="btn ghost round" onClick={() => setScreen(dailyDay ? 'hub' : 'map')} aria-label="Leave level">✕</button>
+        <div className="levelname">{dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
         <div className="mascot-wrap">
           <Mascot mood={mood} size={84} />
           {quip.text && <span key={quip.n} className="quip">{quip.text}</span>}
@@ -706,7 +765,7 @@ function Game() {
         </div>
         <span className="spacer" />
         <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡 Hint{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
-        <button className="chip" onClick={() => start(levelIdx)} aria-label="Restart level">↻ Restart</button>
+        <button className="chip" onClick={again} aria-label="Restart level">↻ Restart</button>
       </footer>
 
       {showResult && status !== 'playing' && (
@@ -719,10 +778,18 @@ function Game() {
                 <h2>Order up!</h2>
                 <Stars n={game!.stars} big />
                 <p>{game!.movesLeft} moves to spare</p>
-                {reward !== null && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
+                {dailyDay && <p>🔥 {streakNow(dailyRec, dailyDay)} day streak</p>}
+                {reward !== null && reward > 0 && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
                 <div className="actions">
                   {tut.step === 'win' ? (
                     <button className="btn primary" onClick={finishTutorialWin}>See your restaurant</button>
+                  ) : dailyDay ? (
+                    <>
+                      <button className="btn primary" onClick={shareDaily}>📤 Share result</button>
+                      {shared && <p className="installhelp">{shared}</p>}
+                      <button className="btn" onClick={again}>Play again for a better score</button>
+                      <button className="btn ghost" onClick={() => setScreen('hub')}>Back to restaurant</button>
+                    </>
                   ) : (
                     <>
                       {hasNext && <button className="btn primary" onClick={() => start(levelIdx + 1)}>Play level {level.id + 1}</button>}
@@ -735,7 +802,7 @@ function Game() {
             ) : (
               <>
                 <h2>Out of moves</h2>
-                <p>The customer will wait. Give level {level.id} another go.</p>
+                <p>The customer will wait. Give {label} another go.</p>
                 <Hearts wallet={wallet} now={now} />
                 {wallet.coins >= EXTRA_MOVES_COST && (
                   <button
@@ -753,8 +820,8 @@ function Game() {
                   </button>
                 )}
                 <div className="actions">
-                  <button className="btn" disabled={outOfHearts} onClick={() => start(levelIdx)}>{outOfHearts ? 'Out of hearts' : `Play level ${level.id} again`}</button>
-                  <button className="btn ghost" onClick={() => setScreen('map')}>Level map</button>
+                  <button className="btn" disabled={outOfHearts} onClick={again}>{outOfHearts ? 'Out of hearts' : dailyDay ? 'Try the Daily again' : `Play level ${level.id} again`}</button>
+                  <button className="btn ghost" onClick={() => setScreen(dailyDay ? 'hub' : 'map')}>{dailyDay ? 'Back to restaurant' : 'Level map'}</button>
                 </div>
               </>
             )}

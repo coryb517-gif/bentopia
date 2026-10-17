@@ -857,3 +857,13 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .screen.town:not(.visit) .townstage .zp { flex: 1 1 auto; height: auto; min-height: 240px; }
 
 .installhelp { margin: 8px 0 0; font-size: 0.85rem; opacity: 0.85; text-align: center; }
+
+.dailybar { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 8px; padding: 8px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.18); background: linear-gradient(90deg, rgba(255, 143, 177, 0.28), rgba(255, 209, 102, 0.22)); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dailybar:disabled { opacity: 0.6; }
+.dailybar .dd { font-size: 1.5rem; }
+.dailybar .dt { flex: 1; min-width: 0; display: grid; }
+.dailybar .dt b { font-size: 0.95rem; }
+.dailybar .dt small { font-size: 0.7rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dailybar .ds { font-weight: 800; font-size: 0.85rem; }
+.dailybar .dgo { font-weight: 800; padding: 6px 14px; border-radius: 999px; background: #ffd166; color: #3a2210; }
+.dailybar.done .dgo { background: rgba(255, 255, 255, 0.2); color: inherit; }

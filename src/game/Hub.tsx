@@ -33,6 +33,8 @@ interface Props {
   onGuest?: (id: string) => void
   rewardDot?: boolean
   onSettings: () => void
+  daily?: { number: number; done: boolean; stars: number; streak: number }
+  onDaily?: () => void
 }
 
 const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wants sushi!', 'What a lovely night.']
@@ -40,7 +42,7 @@ const GREETINGS = ['Welcome back, chef!', 'The lanterns are lit.', 'Table two wa
 /** Whole numbers up to 99,999, then 123k, 1.2M. Keeps the header from growing. */
 export const shortNumber = (n: number): string => (n < 100_000 ? String(n) : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n))
 
-export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, avatar, onAvatar, onRewards, onGuest, onSettings, rewardDot }: Props) {
+export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorate, view, onView, onBuild, onTown, next, onContinue, avatar, onAvatar, onRewards, onGuest, onSettings, rewardDot, daily, onDaily }: Props) {
   const [guestMsg, setGuestMsg] = useState('')
   const [emote, setEmote] = useState({ n: 0, e: '' })
   const [emoteOpen, setEmoteOpen] = useState(false)
@@ -99,6 +101,15 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
           <p className="bubble">{guestMsg || (out ? 'Rest a moment, chef...' : tips > 0 ? 'Customers left tips!' : greeting)}</p>
         </div>
       </div>
+
+      {daily && onDaily && (
+        <button className={`dailybar${daily.done ? ' done' : ''}`} onClick={onDaily} disabled={out}>
+          <span className="dd" aria-hidden>📅</span>
+          <span className="dt"><b>Daily Challenge #{daily.number}</b><small>{daily.done ? `${'⭐'.repeat(daily.stars)} cleared · play again for a better score` : 'One board, the same for everyone today'}</small></span>
+          {daily.streak > 0 && <span className="ds">🔥 {daily.streak}</span>}
+          <span className="dgo">{daily.done ? '✓' : 'Play'}</span>
+        </button>
+      )}
 
       <section className="nextcard" aria-label="Next order">
         <CustomerPortrait customer={customerFor(next.id)} mood="idle" size={58} />
