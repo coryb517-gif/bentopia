@@ -131,6 +131,11 @@ function Stars({ n, big }: { n: number; big?: boolean }) {
 
 const HINT_COST = 10
 
+/** Merges closer together than this keep a combo alive. */
+const COMBO_WINDOW = 4000
+/** Coins for the best combo of a win: 3 per link in the combo after the first, up to 30. */
+const comboCoins = (peak: number) => Math.min(30, Math.max(0, peak - 1) * 3)
+
 const TIPS = [
   'Link five or more of one ingredient and you leave a Flavor Bomb. Tap it to clear its row and column.',
   'Land each crafted dish next to its siblings, so the next chain is one short drag away.',
@@ -245,6 +250,10 @@ function Game() {
 
   const walletRef = useRef(wallet)
   const boardKeyRef = useRef('')
+  const comboRef = useRef({ n: 0, t: 0, peak: 0 })
+  const comboTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [combo, setCombo] = useState({ n: 0, key: 0 })
+  const [comboBonus, setComboBonus] = useState({ peak: 0, coins: 0 })
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
   const [dailyDay, setDailyDay] = useState<string | null>(null)
   const [dailyRec, setDailyRec] = useState(loadDailyRecord)
@@ -333,6 +342,8 @@ function Game() {
     const day = dayKey(Date.now())
     startMusic()
     setReward(null)
+    comboRef.current = { n: 0, t: 0, peak: 0 }
+    setCombo((o) => ({ ...o, n: 0 }))
     setKnife((k) => ({ ...k, armed: false }))
     setShared('')
     setDailyDay(day)
@@ -349,6 +360,8 @@ function Game() {
     if (wallet.hearts <= 0) return
     startMusic()
     setReward(null)
+    comboRef.current = { n: 0, t: 0, peak: 0 }
+    setCombo((o) => ({ ...o, n: 0 }))
     setKnife((k) => ({ ...k, armed: false }))
     setDailyDay(null)
     setLevelIdx(idx)
@@ -375,6 +388,17 @@ function Game() {
 
   const onMerge = useCallback(
     (len: number, tier: number) => {
+      const c = comboRef.current
+      const t = Date.now()
+      c.n = t - c.t < COMBO_WINDOW ? c.n + 1 : 1
+      c.t = t
+      c.peak = Math.max(c.peak, c.n)
+      clearTimeout(comboTimer.current)
+      if (c.n >= 2) {
+        coinSound(Math.min(3, c.n - 1))
+        setCombo((o) => ({ n: c.n, key: o.key + 1 }))
+        comboTimer.current = setTimeout(() => setCombo((o) => ({ ...o, n: 0 })), COMBO_WINDOW)
+      } else setCombo((o) => ({ ...o, n: 0 }))
       const pool = tier >= 2 ? QUIPS.dish : len >= 5 ? QUIPS.huge : len === 4 ? QUIPS.big : QUIPS.small
       say(pool[quipCount.current++ % pool.length], tier >= 2 || len >= 5 ? 'wow' : 'cheer')
       setTut((t) => (t.step === 'link' ? { ...t, step: 'merged' } : t.step === 'merged' ? { ...t, step: 'play' } : t))
@@ -386,11 +410,14 @@ function Game() {
     if (!game || game.status === 'playing') return
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
+      const peak = comboRef.current.peak
+      const bonus = comboCoins(peak)
+      setComboBonus({ peak, coins: bonus })
       const dc = dailyRef.current
       if (dc.day) {
         const { next, first } = recordWin(dc.rec, dc.day, game.stars, game.movesLeft)
         setDailyRec(next)
-        const coins = first ? DAILY_COINS + game.stars * 10 : 0
+        const coins = (first ? DAILY_COINS + game.stars * 10 : 0) + bonus
         setReward(coins)
         if (coins) {
           setWallet((w) => earn(w, coins))
@@ -401,7 +428,7 @@ function Game() {
       }
       if (game.level.id === 1) setTut((t) => (inLevelOne(t.step) ? { ...t, step: 'win' } : t))
       setProgress((p) => bumpWeekly(p, 'clears', 1, Date.now()))
-      const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0))
+      const coins = levelReward(game.stars, game.movesLeft, !(starsRef.current[game.level.id] > 0)) + bonus
       setReward(coins)
       setWallet((w) => earn(w, coins))
       setStars((prev) => {
@@ -759,6 +786,7 @@ function Game() {
         </ul>
       </section>
 
+      {combo.n >= 2 && <div key={combo.key} className={`combo c${Math.min(combo.n, 6)}`} aria-live="polite">Combo x{combo.n}!</div>}
       <div className="preview" aria-live="polite">
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
@@ -801,6 +829,7 @@ function Game() {
                 <Stars n={game!.stars} big />
                 <p>{game!.movesLeft} moves to spare</p>
                 {dailyDay && <p>🔥 {streakNow(dailyRec, dailyDay)} day streak</p>}
+                {comboBonus.coins > 0 && <p>⚡ Best combo x{comboBonus.peak}: +{comboBonus.coins} bonus coins</p>}
                 {reward !== null && reward > 0 && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
                 <div className="actions">
                   {tut.step === 'win' ? (
