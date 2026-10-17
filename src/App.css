@@ -867,3 +867,5 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .dailybar .ds { font-weight: 800; font-size: 0.85rem; }
 .dailybar .dgo { font-weight: 800; padding: 6px 14px; border-radius: 999px; background: #ffd166; color: #3a2210; }
 .dailybar.done .dgo { background: rgba(255, 255, 255, 0.2); color: inherit; }
+
+@media (max-width: 420px) { .foot .lbl { display: none; } }

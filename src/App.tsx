@@ -9,7 +9,7 @@ import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
 import { claimSound, coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
-import { earn, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
+import { earn, KNIFE_COST, KNIFE_MAX, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import Coach from './game/Coach'
 import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
@@ -243,6 +243,9 @@ function Game() {
   const moodTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const quipCount = useRef(0)
 
+  const walletRef = useRef(wallet)
+  const boardKeyRef = useRef('')
+  const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
   const [dailyDay, setDailyDay] = useState<string | null>(null)
   const [dailyRec, setDailyRec] = useState(loadDailyRecord)
   const [shared, setShared] = useState('')
@@ -253,6 +256,22 @@ function Game() {
   const level = dailyLvl ?? LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
   const boardKey = `${dailyDay ?? level.id}-${attempt}`
+  walletRef.current = wallet
+  boardKeyRef.current = boardKey
+  const knifeUsed = knife.key === boardKey ? knife.used : 0
+  const knifeLeft = KNIFE_MAX - knifeUsed
+  const toggleKnife = () => {
+    if (!game || game.status !== 'playing') return
+    if (knife.armed) return setKnife((k) => ({ ...k, armed: false }))
+    if (knifeLeft <= 0 || wallet.coins < KNIFE_COST) return
+    setKnife((k) => ({ ...k, armed: true }))
+  }
+  const onKnife = useCallback(() => {
+    const paid = spend(walletRef.current, KNIFE_COST)
+    if (paid) setWallet(paid)
+    coinSound(1)
+    setKnife((k) => ({ armed: false, key: boardKeyRef.current, used: (k.key === boardKeyRef.current ? k.used : 0) + 1 }))
+  }, [])
   const hintsUsed = hints.key === boardKey ? hints.used : 0
   /** The first hint on each try is free; after that a small fee. */
   const hintCost = hintsUsed === 0 ? 0 : HINT_COST
@@ -314,6 +333,7 @@ function Game() {
     const day = dayKey(Date.now())
     startMusic()
     setReward(null)
+    setKnife((k) => ({ ...k, armed: false }))
     setShared('')
     setDailyDay(day)
     setSeed(dailySeed(day))
@@ -329,6 +349,7 @@ function Game() {
     if (wallet.hearts <= 0) return
     startMusic()
     setReward(null)
+    setKnife((k) => ({ ...k, armed: false }))
     setDailyDay(null)
     setLevelIdx(idx)
     setSeed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
@@ -742,16 +763,16 @@ function Game() {
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>{game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some(isWild) ? <b>The Chef's Special links with any ingredient!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
+          <>{knife.armed ? <b>Tap a raw ingredient to slice it away!</b> : game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some(isWild) ? <b>The Chef's Special links with any ingredient!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
         )}
       </div>
 
-      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} onLucky={onLucky} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
+      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} onLucky={onLucky} knife={knife.armed} onKnife={onKnife} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
 
       <footer className="foot">
         <div className="audiowrap">
           <button className={`chip${showAudio ? ' on' : ''}`} aria-expanded={showAudio} aria-label="Sound settings" onClick={() => setShowAudio((v) => !v)}>
-            {prefs.sound || prefs.music ? '🔊' : '🔇'} Sound
+            {prefs.sound || prefs.music ? '🔊' : '🔇'}<span className="lbl"> Sound</span>
           </button>
           {showAudio && (
             <div className="audiopop" role="group" aria-label="Sound settings">
@@ -764,8 +785,9 @@ function Game() {
           )}
         </div>
         <span className="spacer" />
+        <button className={`chip hintchip${knife.armed ? ' on' : ''}`} onClick={toggleKnife} disabled={game?.status !== 'playing' || (!knife.armed && (knifeLeft <= 0 || wallet.coins < KNIFE_COST))} aria-pressed={knife.armed} aria-label="Chef's Knife">🔪 {knife.armed ? 'Cancel' : `Knife ${KNIFE_COST}`}</button>
         <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡 Hint{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
-        <button className="chip" onClick={again} aria-label="Restart level">↻ Restart</button>
+        <button className="chip" onClick={again} aria-label="Restart level">↻<span className="lbl"> Restart</span></button>
       </footer>
 
       {showResult && status !== 'playing' && (

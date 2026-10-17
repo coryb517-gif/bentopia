@@ -151,3 +151,19 @@ describe("Chef's Special (wild)", () => {
     for (let seed = 1; seed <= 10; seed++) expect(newGame(LEVELS[40], seed).cells.some((t) => isWild(t))).toBe(false)
   })
 })
+
+describe("Chef's Knife", () => {
+  it('slices a raw tile, costs no move and leaves a playable board', async () => {
+    const { newGame, sliceTile, hasLink } = await import('./engine')
+    const { LEVELS } = await import('./levels')
+    const s = newGame(LEVELS[30], 7)
+    const i = s.cells.findIndex((t) => t && t.tier === 0 && t.kind < 10)
+    const n = sliceTile(s, i)
+    expect(n).not.toBe(s)
+    expect(n.movesLeft).toBe(s.movesLeft)
+    expect(n.last?.removed).toEqual([s.cells[i]!.id])
+    expect(n.cells.filter(Boolean).length).toBe(s.cells.filter(Boolean).length)
+    expect(hasLink(n)).toBe(true)
+    expect(sliceTile({ ...s, status: 'won' }, i)).toEqual({ ...s, status: 'won' })
+  })
+})

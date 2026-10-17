@@ -319,6 +319,21 @@ export function tapBomb(prev: GameState, cell: number): GameState {
   return s
 }
 
+/**
+ * The Chef's Knife: slice one raw ingredient (frozen or not) off the board. Costs no move; the board
+ * refills and stays playable. Crafted dishes and bombs cannot be sliced.
+ */
+export function sliceTile(prev: GameState, cell: number): GameState {
+  const t = prev.cells[cell]
+  if (prev.status !== 'playing' || !t || t.tier !== 0 || isBomb(t)) return prev
+  const s: GameState = { ...prev, cells: [...prev.cells] }
+  s.cells[cell] = null
+  s.last = { removed: [t.id], resultId: -1, toCell: cell }
+  settle(s)
+  ensureLinkable(s)
+  return s
+}
+
 /** Returns the next state, or the same state if the chain is invalid or the game is over. */
 export function commitChain(prev: GameState, path: number[]): GameState {
   const out = prev.status === 'playing' ? chainOutcome(prev, path) : null

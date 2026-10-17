@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, isWild, newGame, SIZE, suggestChain, tapBomb } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, isWild, newGame, SIZE, suggestChain, sliceTile, tapBomb } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
@@ -18,6 +18,9 @@ interface Props {
   onLucky?: (n: number) => void
   /** Fired when a Flavor Bomb goes off, with how many ingredients it cleared. */
   onBomb?: (cleared: number) => void
+  /** The Chef's Knife is armed: the next tap slices a raw ingredient. */
+  knife?: boolean
+  onKnife?: () => void
   /** Bump id to give a lost game 
  more moves. */
   grant?: { id: number; n: number }
@@ -53,11 +56,11 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, onLucky, grant, hint, ping }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, grant, hint, ping }: Props) {
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onState, onPreview, onMerge, onBomb, onLucky, hint, ping })
-  cb.current = { onState, onPreview, onMerge, onBomb, onLucky, hint, ping }
+  const cb = useRef({ onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, hint, ping })
+  cb.current = { onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, hint, ping }
 
   useEffect(() => {
     const el = host.current!
@@ -370,6 +373,23 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         cb.current.onState(state)
         cb.current.onBomb?.((next.last?.removed.length ?? 1) - 1)
       }
+      /** The Chef's Knife: slice the tapped ingredient and let the board refill. */
+      const slice = (i: number) => {
+        const next = sliceTile(state, i)
+        if (next === state) return
+        lastInput = performance.now()
+        path = []
+        const sp = sprites.get(state.cells[i]!.id)
+        if (sp) sparks(sp.node.x, sp.node.y, 12, [0xffffff, 0xcfe8ff, 0xffd23a])
+        const c0 = center(i)
+        rings.push({ x: c0.x, y: c0.y, t: 0, color: 0xffffff })
+        state = next
+        boomSound()
+        placeSprites(true)
+        drawPath()
+        cb.current.onState(state)
+        cb.current.onKnife?.()
+      }
       const commit = () => {
         const next = commitChain(state, path)
         if (next === state) return
@@ -409,6 +429,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         if (state.status !== 'playing') return
         const i = cellAt(e, false)
         if (i === null) return
+        if (cb.current.knife) return slice(i)
         app.canvas.setPointerCapture(e.pointerId)
         // Tap-to-link: a selection left over from a previous tap can be extended or committed.
         if (path.length) {
