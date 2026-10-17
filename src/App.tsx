@@ -9,7 +9,7 @@ import ExteriorLab from './game/ExteriorLab'
 import RoomLab from './game/RoomLab'
 import BoardView from './game/BoardView'
 import { claimSound, coinSound, getPref, setPref, startMusic, type Pref } from './game/audio'
-import { earn, KNIFE_COST, KNIFE_MAX, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
+import { earn, KNIFE_COST, KNIFE_MAX, SHUFFLE_COST, SHUFFLE_MAX, EXTRA_MOVES, EXTRA_MOVES_COST, levelReward, loadWallet, loseHeart, refundHeart, saveWallet, spend, tick } from './game/economy'
 import Coach from './game/Coach'
 import Decorate from './game/Decorate'
 import { loadTutorial, saveTutorial, TUTORIAL_GIFT, inLevelOne } from './game/tutorial'
@@ -254,6 +254,7 @@ function Game() {
   const comboTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [combo, setCombo] = useState({ n: 0, key: 0 })
   const [comboBonus, setComboBonus] = useState({ peak: 0, coins: 0 })
+  const [shuf, setShuf] = useState({ id: 0, key: '', used: 0 })
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
   const [dailyDay, setDailyDay] = useState<string | null>(null)
   const [dailyRec, setDailyRec] = useState(loadDailyRecord)
@@ -281,6 +282,16 @@ function Game() {
     coinSound(1)
     setKnife((k) => ({ armed: false, key: boardKeyRef.current, used: (k.key === boardKeyRef.current ? k.used : 0) + 1 }))
   }, [])
+  const shuffleLeft = SHUFFLE_MAX - (shuf.key === boardKey ? shuf.used : 0)
+  const askShuffle = () => {
+    if (!game || game.status !== 'playing' || shuffleLeft <= 0) return
+    const paid = spend(wallet, SHUFFLE_COST)
+    if (!paid) return
+    setWallet(paid)
+    coinSound(1)
+    setKnife((k) => ({ ...k, armed: false }))
+    setShuf((x) => ({ id: x.id + 1, key: boardKey, used: (x.key === boardKey ? x.used : 0) + 1 }))
+  }
   const hintsUsed = hints.key === boardKey ? hints.used : 0
   /** The first hint on each try is free; after that a small fee. */
   const hintCost = hintsUsed === 0 ? 0 : HINT_COST
@@ -795,7 +806,7 @@ function Game() {
         )}
       </div>
 
-      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} onLucky={onLucky} knife={knife.armed} onKnife={onKnife} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
+      <BoardView key={boardKey} level={level} seed={seed} onState={onState} onPreview={setPreview} onMerge={onMerge} onBomb={onBomb} onLucky={onLucky} knife={knife.armed} onKnife={onKnife} shuffle={shuf} grant={grant} hint={tut.step === 'link' ? 'always' : 'auto'} ping={hints.ping} />
 
       <footer className="foot">
         <div className="audiowrap">
@@ -813,8 +824,9 @@ function Game() {
           )}
         </div>
         <span className="spacer" />
-        <button className={`chip hintchip${knife.armed ? ' on' : ''}`} onClick={toggleKnife} disabled={game?.status !== 'playing' || (!knife.armed && (knifeLeft <= 0 || wallet.coins < KNIFE_COST))} aria-pressed={knife.armed} aria-label="Chef's Knife">🔪 {knife.armed ? 'Cancel' : `Knife ${KNIFE_COST}`}</button>
-        <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡 Hint{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
+        <button className={`chip hintchip${knife.armed ? ' on' : ''}`} onClick={toggleKnife} disabled={game?.status !== 'playing' || (!knife.armed && (knifeLeft <= 0 || wallet.coins < KNIFE_COST))} aria-pressed={knife.armed} aria-label="Chef's Knife">{knife.armed ? <>✕<span className="lbl"> Cancel</span></> : <>🔪<span className="lbl"> Knife</span> {KNIFE_COST}</>}</button>
+        <button className="chip hintchip" onClick={askShuffle} disabled={game?.status !== 'playing' || shuffleLeft <= 0 || wallet.coins < SHUFFLE_COST} aria-label="Shuffle the board">🔀<span className="lbl"> Shuffle</span> {SHUFFLE_COST}</button>
+        <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡<span className="lbl"> Hint</span>{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
         <button className="chip" onClick={again} aria-label="Restart level">↻<span className="lbl"> Restart</span></button>
       </footer>
 

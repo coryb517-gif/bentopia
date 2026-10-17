@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Application, Container, Graphics, Sprite as PixiSprite, Texture } from 'pixi.js'
-import { canExtend, chainOutcome, commitChain, grantMoves, isBomb, isWild, newGame, SIZE, suggestChain, sliceTile, tapBomb } from '../sim/engine'
+import { canExtend, chainOutcome, commitChain, grantMoves, shuffleBoard, isBomb, isWild, newGame, SIZE, suggestChain, sliceTile, tapBomb } from '../sim/engine'
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
@@ -24,6 +24,8 @@ interface Props {
   /** Bump id to give a lost game 
  more moves. */
   grant?: { id: number; n: number }
+  /** Bump the id to stir the whole board. */
+  shuffle?: { id: number }
   /** Show a finger tracing a good chain: always (tutorial), after a few idle seconds, or never. */
   hint?: 'off' | 'auto' | 'always'
   /** Change this number to show a hint right now. */
@@ -56,7 +58,8 @@ interface Particle {
 
 const BURST = [0xffc233, 0xf2a0a8, 0x7fa650, 0xffffff]
 
-export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, grant, hint, ping }: Props) {
+export default function BoardView({ level, seed, onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, grant, shuffle, hint, ping }: Props) {
+  const shuffleRef = useRef<(() => void) | null>(null)
   const grantRef = useRef<((n: number) => void) | null>(null)
   const host = useRef<HTMLDivElement>(null)
   const cb = useRef({ onState, onPreview, onMerge, onBomb, onLucky, knife, onKnife, hint, ping })
@@ -514,6 +517,21 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         hintG.circle(fxp, fyp, cell * 0.17).fill({ color: 0xffffff, alpha: 0.95 })
         hintG.circle(fxp, fyp, cell * 0.17).stroke({ width: 2, color: 0xff6f91 })
       })
+      shuffleRef.current = () => {
+        const next = shuffleBoard(state)
+        if (next === state) return
+        lastInput = performance.now()
+        path = []
+        state = next
+        popSound(2)
+        placeSprites(false)
+        for (const [, sp] of sprites) {
+          sp.pop = 0.5
+          sparks(sp.node.x, sp.node.y, 1, [0xffffff, 0xcfe8ff])
+        }
+        drawPath()
+        cb.current.onState(state)
+      }
       grantRef.current = (n) => {
         state = grantMoves(state, n)
         path = []
@@ -558,6 +576,11 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
     if (grant) grantRef.current?.(grant.n)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grant?.id])
+
+  useEffect(() => {
+    if (shuffle?.id) shuffleRef.current?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shuffle?.id])
 
   return <div ref={host} className="board-host" />
 }

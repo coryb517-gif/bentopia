@@ -7,6 +7,8 @@ export const HEART_MS = 30 * 60 * 1000
 export const EXTRA_MOVES = 5
 export const KNIFE_COST = 30
 export const KNIFE_MAX = 2
+export const SHUFFLE_COST = 20
+export const SHUFFLE_MAX = 2
 export const EXTRA_MOVES_COST = 50
 
 export interface Wallet {

@@ -167,3 +167,16 @@ describe("Chef's Knife", () => {
     expect(sliceTile({ ...s, status: 'won' }, i)).toEqual({ ...s, status: 'won' })
   })
 })
+
+describe('Shuffle', () => {
+  it('rearranges the same tiles, costs no move and leaves a link', async () => {
+    const { newGame, shuffleBoard, hasLink } = await import('./engine')
+    const { LEVELS } = await import('./levels')
+    const s = newGame(LEVELS[30], 11)
+    const n = shuffleBoard(s)
+    expect(n.movesLeft).toBe(s.movesLeft)
+    expect(n.cells.some((t, i) => t !== s.cells[i])).toBe(true)
+    expect(n.cells.map((t) => t?.id).filter(Boolean).sort()).toEqual(s.cells.map((t) => t?.id).filter(Boolean).sort())
+    expect(hasLink(n)).toBe(true)
+  })
+})

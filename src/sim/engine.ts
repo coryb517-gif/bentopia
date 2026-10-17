@@ -320,6 +320,29 @@ export function tapBomb(prev: GameState, cell: number): GameState {
 }
 
 /**
+ * Shuffle: stir every tile on the board into new places. Costs no move. The result always has a link,
+ * and it is never the same layout you started with.
+ */
+export function shuffleBoard(prev: GameState): GameState {
+  if (prev.status !== 'playing') return prev
+  const s: GameState = { ...prev, cells: [...prev.cells], last: null }
+  const idx: number[] = []
+  for (let i = 0; i < CELLS; i++) if (s.cells[i]) idx.push(i)
+  const original = [...s.cells]
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const tiles = idx.map((i) => original[i])
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(rand(s) * (i + 1))
+      ;[tiles[i], tiles[j]] = [tiles[j], tiles[i]]
+    }
+    idx.forEach((cell, n) => (s.cells[cell] = tiles[n]))
+    if (hasLink(s) && idx.some((cell) => s.cells[cell] !== original[cell])) return s
+  }
+  ensureLinkable(s)
+  return s
+}
+
+/**
  * The Chef's Knife: slice one raw ingredient (frozen or not) off the board. Costs no move; the board
  * refills and stays playable. Crafted dishes and bombs cannot be sliced.
  */
