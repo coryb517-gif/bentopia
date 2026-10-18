@@ -83,7 +83,8 @@ export default function LevelMap({ stars, unlocked, resting, onPick }: Props) {
                 <h3>{ch.title}</h3>
                 <p>{ch.sub}</p>
               </div>
-              <span className="lbcount">{done}/{levels.length}</span>
+              <span className="lbcount">{done === levels.length ? '✓ Complete' : `${done}/${levels.length}`}</span>
+              <i className="lbbar" style={{ width: `${(done / levels.length) * 100}%` }} aria-hidden />
             </header>
             <div className="lpath" style={{ height: H }}>
               <svg className="lpathsvg" viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" aria-hidden>{segs}</svg>
@@ -97,13 +98,14 @@ export default function LevelMap({ stars, unlocked, resting, onPick }: Props) {
                   <button
                     key={l.id}
                     ref={isCurrent ? currentRef : undefined}
-                    className={`node${boss ? ' boss' : ''}${got ? ' cleared' : ''}${isCurrent ? ' current' : ''}${open ? '' : ' locked'}`}
+                    className={`node${boss ? ' boss' : ''}${got ? ' cleared' : ''}${got === 3 ? ' perfect' : ''}${isCurrent ? ' current' : ''}${open ? '' : ' locked'}`}
                     style={{ left: `${pos[k].x}%`, top: pos[k].y }}
                     disabled={!open || resting}
                     onClick={() => onPick(idx)}
                     aria-label={`Level ${l.id}, ${l.name}${got ? `, ${got} stars` : ''}${boss ? ', boss' : ''}`}
                   >
                     {boss && <i className="crown" aria-hidden>👑</i>}
+                    {isCurrent && <i className="here" aria-hidden>Next ▾</i>}
                     <span className="nnum">{open ? l.id : '🔒'}</span>
                     <span className="nstars" aria-hidden>
                       {[1, 2, 3].map((n) => <b key={n} className={n <= got ? 'on' : ''}>★</b>)}
