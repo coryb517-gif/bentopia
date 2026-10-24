@@ -884,3 +884,13 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 @keyframes bossglow { 0%, 100% { box-shadow: 0 0 16px rgba(255, 122, 138, 0.4), 0 6px 16px rgba(0, 0, 0, 0.4); } 50% { box-shadow: 0 0 32px rgba(255, 122, 138, 0.85), 0 6px 16px rgba(0, 0, 0, 0.4); } }
 @media (prefers-reduced-motion: reduce) { .here, .node.boss:not(.locked):not(.cleared) { animation: none; } }
 .node.boss .here { top: -48px; }
+
+.regulars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; text-align: left; }
+.regulars li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 16px; background: rgba(255, 255, 255, 0.08); }
+.regulars li.ready { background: linear-gradient(90deg, rgba(255, 210, 58, 0.22), rgba(255, 127, 176, 0.18)); border: 1px solid rgba(255, 210, 58, 0.5); }
+.regulars .rinfo { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.regulars .rinfo b small { margin-left: 6px; font-size: 0.66rem; color: var(--pink); text-transform: uppercase; letter-spacing: 0.05em; }
+.regulars .pc { font-style: italic; font-size: 0.72rem; line-height: 1.25; opacity: 0.85; }
+.regulars .amt { font-weight: 800; font-size: 0.8rem; white-space: nowrap; }
+.rewards .tabs { gap: 3px; padding: 4px 38px 4px 4px; justify-content: flex-start; }
+.rewards .tabs button { padding: 7px 6px; font-size: 0.76rem; }

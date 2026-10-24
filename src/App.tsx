@@ -26,6 +26,7 @@ import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
+import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, tierReached, TIERS } from './game/regulars'
 import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
 import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
 import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS } from './sim/levels'
@@ -255,6 +256,8 @@ function Game() {
   const [combo, setCombo] = useState({ n: 0, key: 0 })
   const [comboBonus, setComboBonus] = useState({ peak: 0, coins: 0 })
   const [shuf, setShuf] = useState({ id: 0, key: '', used: 0 })
+  const [regulars, setRegulars] = useState(loadRegulars)
+  const [friend, setFriend] = useState<{ name: string; up: string } | null>(null)
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
   const [dailyDay, setDailyDay] = useState<string | null>(null)
   const [dailyRec, setDailyRec] = useState(loadDailyRecord)
@@ -263,6 +266,9 @@ function Game() {
   const dailyRef = useRef({ day: dailyDay, rec: dailyRec })
   dailyRef.current = { day: dailyDay, rec: dailyRec }
   useEffect(() => saveDailyRecord(dailyRec), [dailyRec])
+  useEffect(() => saveRegulars(regulars), [regulars])
+  const regularsRef = useRef(regulars)
+  regularsRef.current = regulars
   const level = dailyLvl ?? LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
   const boardKey = `${dailyDay ?? level.id}-${attempt}`
@@ -353,6 +359,7 @@ function Game() {
     const day = dayKey(Date.now())
     startMusic()
     setReward(null)
+    setFriend(null)
     comboRef.current = { n: 0, t: 0, peak: 0 }
     setCombo((o) => ({ ...o, n: 0 }))
     setKnife((k) => ({ ...k, armed: false }))
@@ -371,6 +378,7 @@ function Game() {
     if (wallet.hearts <= 0) return
     startMusic()
     setReward(null)
+    setFriend(null)
     comboRef.current = { n: 0, t: 0, peak: 0 }
     setCombo((o) => ({ ...o, n: 0 }))
     setKnife((k) => ({ ...k, armed: false }))
@@ -422,6 +430,13 @@ function Game() {
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
       const peak = comboRef.current.peak
+      {
+        const cust = dailyRef.current.day ? customerFor(dailyNumber(dailyRef.current.day)) : customerFor(game.level.id)
+        const before = regularsRef.current.pts[cust.id] ?? 0
+        const gain = game.stars >= 3 ? 2 : 1
+        setRegulars((r) => addPoints(r, cust.id, gain))
+        setFriend({ name: cust.name, up: tierReached(before + gain) > tierReached(before) ? TIERS[tierReached(before + gain) - 1].name : '' })
+      }
       const bonus = comboCoins(peak)
       setComboBonus({ peak, coins: bonus })
       const dc = dailyRef.current
@@ -581,6 +596,14 @@ function Game() {
     claimSound()
   }
 
+  const claimRegular = (id: string) => {
+    const c = claimTier(regulars, id)
+    if (!c) return
+    setRegulars(c.next)
+    setWallet((w) => earn(w, c.coins))
+    claimSound()
+  }
+
   if (screen === 'hub') {
     return withCoach(<>
       <Hub
@@ -621,14 +644,14 @@ function Game() {
         avatar={avatar ?? undefined}
         onRewards={() => setShowRewards(true)}
         onGuest={(id) => id === 'ashlyndia' && setProgress((p) => ({ ...p, stats: { ...p.stats, ashlyndia: p.stats.ashlyndia + 1 } }))}
-        rewardDot={hasRewardWaiting(goalCtx, now)}
+        rewardDot={hasRewardWaiting(goalCtx, now) || anyClaimable(regulars)}
         onAvatar={() => {
           avatarBack.current = 'hub'
           setScreen('avatar')
         }}
       />
       {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
-      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} onClose={() => setShowRewards(false)} />}
+      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} regulars={regulars} onClaimRegular={claimRegular} onClose={() => setShowRewards(false)} />}
     </>)
   }
 
@@ -841,6 +864,7 @@ function Game() {
                 <Stars n={game!.stars} big />
                 <p>{game!.movesLeft} moves to spare</p>
                 {dailyDay && <p>🔥 {streakNow(dailyRec, dailyDay)} day streak</p>}
+                {friend && <p>💞 {friend.name}: friendship grew{friend.up ? ` to “${friend.up}”! Claim the gift in Rewards.` : '.'}</p>}
                 {comboBonus.coins > 0 && <p>⚡ Best combo x{comboBonus.peak}: +{comboBonus.coins} bonus coins</p>}
                 {reward !== null && reward > 0 && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
                 <div className="actions">

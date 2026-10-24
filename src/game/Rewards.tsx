@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import CustomerPortrait, { ASHLYNDIA } from './Customers'
+import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
+import { anyClaimable, claimable, POSTCARDS, tierReached, TIERS, type Regulars } from './regulars'
 import { floorArt } from './Room'
 import { ITEMS, SETS, type ItemDef } from './restaurant'
 import { bonusClaimable, DAILY_REWARDS, dailyStatus, GOALS, goalClaimable, goalDone, goalValue, rollWeek, WEEKLY_BONUS, weeklyClaimable, weeklyTasks, type GoalContext, type Goal, type WeeklyKey } from './progress'
@@ -10,10 +11,12 @@ interface Props {
   onClaimDaily: () => void
   onClaimGoal: (g: Goal) => void
   onClaimWeekly: (id: WeeklyKey | 'bonus') => void
+  regulars: Regulars
+  onClaimRegular: (id: string) => void
   onClose: () => void
 }
 
-type Tab = 'daily' | 'weekly' | 'goals' | 'book'
+type Tab = 'daily' | 'weekly' | 'goals' | 'regulars' | 'book'
 
 const Coin = () => <i className="coinicon" />
 
@@ -28,7 +31,7 @@ function Thumb({ def, found }: { def: ItemDef; found: boolean }) {
 }
 
 /** Daily reward, goals that pay coins, and the collection book. */
-export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, onClose }: Props) {
+export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, regulars, onClaimRegular, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('daily')
   const daily = dailyStatus(ctx.progress, now)
   const tasks = weeklyTasks(now)
@@ -51,6 +54,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
           <button role="tab" aria-selected={tab === 'daily'} className={tab === 'daily' ? 'on' : ''} onClick={() => setTab('daily')}>Daily{daily.canClaim && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'weekly'} className={tab === 'weekly' ? 'on' : ''} onClick={() => setTab('weekly')}>Weekly{weeklyWaiting && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>Goals{waitingGoals > 0 && <i className="dot" />}</button>
+          <button role="tab" aria-selected={tab === 'regulars'} className={tab === 'regulars' ? 'on' : ''} onClick={() => setTab('regulars')}>Regulars{anyClaimable(regulars) && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'book'} className={tab === 'book' ? 'on' : ''} onClick={() => setTab('book')}>Book</button>
         </div>
 
@@ -119,6 +123,34 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                       <span className="bar"><i style={{ width: `${(v / g.target) * 100}%` }} /></span>
                     </div>
                     {ready ? <button className="btn primary" onClick={() => onClaimGoal(g)}><Coin />{g.reward}</button> : done ? <span className="tick">✓</span> : <span className="amt">{v}/{g.target}</span>}
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
+
+        {tab === 'regulars' && (
+          <>
+            <h2>Your regulars</h2>
+            <p>Serve a customer to grow your friendship. Every new level brings a gift and a postcard.</p>
+            <ul className="regulars">
+              {CUSTOMERS.map((c) => {
+                const pts = regulars.pts[c.id] ?? 0
+                const reached = tierReached(pts)
+                const got = regulars.claimed[c.id] ?? 0
+                const next = TIERS[reached]
+                const prev = reached ? TIERS[reached - 1].at : 0
+                const ready = claimable(regulars, c.id)
+                return (
+                  <li key={c.id} className={ready ? 'ready' : ''}>
+                    <CustomerPortrait customer={c} mood="happy" size={52} />
+                    <div className="rinfo">
+                      <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small></b>
+                      {next ? <span className="bar"><i style={{ width: `${((pts - prev) / (next.at - prev)) * 100}%` }} /></span> : <span className="bar"><i style={{ width: '100%' }} /></span>}
+                      <small className="pc">{got ? `“${POSTCARDS[c.id][got - 1]}”` : ready ? 'Wants to say hello. Claim your gift!' : `${pts}/${TIERS[0].at} to say hello`}</small>
+                    </div>
+                    {ready ? <button className="btn primary" onClick={() => onClaimRegular(c.id)}><Coin />{TIERS[got].coins}</button> : <span className="amt">{got}/{TIERS.length} ♥</span>}
                   </li>
                 )
               })}
