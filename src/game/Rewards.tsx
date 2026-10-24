@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
+import { anyMilestoneReady, festivalFor, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
+import { dayKey } from './progress'
 import { anyClaimable, claimable, POSTCARDS, tierReached, TIERS, type Regulars } from './regulars'
 import { floorArt } from './Room'
 import { ITEMS, SETS, type ItemDef } from './restaurant'
@@ -12,11 +14,14 @@ interface Props {
   onClaimGoal: (g: Goal) => void
   onClaimWeekly: (id: WeeklyKey | 'bonus') => void
   regulars: Regulars
+  festival: FestivalState
+  boosters: Boosters
+  onClaimFestival: (at: number) => void
   onClaimRegular: (id: string) => void
   onClose: () => void
 }
 
-type Tab = 'daily' | 'weekly' | 'goals' | 'regulars' | 'book'
+type Tab = 'daily' | 'event' | 'weekly' | 'goals' | 'regulars' | 'book'
 
 const Coin = () => <i className="coinicon" />
 
@@ -31,7 +36,7 @@ function Thumb({ def, found }: { def: ItemDef; found: boolean }) {
 }
 
 /** Daily reward, goals that pay coins, and the collection book. */
-export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, regulars, onClaimRegular, onClose }: Props) {
+export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, regulars, onClaimRegular, festival, boosters, onClaimFestival, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('daily')
   const daily = dailyStatus(ctx.progress, now)
   const tasks = weeklyTasks(now)
@@ -52,6 +57,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
         <button className="xclose" aria-label="Close" onClick={onClose}>✕</button>
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'daily'} className={tab === 'daily' ? 'on' : ''} onClick={() => setTab('daily')}>Daily{daily.canClaim && <i className="dot" />}</button>
+          <button role="tab" aria-selected={tab === 'event'} className={tab === 'event' ? 'on' : ''} onClick={() => setTab('event')}>Event{anyMilestoneReady(festival, dayKey(now)) && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'weekly'} className={tab === 'weekly' ? 'on' : ''} onClick={() => setTab('weekly')}>Weekly{weeklyWaiting && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'goals'} className={tab === 'goals' ? 'on' : ''} onClick={() => setTab('goals')}>Goals{waitingGoals > 0 && <i className="dot" />}</button>
           <button role="tab" aria-selected={tab === 'regulars'} className={tab === 'regulars' ? 'on' : ''} onClick={() => setTab('regulars')}>Regulars{anyClaimable(regulars) && <i className="dot" />}</button>
@@ -76,6 +82,35 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
             </div>
           </>
         )}
+
+        {tab === 'event' && (() => {
+          const fest = festivalFor(dayKey(now))
+          const top = MILESTONES[MILESTONES.length - 1].at
+          return (
+            <>
+              <h2>{fest.icon} {fest.name}</h2>
+              <p>{fest.daysLeft} day{fest.daysLeft === 1 ? '' : 's'} left. Every level you clear earns a festival token (the Daily Challenge earns two).</p>
+              <div className="festbar" aria-label={`${festival.tokens} tokens`}><i style={{ width: `${Math.min(100, (festival.tokens / top) * 100)}%` }} /><b>🎆 {festival.tokens}</b></div>
+              <ul className="goals">
+                {MILESTONES.map((m) => {
+                  const ready = milestoneReady(festival, m)
+                  const done = festival.claimed.includes(m.at)
+                  const prize = [m.coins ? <span key="c"><Coin />{m.coins}</span> : null, m.knife ? <span key="k">🔪×{m.knife}</span> : null, m.shuffle ? <span key="s">🔀×{m.shuffle}</span> : null]
+                  return (
+                    <li key={m.at} className={ready ? 'ready' : done ? 'done' : ''}>
+                      <div>
+                        <b>{m.at} tokens</b>
+                        <small className="prize">{prize}</small>
+                      </div>
+                      {ready ? <button className="btn primary" onClick={() => onClaimFestival(m.at)}>Claim</button> : done ? <span className="tick">✓</span> : <span className="amt">{Math.min(m.at, festival.tokens)}/{m.at}</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="invnote">Your free boosters: 🔪×{boosters.knife} 🔀×{boosters.shuffle}. They are used before coins.</p>
+            </>
+          )
+        })()}
 
         {tab === 'weekly' && (
           <>

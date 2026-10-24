@@ -894,3 +894,9 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .regulars .amt { font-weight: 800; font-size: 0.8rem; white-space: nowrap; }
 .rewards .tabs { gap: 3px; padding: 4px 38px 4px 4px; justify-content: flex-start; }
 .rewards .tabs button { padding: 7px 6px; font-size: 0.76rem; }
+
+.festbar { position: relative; height: 24px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); border: 1px solid var(--glass-edge); overflow: hidden; margin: 2px 0 8px; }
+.festbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff9ebb, #ffd166, #7fe6ff); box-shadow: 0 0 12px rgba(255, 209, 102, 0.7); }
+.festbar b { position: relative; display: block; text-align: center; font-size: 0.8rem; line-height: 24px; text-shadow: 0 1px 4px rgba(8, 3, 24, 0.9); }
+.prize { display: flex; gap: 10px; font-weight: 800; }
+.invnote { font-size: 0.75rem; opacity: 0.8; margin: 6px 0 0; }

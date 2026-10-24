@@ -26,6 +26,7 @@ import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
+import { addBoosters, addTokens, anyMilestoneReady, claimMilestone, loadBoosters, loadFestival, save as saveFestival, rollFestival } from './game/festival'
 import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, tierReached, TIERS } from './game/regulars'
 import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
 import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
@@ -256,6 +257,11 @@ function Game() {
   const [combo, setCombo] = useState({ n: 0, key: 0 })
   const [comboBonus, setComboBonus] = useState({ peak: 0, coins: 0 })
   const [shuf, setShuf] = useState({ id: 0, key: '', used: 0 })
+  const [festival, setFestival] = useState(loadFestival)
+  const [boost, setBoost] = useState(loadBoosters)
+  const boostRef = useRef(boost)
+  boostRef.current = boost
+  useEffect(() => saveFestival(festival, boost), [festival, boost])
   const [regulars, setRegulars] = useState(loadRegulars)
   const [friend, setFriend] = useState<{ name: string; up: string } | null>(null)
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
@@ -279,21 +285,27 @@ function Game() {
   const toggleKnife = () => {
     if (!game || game.status !== 'playing') return
     if (knife.armed) return setKnife((k) => ({ ...k, armed: false }))
-    if (knifeLeft <= 0 || wallet.coins < KNIFE_COST) return
+    if (knifeLeft <= 0 || (boost.knife <= 0 && wallet.coins < KNIFE_COST)) return
     setKnife((k) => ({ ...k, armed: true }))
   }
   const onKnife = useCallback(() => {
-    const paid = spend(walletRef.current, KNIFE_COST)
-    if (paid) setWallet(paid)
+    if (boostRef.current.knife > 0) setBoost((b) => ({ ...b, knife: b.knife - 1 }))
+    else {
+      const paid = spend(walletRef.current, KNIFE_COST)
+      if (paid) setWallet(paid)
+    }
     coinSound(1)
     setKnife((k) => ({ armed: false, key: boardKeyRef.current, used: (k.key === boardKeyRef.current ? k.used : 0) + 1 }))
   }, [])
   const shuffleLeft = SHUFFLE_MAX - (shuf.key === boardKey ? shuf.used : 0)
   const askShuffle = () => {
     if (!game || game.status !== 'playing' || shuffleLeft <= 0) return
-    const paid = spend(wallet, SHUFFLE_COST)
-    if (!paid) return
-    setWallet(paid)
+    if (boost.shuffle > 0) setBoost((b) => ({ ...b, shuffle: b.shuffle - 1 }))
+    else {
+      const paid = spend(wallet, SHUFFLE_COST)
+      if (!paid) return
+      setWallet(paid)
+    }
     coinSound(1)
     setKnife((k) => ({ ...k, armed: false }))
     setShuf((x) => ({ id: x.id + 1, key: boardKey, used: (x.key === boardKey ? x.used : 0) + 1 }))
@@ -430,6 +442,7 @@ function Game() {
     if (game.status === 'won') {
       say('Itadakimasu!', 'wow', 6000)
       const peak = comboRef.current.peak
+      setFestival((f) => addTokens(f, dayKey(Date.now()), dailyRef.current.day ? 2 : 1))
       {
         const cust = dailyRef.current.day ? customerFor(dailyNumber(dailyRef.current.day)) : customerFor(game.level.id)
         const before = regularsRef.current.pts[cust.id] ?? 0
@@ -596,6 +609,15 @@ function Game() {
     claimSound()
   }
 
+  const claimFestivalReward = (at: number) => {
+    const c = claimMilestone(festival, dayKey(Date.now()), at)
+    if (!c) return
+    setFestival(c.next)
+    setBoost((b) => addBoosters(b, c.reward))
+    if (c.reward.coins) setWallet((w) => earn(w, c.reward.coins!))
+    claimSound()
+  }
+
   const claimRegular = (id: string) => {
     const c = claimTier(regulars, id)
     if (!c) return
@@ -644,14 +666,14 @@ function Game() {
         avatar={avatar ?? undefined}
         onRewards={() => setShowRewards(true)}
         onGuest={(id) => id === 'ashlyndia' && setProgress((p) => ({ ...p, stats: { ...p.stats, ashlyndia: p.stats.ashlyndia + 1 } }))}
-        rewardDot={hasRewardWaiting(goalCtx, now) || anyClaimable(regulars)}
+        rewardDot={hasRewardWaiting(goalCtx, now) || anyClaimable(regulars) || anyMilestoneReady(festival, dayKey(now))}
         onAvatar={() => {
           avatarBack.current = 'hub'
           setScreen('avatar')
         }}
       />
       {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
-      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} regulars={regulars} onClaimRegular={claimRegular} onClose={() => setShowRewards(false)} />}
+      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} regulars={regulars} onClaimRegular={claimRegular} festival={rollFestival(festival, dayKey(now))} boosters={boost} onClaimFestival={claimFestivalReward} onClose={() => setShowRewards(false)} />}
     </>)
   }
 
@@ -847,8 +869,8 @@ function Game() {
           )}
         </div>
         <span className="spacer" />
-        <button className={`chip hintchip${knife.armed ? ' on' : ''}`} onClick={toggleKnife} disabled={game?.status !== 'playing' || (!knife.armed && (knifeLeft <= 0 || wallet.coins < KNIFE_COST))} aria-pressed={knife.armed} aria-label="Chef's Knife">{knife.armed ? <>✕<span className="lbl"> Cancel</span></> : <>🔪<span className="lbl"> Knife</span> {KNIFE_COST}</>}</button>
-        <button className="chip hintchip" onClick={askShuffle} disabled={game?.status !== 'playing' || shuffleLeft <= 0 || wallet.coins < SHUFFLE_COST} aria-label="Shuffle the board">🔀<span className="lbl"> Shuffle</span> {SHUFFLE_COST}</button>
+        <button className={`chip hintchip${knife.armed ? ' on' : ''}`} onClick={toggleKnife} disabled={game?.status !== 'playing' || (!knife.armed && (knifeLeft <= 0 || (boost.knife <= 0 && wallet.coins < KNIFE_COST)))} aria-pressed={knife.armed} aria-label="Chef's Knife">{knife.armed ? <>✕<span className="lbl"> Cancel</span></> : <>🔪<span className="lbl"> Knife</span> {boost.knife > 0 ? `×${boost.knife}` : KNIFE_COST}</>}</button>
+        <button className="chip hintchip" onClick={askShuffle} disabled={game?.status !== 'playing' || shuffleLeft <= 0 || (boost.shuffle <= 0 && wallet.coins < SHUFFLE_COST)} aria-label="Shuffle the board">🔀<span className="lbl"> Shuffle</span> {boost.shuffle > 0 ? `×${boost.shuffle}` : SHUFFLE_COST}</button>
         <button className="chip hintchip" onClick={askHint} disabled={game?.status !== 'playing' || (hintCost > 0 && wallet.coins < hintCost)} aria-label="Show a hint">💡<span className="lbl"> Hint</span>{hintCost > 0 ? ` ${hintCost}` : ' free'}</button>
         <button className="chip" onClick={again} aria-label="Restart level">↻<span className="lbl"> Restart</span></button>
       </footer>
@@ -864,6 +886,7 @@ function Game() {
                 <Stars n={game!.stars} big />
                 <p>{game!.movesLeft} moves to spare</p>
                 {dailyDay && <p>🔥 {streakNow(dailyRec, dailyDay)} day streak</p>}
+                <p>🎆 +{dailyDay ? 2 : 1} festival token{dailyDay ? 's' : ''}</p>
                 {friend && <p>💞 {friend.name}: friendship grew{friend.up ? ` to “${friend.up}”! Claim the gift in Rewards.` : '.'}</p>}
                 {comboBonus.coins > 0 && <p>⚡ Best combo x{comboBonus.peak}: +{comboBonus.coins} bonus coins</p>}
                 {reward !== null && reward > 0 && <div className="reward"><i className="coinicon" />+<CountUp to={reward} /> coins</div>}
