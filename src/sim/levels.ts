@@ -95,15 +95,19 @@ const iceFor = (id: number): number => (id < 25 ? 0 : id <= 36 ? 2 + Math.floor(
 /** Golden stars start dropping in chapter 2 and become a little more common later on. */
 const luckFor = (id: number): number => (id < 13 ? 0 : id < 25 ? 0.05 : 0.07)
 
+/** Sticky rice appears in the last chapter and starts with a single patch. */
+const stickyFor = (id: number): number => (id < 41 ? 0 : 1 + Math.floor((id - 41) / 4))
+
 export const LEVELS: LevelDef[] = SPECS.map(([name, shape, kinds, order, slack], i) => ({
   id: i + 1,
   name,
   shape,
   kinds,
   order,
-  moves: Math.ceil(minLinks(order) * (slack ?? defaultSlack(order))) + 3 + Math.ceil(iceFor(i + 1) * 0.7),
+  moves: Math.ceil(minLinks(order) * (slack ?? defaultSlack(order))) + 3 + Math.ceil(iceFor(i + 1) * 0.7) + stickyFor(i + 1) * 2,
   ...(iceFor(i + 1) ? { ice: iceFor(i + 1) } : {}),
   ...(luckFor(i + 1) ? { luck: luckFor(i + 1) } : {}),
+  ...(stickyFor(i + 1) ? { sticky: stickyFor(i + 1) } : {}),
 }))
 
 /** Chapter boundaries (inclusive level ids), shared by the map and the hub. */
@@ -119,7 +123,7 @@ export const CHAPTER_INTROS: { speaker: string; line: string; idea: string }[] =
   { speaker: 'obaa', line: 'Welcome, dear. Every great kitchen starts with one good dish.', idea: 'Drag across 3 or more matching ingredients to cook them into a dish.' },
   { speaker: 'tanaka', line: 'Lunch rush! Some orders need a bit of everything.', idea: 'Dishes made of different ingredients: link one of each, in any order.' },
   { speaker: 'ronin', line: 'The kitchen is cold tonight. Some ingredients are frozen solid.', idea: 'Clear a chain next to a frozen tile to crack its ice. A Flavor Bomb shatters it outright.' },
-  { speaker: 'rx9', line: 'Final exam. Thick ice detected. Probability of success: high.', idea: 'Some tiles are frozen under two layers. Crack them one move at a time, or use a bomb.' },
+  { speaker: 'rx9', line: 'Final exam. Thick ice detected. Probability of success: high.', idea: 'Sticky rice spreads every few moves. Clear a chain next to it to wash it off before it takes over.' },
 ]
 
 /** The last level of each chapter is a boss: a bigger order to finish the chapter. */

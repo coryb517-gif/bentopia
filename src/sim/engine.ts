@@ -166,6 +166,26 @@ function freezeSome(s: GameState) {
   }
 }
 
+/** Sticky rice starts on a few raw tiles that are not already frozen. */
+function stickySome(s: GameState) {
+  const n = s.level.sticky ?? 0
+  if (!n) return
+  const raw: number[] = []
+  for (let i = 0; i < CELLS; i++) {
+    const t = s.cells[i]
+    if (t && t.tier === 0 && !t.ice && !isBomb(t) && !isWild(t)) raw.push(i)
+  }
+  for (let k = 0; k < n && raw.length; k++) {
+    const pick = raw.splice(Math.floor(rand(s) * raw.length), 1)[0]
+    s.cells[pick] = { ...s.cells[pick]!, ice: 1, sticky: true }
+  }
+}
+
+/** Most sticky tiles allowed on the board at once. */
+export const STICKY_CAP = 5
+/** Moves without clearing any sticky rice before it spreads. */
+export const SPREAD_EVERY = 3
+
 export function newGame(level: LevelDef, seed: number): GameState {
   const blocked = Array.from({ length: CELLS }, (_, i) => level.shape[Math.floor(i / SIZE)][i % SIZE] === '#')
   const s: GameState = {
@@ -182,6 +202,7 @@ export function newGame(level: LevelDef, seed: number): GameState {
   }
   settle(s)
   freezeSome(s)
+  stickySome(s)
   ensureLinkable(s)
   return s
 }
@@ -384,11 +405,35 @@ export function commitChain(prev: GameState, path: number[]): GameState {
       const nt = s.cells[n]
       if (nt?.ice && !thawed.has(nt.id)) {
         thawed.add(nt.id)
-        s.cells[n] = { ...nt, ice: nt.ice > 1 ? nt.ice - 1 : undefined }
+        s.cells[n] = { ...nt, ice: nt.ice > 1 ? nt.ice - 1 : undefined, ...(nt.ice > 1 ? {} : { sticky: undefined }) }
       }
     }
   }
   if (thawed.size) s.last.thawed = [...thawed]
+  // Sticky rice creeps outward unless you keep clearing it.
+  if (s.level.sticky) {
+    const cleared = [...thawed].some((id) => prev.cells.some((t) => t?.id === id && t.sticky) && !s.cells.some((t) => t?.id === id && t.sticky))
+    s.spread = cleared ? 0 : (s.spread ?? 0) + 1
+    if (s.spread >= SPREAD_EVERY && s.status === 'playing') {
+      const sticky: number[] = []
+      for (let i = 0; i < CELLS; i++) if (s.cells[i]?.sticky) sticky.push(i)
+      if (sticky.length && sticky.length < STICKY_CAP) {
+        const spots: number[] = []
+        for (const i of sticky) {
+          for (const n of neighbors(i)) {
+            const t = s.cells[n]
+            if (t && t.tier === 0 && !t.ice && !isBomb(t) && !isWild(t) && !spots.includes(n)) spots.push(n)
+          }
+        }
+        if (spots.length) {
+          const pick = spots[Math.floor(rand(s) * spots.length)]
+          s.cells[pick] = { ...s.cells[pick]!, ice: 1, sticky: true }
+          s.last.spread = [s.cells[pick]!.id]
+          s.spread = 0
+        }
+      }
+    }
+  }
   // A long chain of one ingredient (5+) leaves a Flavor Bomb on one of the vacated cells.
   if (singleKind && path.length >= 5) {
     const spots = path.slice(0, -1)

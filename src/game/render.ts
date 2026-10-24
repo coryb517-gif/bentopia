@@ -329,6 +329,61 @@ export function iceCanvas(layers: number, plate: number, dpr: number): HTMLCanva
   return c
 }
 
+/** Sticky rice: a glossy cream blob with drips and a few grains, drawn over a tile that cannot be linked yet. */
+export function gooCanvas(plate: number, dpr: number): HTMLCanvasElement {
+  const size = plate * TILE_PAD
+  const { c, ctx } = canvas(size, size, dpr)
+  const cx = size / 2
+  const r = plate / 2
+  const blob = () => {
+    ctx.beginPath()
+    const pts = 14
+    for (let i = 0; i <= pts; i++) {
+      const a = (i / pts) * Math.PI * 2
+      const wob = 1 + Math.sin(a * 3) * 0.06 + Math.cos(a * 5) * 0.04
+      const x = cx + Math.cos(a) * r * 0.98 * wob
+      const y = cx + Math.sin(a) * r * 0.98 * wob
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+  }
+  ctx.save()
+  ctx.shadowColor = 'rgba(255, 244, 200, 0.95)'
+  ctx.shadowBlur = plate * 0.12
+  blob()
+  const g = ctx.createRadialGradient(cx - r * 0.3, cx - r * 0.35, r * 0.1, cx, cx, r)
+  g.addColorStop(0, 'rgba(255, 253, 240, 0.62)')
+  g.addColorStop(1, 'rgba(238, 222, 182, 0.55)')
+  ctx.fillStyle = g
+  ctx.fill()
+  ctx.restore()
+  blob()
+  ctx.lineWidth = Math.max(1.5, plate * 0.04)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.stroke()
+  // rice grains
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.strokeStyle = 'rgba(190, 165, 110, 0.6)'
+  ctx.lineWidth = Math.max(1, plate * 0.014)
+  ;[[-0.35, -0.2, 0.5], [0.2, -0.38, -0.4], [0.38, 0.05, 0.9], [-0.1, 0.3, -0.7], [-0.4, 0.2, 0.2], [0.05, -0.02, 1.2]].forEach(([dx, dy, rot]) => {
+    ctx.save()
+    ctx.translate(cx + dx * r, cx + dy * r)
+    ctx.rotate(rot)
+    ctx.beginPath()
+    ctx.ellipse(0, 0, plate * 0.075, plate * 0.036, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+  })
+  // a drip
+  ctx.fillStyle = 'rgba(244, 232, 196, 0.95)'
+  ctx.beginPath()
+  ctx.ellipse(cx + r * 0.5, cx + r * 0.82, plate * 0.05, plate * 0.08, 0, 0, Math.PI * 2)
+  ctx.fill()
+  return c
+}
+
 /** A little golden star badge in the corner of a lucky tile, with a soft halo. */
 export function luckCanvas(plate: number, dpr: number): HTMLCanvasElement {
   const size = plate * TILE_PAD

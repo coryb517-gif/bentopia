@@ -4,7 +4,7 @@ import { canExtend, chainOutcome, commitChain, grantMoves, shuffleBoard, isBomb,
 import type { GameState, LevelDef, Tile } from '../sim/types'
 import { loadAllArt } from './art'
 import { boomSound, clackSound, loseSound, popSound, winSound } from './audio'
-import { boardCanvas, boardGeometry, iceCanvas, luckCanvas, tileCanvas, TILE_PAD } from './render'
+import { boardCanvas, boardGeometry, gooCanvas, iceCanvas, luckCanvas, tileCanvas, TILE_PAD } from './render'
 
 interface Props {
   level: LevelDef
@@ -140,11 +140,13 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         textures = new Map()
       }
 
+      /** 0 clear, 1 and 2 layers of ice, 3 sticky rice. */
+      const iceCode = (t: Tile) => (t.ice ? (t.sticky ? 3 : t.ice) : 0)
       const iceTextureFor = (layers: number) => {
         const key = `ice-${layers}`
         let tex = textures.get(key)
         if (!tex) {
-          tex = Texture.from(iceCanvas(layers, cell * 0.94, dpr))
+          tex = Texture.from(layers === 3 ? gooCanvas(cell * 0.94, dpr) : iceCanvas(layers, cell * 0.94, dpr))
           textures.set(key, tex)
         }
         return tex
@@ -176,7 +178,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
         face.anchor.set(0.5)
         face.width = face.height = cell * 0.94 * TILE_PAD
         node.addChild(face)
-        if (t.ice) setIce(node, t.ice)
+        if (t.ice) setIce(node, iceCode(t))
         if (t.lucky) {
           const badge = new PixiSprite(luckTexture())
           badge.label = 'luck'
@@ -199,7 +201,7 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           if (!sp) {
             const node = makeNode(t)
             const fs = (node.children[0] as PixiSprite).scale.x
-            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t) || isWild(t), ice: t.ice ?? 0 }
+            sp = { node, tx: p.x, ty: p.y, ts: 1, dying: false, pop: t.id === popId ? 1 : 0, phase: t.id * 1.7, fs, bomb: isBomb(t) || isWild(t), ice: iceCode(t) }
             node.x = p.x
             node.y = spawnFromAbove && t.id !== popId ? -cell * (1 + Math.random() * 2) : p.y
             node.scale.set(t.id === popId ? 0.5 : 1)
@@ -208,9 +210,11 @@ export default function BoardView({ level, seed, onState, onPreview, onMerge, on
           sp.tx = p.x
           sp.ty = p.y
           sp.ts = path.includes(i) ? 1.14 : 1
-          if ((t.ice ?? 0) !== sp.ice) {
-            if (sp.ice > (t.ice ?? 0)) sparks(sp.node.x, sp.node.y, t.ice ? 6 : 12, [0xbfe9ff, 0xffffff, 0x7fcfff])
-            sp.ice = t.ice ?? 0
+          if (iceCode(t) !== sp.ice) {
+            if (sp.ice === 3 && !iceCode(t)) sparks(sp.node.x, sp.node.y, 14, [0xfff4c8, 0xffffff, 0xeedeb6])
+            else if (sp.ice > iceCode(t)) sparks(sp.node.x, sp.node.y, t.ice ? 6 : 12, [0xbfe9ff, 0xffffff, 0x7fcfff])
+            else if (iceCode(t) === 3) sparks(sp.node.x, sp.node.y, 8, [0xfff4c8, 0xeedeb6])
+            sp.ice = iceCode(t)
             setIce(sp.node, sp.ice)
           }
         })

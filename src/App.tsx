@@ -825,7 +825,7 @@ function Game() {
         {preview ? (
           <>Release to make <img className="dish" src={svgUrl(preview.kind, preview.tier)} alt="" width={24} height={24} /> <b>{CHAINS[preview.kind].names[preview.tier]}</b></>
         ) : (
-          <>{knife.armed ? <b>Tap a raw ingredient to slice it away!</b> : game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some(isWild) ? <b>The Chef's Special links with any ingredient!</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
+          <>{knife.armed ? <b>Tap a raw ingredient to slice it away!</b> : game?.cells.some(isBomb) ? <b>Tap the Flavor Bomb to clear its row and column!</b> : game?.cells.some(isWild) ? <b>The Chef's Special links with any ingredient!</b> : game?.cells.some((c) => c?.sticky) ? <b>Sticky rice spreads! Clear a chain next to it.</b> : game?.cells.some((c) => c?.ice) ? 'Clear a chain next to frozen tiles to thaw them' : 'Link 3+ matching dishes'}</>
         )}
       </div>
 

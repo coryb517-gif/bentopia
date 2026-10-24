@@ -54,7 +54,7 @@ describe('frozen tiles', () => {
       const lvl = LEVELS[id - 1]
       expect(lvl.ice).toBeGreaterThan(0)
       const s = newGame(lvl, 3)
-      expect(s.cells.filter((t) => t?.ice).length).toBe(lvl.ice)
+      expect(s.cells.filter((t) => t?.ice && !t.sticky).length).toBe(lvl.ice)
       expect(hasLink(s)).toBe(true)
     }
     expect(LEVELS.slice(0, 24).every((l) => !l.ice)).toBe(true)
@@ -178,5 +178,44 @@ describe('Shuffle', () => {
     expect(n.cells.some((t, i) => t !== s.cells[i])).toBe(true)
     expect(n.cells.map((t) => t?.id).filter(Boolean).sort()).toEqual(s.cells.map((t) => t?.id).filter(Boolean).sort())
     expect(hasLink(n)).toBe(true)
+  })
+})
+
+describe('Sticky rice', () => {
+  it('starts as frozen sticky tiles in the last chapter', async () => {
+    const { newGame } = await import('./engine')
+    const { LEVELS } = await import('./levels')
+    expect(LEVELS[39].sticky).toBeUndefined()
+    const lvl = LEVELS[40]
+    expect(lvl.sticky).toBeGreaterThan(0)
+    const s = newGame(lvl, 5)
+    const sticky = s.cells.filter((t) => t?.sticky)
+    expect(sticky.length).toBe(lvl.sticky)
+    expect(sticky.every((t) => t!.ice === 1)).toBe(true)
+  })
+  it('spreads when left alone and never beyond the cap', async () => {
+    const { newGame, commitChain, hasLink, neighbors, chainOutcome, STICKY_CAP } = await import('./engine')
+    const { LEVELS } = await import('./levels')
+    let s = newGame({ ...LEVELS[40], moves: 99, ice: 0 }, 3)
+    const start = s.cells.filter((t) => t?.sticky).length
+    let max = start
+    for (let n = 0; n < 40 && s.status === 'playing' && hasLink(s); n++) {
+      let moved = false
+      for (let a = 0; a < 64 && !moved; a++)
+        for (const b of neighbors(a)) {
+          for (const c of neighbors(b)) {
+            if (c !== a && chainOutcome(s, [a, b, c])) {
+              s = commitChain(s, [a, b, c])
+              moved = true
+              break
+            }
+          }
+          if (moved) break
+        }
+      if (!moved) break
+      max = Math.max(max, s.cells.filter((t) => t?.sticky).length)
+    }
+    expect(max).toBeGreaterThanOrEqual(start)
+    expect(max).toBeLessThanOrEqual(STICKY_CAP)
   })
 })
