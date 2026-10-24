@@ -4,7 +4,7 @@ import { anyMilestoneReady, festivalFor, MILESTONES, milestoneReady, type Booste
 import { dayKey } from './progress'
 import { anyClaimable, claimable, POSTCARDS, tierReached, TIERS, type Regulars } from './regulars'
 import { floorArt } from './Room'
-import { ITEMS, SETS, type ItemDef } from './restaurant'
+import { ITEMS, itemDef, SETS, type ItemDef } from './restaurant'
 import { bonusClaimable, DAILY_REWARDS, dailyStatus, GOALS, goalClaimable, goalDone, goalValue, rollWeek, WEEKLY_BONUS, weeklyClaimable, weeklyTasks, type GoalContext, type Goal, type WeeklyKey } from './progress'
 
 interface Props {
@@ -95,7 +95,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                 {MILESTONES.map((m) => {
                   const ready = milestoneReady(festival, m)
                   const done = festival.claimed.includes(m.at)
-                  const prize = [m.coins ? <span key="c"><Coin />{m.coins}</span> : null, m.knife ? <span key="k">🔪×{m.knife}</span> : null, m.shuffle ? <span key="s">🔀×{m.shuffle}</span> : null]
+                  const prize = [m.item ? <span key="i">{m.item === 'mikoshi' ? '⛩️' : '🏮'} {itemDef(m.item).name}</span> : null, m.coins ? <span key="c"><Coin />{m.coins}</span> : null, m.knife ? <span key="k">🔪×{m.knife}</span> : null, m.shuffle ? <span key="s">🔀×{m.shuffle}</span> : null]
                   return (
                     <li key={m.at} className={ready ? 'ready' : done ? 'done' : ''}>
                       <div>

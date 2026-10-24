@@ -27,3 +27,19 @@ describe('festival', () => {
     expect(addBoosters({ knife: 1, shuffle: 0 }, { knife: 2, shuffle: 3 })).toEqual({ knife: 3, shuffle: 3 })
   })
 })
+
+import { addGift, takeGift, MILESTONES } from './festival'
+describe('festival prizes', () => {
+  it('stocks and spends one copy at a time', () => {
+    let g = addGift({}, 'festlantern')
+    g = addGift(g, 'festlantern')
+    expect(g.festlantern).toBe(2)
+    const t = takeGift(g, 'festlantern')!
+    expect(t.festlantern).toBe(1)
+    expect(takeGift(takeGift(t, 'festlantern')!, 'festlantern')).toBeNull()
+    expect(addGift(g, undefined)).toBe(g)
+  })
+  it('the 22 and 50 token milestones carry a decor prize', () => {
+    expect(MILESTONES.filter((m) => m.item).map((m) => m.item)).toEqual(['festlantern', 'mikoshi'])
+  })
+})

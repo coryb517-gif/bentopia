@@ -2,7 +2,10 @@
  * A festival every month. Clearing levels earns festival tokens; milestones pay coins and free boosters.
  * Tokens reset with the month, so there is always a fresh reason to come back.
  */
+import type { ItemType } from './restaurant'
+
 export interface Reward {
+  item?: ItemType
   coins?: number
   knife?: number
   shuffle?: number
@@ -15,9 +18,9 @@ export interface Milestone extends Reward {
 export const MILESTONES: Milestone[] = [
   { at: 5, coins: 60 },
   { at: 12, knife: 2 },
-  { at: 22, coins: 150 },
+  { at: 22, coins: 150, item: 'festlantern' },
   { at: 35, shuffle: 3 },
-  { at: 50, coins: 400, knife: 2, shuffle: 2 },
+  { at: 50, coins: 400, knife: 2, shuffle: 2, item: 'mikoshi' },
 ]
 
 const THEMES: { name: string; icon: string }[] = [
@@ -81,10 +84,37 @@ export function loadBoosters(): Boosters {
   }
 }
 
-export function save(f: FestivalState, b: Boosters) {
+/** Festival prizes the player owns but has not placed yet. */
+export type Gifts = Partial<Record<string, number>>
+const GKEY = 'bentopia.gifts'
+
+export function loadGifts(): Gifts {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GKEY) ?? 'null')
+    const g: Gifts = {}
+    if (raw && typeof raw === 'object') for (const [k, v] of Object.entries(raw)) if (num(v) > 0) g[k] = num(v)
+    return g
+  } catch {
+    return {}
+  }
+}
+
+export const addGift = (g: Gifts, item?: ItemType): Gifts => (item ? { ...g, [item]: (g[item] ?? 0) + 1 } : g)
+
+/** Take one copy out of the stock. Returns null when there is none. */
+export function takeGift(g: Gifts, item: string): Gifts | null {
+  const n = g[item] ?? 0
+  if (n <= 0) return null
+  const next = { ...g, [item]: n - 1 }
+  if (n - 1 === 0) delete next[item]
+  return next
+}
+
+export function save(f: FestivalState, b: Boosters, g: Gifts = {}) {
   try {
     localStorage.setItem(KEY, JSON.stringify(f))
     localStorage.setItem(BKEY, JSON.stringify(b))
+    localStorage.setItem(GKEY, JSON.stringify(g))
   } catch {
     /* storage unavailable */
   }
@@ -108,7 +138,7 @@ export function claimMilestone(f: FestivalState, day: string, at: number): { nex
   const cur = rollFestival(f, day)
   const m = MILESTONES.find((x) => x.at === at)
   if (!m || !milestoneReady(cur, m)) return null
-  return { next: { ...cur, claimed: [...cur.claimed, at] }, reward: { coins: m.coins, knife: m.knife, shuffle: m.shuffle } }
+  return { next: { ...cur, claimed: [...cur.claimed, at] }, reward: { coins: m.coins, knife: m.knife, shuffle: m.shuffle, item: m.item } }
 }
 
 export const addBoosters = (b: Boosters, r: Reward): Boosters => ({ knife: b.knife + (r.knife ?? 0), shuffle: b.shuffle + (r.shuffle ?? 0) })

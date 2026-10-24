@@ -26,7 +26,7 @@ import type { ViewId } from './game/StoreyTabs'
 import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './game/Customers'
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
-import { addBoosters, addTokens, anyMilestoneReady, claimMilestone, loadBoosters, loadFestival, save as saveFestival, rollFestival } from './game/festival'
+import { addGift, takeGift, loadGifts, addBoosters, addTokens, anyMilestoneReady, claimMilestone, loadBoosters, loadFestival, save as saveFestival, rollFestival } from './game/festival'
 import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, tierReached, TIERS } from './game/regulars'
 import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
 import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
@@ -261,7 +261,10 @@ function Game() {
   const [boost, setBoost] = useState(loadBoosters)
   const boostRef = useRef(boost)
   boostRef.current = boost
-  useEffect(() => saveFestival(festival, boost), [festival, boost])
+  const [gifts, setGifts] = useState(loadGifts)
+  const giftsRef = useRef(gifts)
+  giftsRef.current = gifts
+  useEffect(() => saveFestival(festival, boost, gifts), [festival, boost, gifts])
   const [regulars, setRegulars] = useState(loadRegulars)
   const [friend, setFriend] = useState<{ name: string; up: string } | null>(null)
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
@@ -614,6 +617,7 @@ function Game() {
     if (!c) return
     setFestival(c.next)
     setBoost((b) => addBoosters(b, c.reward))
+    setGifts((g) => addGift(g, c.reward.item))
     if (c.reward.coins) setWallet((w) => earn(w, c.reward.coins!))
     claimSound()
   }
@@ -698,6 +702,14 @@ function Game() {
         onBought={() => {
           setProgress((p) => bumpWeekly(p, 'placed', 1, Date.now()))
           setTut((t) => (t.step === 'decorate' ? { ...t, step: 'placed' } : t))
+        }}
+        gifts={gifts}
+        onUseGift={(t) => {
+          const next = takeGift(giftsRef.current, t)
+          if (!next) return false
+          giftsRef.current = next
+          setGifts(next)
+          return true
         }}
         initialTab={tut.step === 'decorate' ? 'lights' : 'seating'}
         storey={storey}

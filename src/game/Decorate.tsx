@@ -8,12 +8,12 @@ import BuildPanel from './BuildPanel'
 import Dock from './Dock'
 import ZoomPan from './ZoomPan'
 import {
-  applyStorey, canPlace, canPlaceWall, CATEGORIES, FLOORS, fixedSlots, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall, sizeOf, storeyView, type StoreyId,
+  applyStorey, canPlace, canPlaceWall, CATEGORIES, FLOORS, EXCLUSIVE, fixedSlots, ITEMS, itemDef, levelOf, moveItem, moveWall, placeItem, placeWall, sizeOf, storeyView, type StoreyId,
   rarityOf, removeItem, sellValue, SET_TIERS, setBonusRate, setProgress, SETS, WALLS, withPeak,
   type Category, type FloorId, type ItemType, type Restaurant, type WallId, type WallSide,
 } from './restaurant'
 
-export type DecorTab = Category | 'floors' | 'paint'
+export type DecorTab = Category | 'floors' | 'paint' | 'gifts'
 export type StudioMode = 'furniture' | 'style' | 'layout' | 'build'
 
 /** Build lives on the bottom bar, so the in-panel tabs only cover decorating. */
@@ -38,6 +38,9 @@ interface Props {
   initialTab?: DecorTab
   /** Which part of the studio to open on. */
   initialMode?: StudioMode
+  /** Festival prizes in stock, and a way to take one out when it is placed. */
+  gifts?: Record<string, number | undefined>
+  onUseGift?: (type: string) => boolean
   onTown: () => void
   onPlay: () => void
   onSettings: () => void
@@ -67,7 +70,7 @@ const SET_COLOR: Record<string, string> = { izakaya: '#ffb347', sushibar: '#7fe6
 
 const Coin = () => <i className="coinicon" />
 
-export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', initialMode = 'furniture', storey, onStorey, onTown, onPlay, onSettings, resting }: Props) {
+export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, onDone, onBought, initialTab = 'seating', initialMode = 'furniture', gifts = {}, onUseGift, storey, onStorey, onTown, onPlay, onSettings, resting }: Props) {
   const r = storeyView(root, storey)
   const setR = (next: Restaurant) => setRoot(applyStorey(root, storey, next))
   const [tab, setTab] = useState<DecorTab>(initialTab)
@@ -148,8 +151,10 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
 
   const startShop = (type: ItemType) => {
     const def = itemDef(type)
-    if (def.unlock > level) return say(`Unlocks at restaurant level ${def.unlock}`)
-    if (coins < def.price) return say(`You need ${def.price - coins} more coins`)
+    const prize = EXCLUSIVE.includes(type)
+    if (prize && !(gifts[type] ?? 0)) return say('Win this one in the monthly Event')
+    if (!prize && def.unlock > level) return say(`Unlocks at restaurant level ${def.unlock}`)
+    if (!prize && coins < def.price) return say(`You need ${def.price - coins} more coins`)
     setSelectedId(null)
     if (def.layer === 'wall') {
       const spot = firstFreeWall(type)
@@ -161,13 +166,15 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     setPlacing({ ghost: { type, gx: spot[0], gy: spot[1] }, shop: true })
   }
 
+  const pay = (t: ItemType) => (EXCLUSIVE.includes(t) ? !!onUseGift?.(t) : spend(itemDef(t).price))
+
   const confirm = () => {
     if (!placing) return
     if (placing.ghost) {
       const g = placing.ghost
       if (!canPlace(r, g.type, g.gx, g.gy, grid, g.ignoreId, g.flip)) return say('Pick a free tile')
       if (placing.shop) {
-        if (!spend(itemDef(g.type).price)) return say('Not enough coins')
+        if (!pay(g.type)) return say('Not enough coins')
         coinSound(3)
         commit(placeItem(r, g.type, g.gx, g.gy, g.flip))
         onBought?.()
@@ -178,7 +185,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
       const w = placing.wall
       if (!canPlaceWall(r, w.type, w.side, w.slot, grid, w.ignoreId)) return say('Pick a free spot on the wall')
       if (placing.shop) {
-        if (!spend(itemDef(w.type).price)) return say('Not enough coins')
+        if (!pay(w.type)) return say('Not enough coins')
         coinSound(3)
         commit(placeWall(r, w.type, w.side, w.slot))
         onBought?.()
@@ -287,8 +294,8 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
     return SET_TIERS.some((t) => count + 1 === t.count)
   }
 
-  const tabs: { id: DecorTab; name: string }[] = [...CATEGORIES.filter((c) => !(rooftop && c.id === 'wall')), { id: 'floors', name: 'Floors' }, ...(rooftop ? [] : [{ id: 'paint' as DecorTab, name: 'Paint' }])]
-  const shown = ITEMS.filter((i) => i.category === tab)
+  const tabs: { id: DecorTab; name: string }[] = [...CATEGORIES.filter((c) => !(rooftop && c.id === 'wall')), { id: 'gifts', name: 'Festival' }, { id: 'floors', name: 'Floors' }, ...(rooftop ? [] : [{ id: 'paint' as DecorTab, name: 'Paint' }])]
+  const shown = tab === 'gifts' ? ITEMS.filter((i) => EXCLUSIVE.includes(i.type)) : ITEMS.filter((i) => i.category === tab && !EXCLUSIVE.includes(i.type))
   void fixedSlots
 
   return (
@@ -351,7 +358,7 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
                 <button className="act" onClick={() => placing.ghost && setPlacing({ ...placing, ghost: { ...placing.ghost, flip: !placing.ghost.flip } })} aria-label="Rotate"><i aria-hidden>↻</i>Rotate</button>
               )}
               <button className="act ok" data-coach="place" disabled={!okSpot} onClick={confirm} aria-label={placing.shop ? 'Place' : 'Move here'}>
-                <i aria-hidden>✓</i>{placing.shop ? <>Place <span className="cst"><Coin />{cost}</span></> : 'Done'}
+                <i aria-hidden>✓</i>{placing.shop ? <>Place {placingType && EXCLUSIVE.includes(placingType) ? <span className="cst">free</span> : <span className="cst"><Coin />{cost}</span>}</> : 'Done'}
               </button>
             </div>
           </div>
@@ -408,20 +415,22 @@ export default function Decorate({ r: root, setR: setRoot, coins, spend, earn, o
                 )}
                 <div className="cards">
                   {shown.map((def) => {
-                    const locked = def.unlock > level
+                    const prize = EXCLUSIVE.includes(def.type)
+                    const have = gifts[def.type] ?? 0
+                    const locked = prize ? have === 0 : def.unlock > level
                     const rar = rarityOf(def.price)
                     return (
                       <button
                         key={def.type}
                         data-coach={`card-${def.type}`}
-                        className={`shopcard r-${rar}${locked ? ' locked' : ''}${coins < def.price && !locked ? ' poor' : ''}`}
+                        className={`shopcard r-${rar}${locked ? ' locked' : ''}${!prize && coins < def.price && !locked ? ' poor' : ''}`}
                         onClick={() => startShop(def.type)}
                       >
                         <i className="setdot" style={{ background: SET_COLOR[def.set] }} aria-hidden />
                         <DecorPreview type={def.type} size={78} />
                         <span className="nm">{def.name}</span>
-                        <span className="pr">{locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>
-                        {!locked && completesTier(def.type) && <em className="tierup">Set bonus!</em>}
+                        <span className="pr">{prize ? (have ? `Own ×${have}` : 'Event prize') : locked ? `Level ${def.unlock}` : <><Coin />{def.price}</>}</span>
+                        {!locked && !prize && completesTier(def.type) && <em className="tierup">Set bonus!</em>}
                         {locked && <i className="lock" aria-hidden>🔒</i>}
                       </button>
                     )

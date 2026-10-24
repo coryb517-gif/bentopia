@@ -8,6 +8,7 @@ export type FloorItem =
   | 'neko' | 'tank' | 'vending' | 'taiko' | 'statue' | 'torii' | 'screen' | 'clock' | 'arcade' | 'jukebox' | 'fox' | 'daruma'
   | 'bonsai' | 'sakura' | 'pond' | 'stonelantern' | 'maple' | 'bamboo' | 'fountain' | 'rockgarden'
   | 'lamp' | 'andon' | 'sign'
+  | 'festlantern' | 'mikoshi'
 export type RugItem = 'rugred' | 'rugwave' | 'rugsakura' | 'runner'
 export type WallItem = 'scroll' | 'mask' | 'shelf' | 'neonramen' | 'furin' | 'poster' | 'wallclock' | 'kokeshi'
 export type ItemType = FloorItem | RugItem | WallItem
@@ -80,6 +81,9 @@ const ROWS: Row[] = [
   ['lamp', 'Paper lantern', 'A warm pool of light.', 1, 1, 45, 15, 1, 0, 'floor', 'lights', 'izakaya'],
   ['andon', 'Andon lamp', 'Soft light through washi paper.', 1, 1, 75, 25, 2, 0, 'floor', 'lights', 'izakaya'],
   ['sign', 'Neon sign', 'OPEN. Buzzes just right.', 1, 1, 150, 50, 3, 0, 'floor', 'lights', 'neon'],
+  // festival prizes: never sold in the shop, only won in the monthly Event
+  ['festlantern', 'Festival lantern tower', 'Three lanterns that never go out.', 1, 1, 300, 100, 1, 0, 'floor', 'decor', 'shrine'],
+  ['mikoshi', 'Portable shrine', 'Carried through the streets, now yours.', 1, 1, 520, 170, 1, 0, 'floor', 'decor', 'shrine'],
   // rugs
   ['rugred', 'Crimson rug', 'Gold-trimmed, softly worn.', 2, 2, 100, 34, 2, 0, 'rug', 'rugs', 'izakaya'],
   ['runner', 'Entry runner', 'A long welcome from the door.', 3, 1, 120, 40, 3, 0, 'rug', 'rugs', 'shrine'],
@@ -99,6 +103,9 @@ const ROWS: Row[] = [
 export const ITEMS: ItemDef[] = ROWS.map(([type, name, blurb, w, d, price, value, unlock, seats, layer, category, set]) => ({
   type, name, blurb, w, d, price, value, unlock, seats, layer, category, set,
 }))
+
+/** Prizes from the monthly festival: kept out of the shop. */
+export const EXCLUSIVE: ItemType[] = ['festlantern', 'mikoshi']
 
 export const itemDef = (t: ItemType) => ITEMS.find((i) => i.type === t)!
 

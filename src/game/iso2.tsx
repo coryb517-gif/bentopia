@@ -27,7 +27,60 @@ const flame = (x: number, y: number, s = 1, d = 0) => (
   </g>
 )
 
+const paperLantern = (x: number, y: number, d: number) => (
+  <g>
+    <line x1={x} y1={y - 16} x2={x} y2={y - 9} stroke={OL} strokeWidth="1.4" />
+    <ellipse cx={x} cy={y} rx="8.5" ry="10.5" fill="#e8453a" stroke={OL} strokeWidth="1.8" />
+    <ellipse cx={x} cy={y} rx="5" ry="8" fill="#ffb347" opacity="0.55" className="flick" style={{ animationDelay: `${d}s` }} />
+    {[-5, 0, 5].map((o) => <line key={o} x1={x - 8 + (o + 5) * 0.2} y1={y + o} x2={x + 8 - (o + 5) * 0.2} y2={y + o} stroke="#8f1f38" strokeWidth="0.9" opacity="0.6" />)}
+    <rect x={x - 5} y={y - 12.5} width="10" height="3.6" rx="1" fill="#f0b232" stroke={OL} strokeWidth="1.3" />
+    <rect x={x - 5} y={y + 9} width="10" height="3.6" rx="1" fill="#f0b232" stroke={OL} strokeWidth="1.3" />
+    <line x1={x} y1={y + 12.6} x2={x} y2={y + 19} stroke="#f0b232" strokeWidth="1.6" strokeLinecap="round" />
+  </g>
+)
+
 export const DECOR_NEW: Partial<Record<ItemType, DecorArt>> = {
+  festlantern: {
+    view: '-40 -104 80 138',
+    glow: () => <ellipse cx={P(0.5, 0.5)[0]} cy={P(0.5, 0.5, 40)[1]} rx="56" ry="46" fill="url(#glowWarm)" className="flick" />,
+    art: () => {
+      const [bx, by] = P(0.5, 0.5, 0)
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.5} />
+          <Box x={0.4} y={0.4} w={0.2} d={0.2} h={5} c={DWOOD} />
+          <Box x={0.46} y={0.46} w={0.08} d={0.08} h={72} z={5} c={DWOOD} />
+          <Box x={0.14} y={0.46} w={0.72} d={0.08} h={4} z={56} c={DWOOD} />
+          <Box x={0.3} y={0.46} w={0.4} d={0.08} h={3} z={34} c={DWOOD} />
+          {paperLantern(bx - 22, by - 46, 0)}
+          {paperLantern(bx + 22, by - 46, -0.7)}
+          {paperLantern(bx - 12, by - 22, -1.4)}
+          {paperLantern(bx + 12, by - 22, -0.35)}
+          <circle cx={bx} cy={by - 80} r="4" fill="#f0b232" stroke={OL} strokeWidth="1.6" />
+        </g>
+      )
+    },
+  },
+  mikoshi: {
+    view: '-46 -88 92 124',
+    glow: () => <ellipse cx={P(0.5, 0.5)[0]} cy={P(0.5, 0.5, 14)[1]} rx="52" ry="26" fill="url(#glowWarm)" className="flick" />,
+    art: () => {
+      const [ax, ay] = P(0.5, 0.5, 38)
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.75} />
+          <Box x={0.04} y={0.34} w={0.92} d={0.08} h={4} z={2} c={RED} />
+          <Box x={0.04} y={0.58} w={0.92} d={0.08} h={4} z={2} c={RED} />
+          <Box x={0.2} y={0.22} w={0.6} d={0.56} h={6} z={6} c={DWOOD} />
+          <Box x={0.26} y={0.28} w={0.48} d={0.44} h={14} z={12} c={GOLD} />
+          <Box x={0.34} y={0.72} w={0.32} d={0.04} h={9} z={14} c={RED} />
+          {poly([P(0.9, 0.1, 26), P(0.9, 0.9, 26), [ax, ay]], '#c9382e')}
+          {poly([P(0.1, 0.9, 26), P(0.9, 0.9, 26), [ax, ay]], '#e8584a')}
+          <circle cx={ax} cy={ay - 4} r="3.6" fill="#ffe58a" stroke={OL} strokeWidth="1.5" />
+        </g>
+      )
+    },
+  },
   kotatsu: {
     view: '-36 -44 72 86',
     glow: () => <ellipse cx={P(0.5, 0.5)[0]} cy={P(0.5, 0.5)[1] + 4} rx="70" ry="36" fill="url(#glowWarm)" className="flick" />,

@@ -9,7 +9,7 @@ import { avatarName, type Avatar } from './avatar'
 import { along, findRoute, routeLength, type TownGeometry, type V } from './townwalk'
 import { HipRoof } from './Exterior'
 import Dock from './Dock'
-import { allItems, itemDef, decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
+import { allItems, EXCLUSIVE, itemDef, decorScore, hasStorey, levelOf, NAME_WORDS, restaurantName, seatTotal, sizeOf, type Restaurant } from './restaurant'
 
 interface Props {
   r: Restaurant
@@ -355,7 +355,7 @@ export default function Town({ r, avatar, onEditAvatar, onVisit, visitedToday, o
     const inside = neighbourRestaurant(Number(visited.id.slice(1)) + 1, visited.level)
     const owned = new Set(allItems(r).map((p) => p.type))
     const myLevel = levelOf(r)
-    const ideas = [...new Set(inside.items.map((p) => p.type))].filter((ty) => !owned.has(ty)).map((ty) => itemDef(ty)).slice(0, 8)
+    const ideas = [...new Set(inside.items.map((p) => p.type))].filter((ty) => !owned.has(ty) && !EXCLUSIVE.includes(ty)).map((ty) => itemDef(ty)).slice(0, 8)
     return (
       <main className="screen town visit">
         <header className="bar">
