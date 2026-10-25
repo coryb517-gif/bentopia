@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { chainOutcome, commitChain, neighbors, newGame } from './engine'
-import { LEVELS } from './levels'
+import { LEVELS, STORY_LEVELS } from './levels'
 import { RECIPES } from './items'
-import type { GameState } from './types'
+import type { GameState, LevelDef } from './types'
 
 /** Every valid chain of length 3 (mixed trios and same-kind trios). */
 function trios(s: GameState): number[][] {
@@ -26,8 +26,8 @@ function wanted(s: GameState): Set<string> {
   return w
 }
 
-function play(levelIdx: number, seed: number): GameState {
-  let s = newGame(LEVELS[levelIdx], seed)
+function play(levelIdx: number | LevelDef, seed: number): GameState {
+  let s = newGame(typeof levelIdx === 'number' ? LEVELS[levelIdx] : levelIdx, seed)
   while (s.status === 'playing') {
     const w = wanted(s)
     const options = trios(s)
@@ -54,5 +54,14 @@ describe('level solvability (greedy bot)', () => {
     for (let seed = 1; seed <= 10; seed++) if (play(idx, seed).status === 'won') wins++
     // The curve is gentle: the dull bot should clear every level most of the time.
     expect(wins).toBeGreaterThanOrEqual(idx < 8 ? 9 : 6)
+  }, 60_000)
+})
+
+/** Story levels are one-offs for the regulars: the dull bot should still clear each one most of the time. */
+describe('story levels (greedy bot)', () => {
+  it.each(STORY_LEVELS.map((l) => [l.customer, l] as const))('%s story is clearable', (_, lvl) => {
+    let wins = 0
+    for (let seed = 1; seed <= 10; seed++) if (play(lvl, seed).status === 'won') wins++
+    expect(wins).toBeGreaterThanOrEqual(6)
   }, 60_000)
 })

@@ -130,3 +130,35 @@ export const CHAPTER_INTROS: { speaker: string; line: string; idea: string }[] =
 export const isBoss = (levelId: number) => CHAPTER_RANGES.some((c) => c.to === levelId)
 
 export const chapterOf = (levelId: number) => CHAPTER_RANGES.findIndex((c) => levelId >= c.from && levelId <= c.to) + 1
+/** A one-off level for each regular customer, unlocked once you are good friends. Its id keeps it out of the story stars. */
+export interface StoryLevel extends LevelDef {
+  customer: string
+  title: string
+  intro: string
+  outro: string
+}
+
+const story = (id: number, customer: string, title: string, intro: string, outro: string, shape: string[], kinds: number, order: OrderItem[], slack: number, extra: { ice?: number; luck?: number; sticky?: number } = {}): StoryLevel => ({
+  id,
+  customer,
+  title,
+  name: title,
+  intro,
+  outro,
+  shape,
+  kinds,
+  order,
+  moves: Math.ceil(minLinks(order) * slack) + 3 + Math.ceil((extra.ice ?? 0) * 0.7) + (extra.sticky ?? 0) * 2,
+  ...extra,
+})
+
+export const STORY_LEVELS: StoryLevel[] = [
+  story(101, 'obaa', 'The pickle day', 'Today is pickling day, dear. Frozen cucumbers again... would you help an old woman?', 'These taste exactly like my mother’s. Thank you, dear.', CENTER, 5, [o(6, 2, 1), o(2, 2, 1)], 4.4, { ice: 2 }),
+  story(102, 'hana', 'The birthday feast', 'It is my BIRTHDAY! Can you make a rainbow maki and some rice? Pleeease?', 'Best birthday EVER! I am telling the whole school.', FULL, 6, [o(9, 2, 1), o(0, 2, 2)], 4.2, { luck: 0.16 }),
+  story(103, 'tanaka', 'The lunch deadline', 'Three dishes, one lunch break, and a very strict boss. Can you be quick?', 'Back at my desk with three minutes to spare. You are a lifesaver.', BARS, 6, [o(6, 2, 1), o(7, 2, 1), o(8, 2, 1)], 3.7, { ice: 3 }),
+  story(104, 'rx9', 'Learning to feel', 'Request: help me understand joy. Method: serve two rainbow makis, even though the rice is sticky.', 'Joy detected. Warmth detected. I believe this is what humans call friendship.', DIAMOND, 6, [o(9, 2, 2)], 4.3, { ice: 2, sticky: 1 }),
+  story(105, 'ronin', 'The warrior’s feast', 'My old comrades arrive at dusk. They must see a feast worthy of a samurai.', 'They wept, chef. Not from the cold. You have my sword.', BARS, 6, [o(7, 2, 2), o(8, 2, 1)], 3.9, { ice: 4 }),
+  story(106, 'mochi', 'The midnight snack', 'Meow. Fish. Three plates. Do not ask why. Meow.', 'Purrrr. (Translation: you may keep your whiskers.)', CHAMFER, 6, [o(1, 2, 3)], 4.4, { luck: 0.1, ice: 2 }),
+]
+
+export const storyFor = (customerId: string): StoryLevel | undefined => STORY_LEVELS.find((s) => s.customer === customerId)

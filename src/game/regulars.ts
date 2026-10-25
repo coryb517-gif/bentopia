@@ -5,6 +5,8 @@ export interface Regulars {
   pts: Record<string, number>
   /** How many friendship levels have been claimed for each customer. */
   claimed: Record<string, number>
+  /** Customers whose story level has been cleared. */
+  story: string[]
 }
 
 export const TIERS = [
@@ -55,7 +57,16 @@ export const POSTCARDS: Record<string, string[]> = {
 }
 
 const KEY = 'bentopia.regulars'
-export const newRegulars = (): Regulars => ({ pts: {}, claimed: {} })
+export const newRegulars = (): Regulars => ({ pts: {}, claimed: {}, story: [] })
+
+/** Coins for the first clear of a story level, and the friendship it adds. */
+export const STORY_COINS = 150
+export const STORY_POINTS = 5
+/** A customer's story opens once friendship reaches this level (Regular). */
+export const STORY_TIER = 2
+
+export const storyUnlocked = (r: Regulars, id: string) => tierReached(r.pts[id] ?? 0) >= STORY_TIER
+export const storyCleared = (r: Regulars, id: string) => r.story.includes(id)
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0)
 
@@ -67,6 +78,7 @@ export function loadRegulars(): Regulars {
       r.pts[c.id] = num(raw?.pts?.[c.id])
       r.claimed[c.id] = Math.min(TIERS.length, num(raw?.claimed?.[c.id]))
     }
+    r.story = Array.isArray(raw?.story) ? raw.story.filter((x: unknown) => typeof x === 'string' && CUSTOMERS.some((c) => c.id === x)) : []
     return r
   } catch {
     return newRegulars()

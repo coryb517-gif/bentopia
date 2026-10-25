@@ -900,3 +900,7 @@ body[data-screen]:not([data-screen="title"]) .backdrop::after {
 .festbar b { position: relative; display: block; text-align: center; font-size: 0.8rem; line-height: 24px; text-shadow: 0 1px 4px rgba(8, 3, 24, 0.9); }
 .prize { display: flex; gap: 10px; font-weight: 800; }
 .invnote { font-size: 0.75rem; opacity: 0.8; margin: 6px 0 0; }
+
+.storybtn { justify-self: start; margin-top: 2px; padding: 5px 12px; border-radius: 999px; font: inherit; font-size: 0.72rem; font-weight: 800; color: #3a2210; background: linear-gradient(90deg, #ffd166, #ff9ebb); border: 0; cursor: pointer; text-align: left; }
+.storylock { opacity: 0.6; font-size: 0.7rem; }
+.storytag { font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.66rem; color: #ffd23a; }

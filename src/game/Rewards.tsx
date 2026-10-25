@@ -2,7 +2,8 @@ import { useState } from 'react'
 import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
 import { anyMilestoneReady, festivalFor, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
 import { dayKey } from './progress'
-import { anyClaimable, claimable, POSTCARDS, tierReached, TIERS, type Regulars } from './regulars'
+import { anyClaimable, claimable, POSTCARDS, STORY_COINS, storyCleared, storyUnlocked, tierReached, TIERS, type Regulars } from './regulars'
+import { storyFor } from '../sim/levels'
 import { floorArt } from './Room'
 import { ITEMS, itemDef, SETS, type ItemDef } from './restaurant'
 import { bonusClaimable, DAILY_REWARDS, dailyStatus, GOALS, goalClaimable, goalDone, goalValue, rollWeek, WEEKLY_BONUS, weeklyClaimable, weeklyTasks, type GoalContext, type Goal, type WeeklyKey } from './progress'
@@ -18,6 +19,7 @@ interface Props {
   boosters: Boosters
   onClaimFestival: (at: number) => void
   onClaimRegular: (id: string) => void
+  onStartStory: (id: string) => void
   onClose: () => void
 }
 
@@ -36,7 +38,7 @@ function Thumb({ def, found }: { def: ItemDef; found: boolean }) {
 }
 
 /** Daily reward, goals that pay coins, and the collection book. */
-export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, regulars, onClaimRegular, festival, boosters, onClaimFestival, onClose }: Props) {
+export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWeekly, regulars, onClaimRegular, onStartStory, festival, boosters, onClaimFestival, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('daily')
   const daily = dailyStatus(ctx.progress, now)
   const tasks = weeklyTasks(now)
@@ -184,6 +186,11 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                       <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small></b>
                       {next ? <span className="bar"><i style={{ width: `${((pts - prev) / (next.at - prev)) * 100}%` }} /></span> : <span className="bar"><i style={{ width: '100%' }} /></span>}
                       <small className="pc">{got ? `“${POSTCARDS[c.id][got - 1]}”` : ready ? 'Wants to say hello. Claim your gift!' : `${pts}/${TIERS[0].at} to say hello`}</small>
+                      {storyFor(c.id) && (storyUnlocked(regulars, c.id) ? (
+                        <button className="storybtn" onClick={() => onStartStory(c.id)}>📖 {storyCleared(regulars, c.id) ? 'Replay story' : `Story: ${storyFor(c.id)!.title} · +${STORY_COINS}`}</button>
+                      ) : (
+                        <small className="storylock">🔒 Story opens at Regular</small>
+                      ))}
                     </div>
                     {ready ? <button className="btn primary" onClick={() => onClaimRegular(c.id)}><Coin />{TIERS[got].coins}</button> : <span className="amt">{got}/{TIERS.length} ♥</span>}
                   </li>

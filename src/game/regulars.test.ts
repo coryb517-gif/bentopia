@@ -22,3 +22,17 @@ describe('regulars', () => {
     expect(anyClaimable(b.next)).toBe(false)
   })
 })
+
+import { STORY_LEVELS } from '../sim/levels'
+import { storyCleared, storyUnlocked } from './regulars'
+describe('customer stories', () => {
+  it('each regular has a story that opens at Regular', () => {
+    expect(STORY_LEVELS.map((s) => s.customer).sort()).toEqual(CUSTOMERS.map((c) => c.id).sort())
+    const r = addPoints(newRegulars(), 'obaa', 7)
+    expect(storyUnlocked(r, 'obaa')).toBe(false)
+    const r2 = addPoints(r, 'obaa', 1)
+    expect(storyUnlocked(r2, 'obaa')).toBe(true)
+    expect(storyCleared(r2, 'obaa')).toBe(false)
+    expect(storyCleared({ ...r2, story: ['obaa'] }, 'obaa')).toBe(true)
+  })
+})

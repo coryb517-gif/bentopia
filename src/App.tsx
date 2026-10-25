@@ -27,10 +27,10 @@ import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './g
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
 import { addGift, takeGift, loadGifts, addBoosters, addTokens, anyMilestoneReady, claimMilestone, loadBoosters, loadFestival, save as saveFestival, rollFestival } from './game/festival'
-import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, tierReached, TIERS } from './game/regulars'
+import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, STORY_COINS, STORY_POINTS, storyCleared, tierReached, TIERS } from './game/regulars'
 import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
 import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
-import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS } from './sim/levels'
+import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS, storyFor } from './sim/levels'
 import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
 import { isBomb, isWild } from './sim/engine'
@@ -269,6 +269,11 @@ function Game() {
   const [friend, setFriend] = useState<{ name: string; up: string } | null>(null)
   const [knife, setKnife] = useState({ armed: false, key: '', used: 0 })
   const [dailyDay, setDailyDay] = useState<string | null>(null)
+  const [storyId, setStoryId] = useState<string | null>(null)
+  const [storyIntro, setStoryIntro] = useState(false)
+  const storyLvl = storyId ? storyFor(storyId) ?? null : null
+  const storyRef = useRef(storyId)
+  storyRef.current = storyId
   const [dailyRec, setDailyRec] = useState(loadDailyRecord)
   const [shared, setShared] = useState('')
   const dailyLvl = useMemo(() => (dailyDay ? dailyLevel(dailyDay) : null), [dailyDay])
@@ -278,9 +283,9 @@ function Game() {
   useEffect(() => saveRegulars(regulars), [regulars])
   const regularsRef = useRef(regulars)
   regularsRef.current = regulars
-  const level = dailyLvl ?? LEVELS[levelIdx]
+  const level = dailyLvl ?? storyLvl ?? LEVELS[levelIdx]
   const outOfHearts = wallet.hearts <= 0
-  const boardKey = `${dailyDay ?? level.id}-${attempt}`
+  const boardKey = `${dailyDay ?? storyId ?? level.id}-${attempt}`
   walletRef.current = wallet
   boardKeyRef.current = boardKey
   const knifeUsed = knife.key === boardKey ? knife.used : 0
@@ -357,7 +362,7 @@ function Game() {
     setPref(k, on)
     setPrefs((p) => ({ ...p, [k]: on }))
   }
-  const customer = customerFor(dailyDay ? dailyNumber(dailyDay) : level.id)
+  const customer = storyLvl ? CUSTOMERS.find((c) => c.id === storyLvl.customer) ?? customerFor(1) : customerFor(dailyDay ? dailyNumber(dailyDay) : level.id)
 
   const say = useCallback((text: string, m: Mood, ms = 1300) => {
     clearTimeout(moodTimer.current)
@@ -369,8 +374,28 @@ function Game() {
     }, ms)
   }, [])
 
+  const startStory = (id: string) => {
+    if (wallet.hearts <= 0) return
+    startMusic()
+    setReward(null)
+    setFriend(null)
+    comboRef.current = { n: 0, t: 0, peak: 0 }
+    setCombo((o) => ({ ...o, n: 0 }))
+    setKnife((k) => ({ ...k, armed: false }))
+    setDailyDay(null)
+    setStoryId(id)
+    setStoryIntro(true)
+    setSeed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
+    setAttempt((a) => a + 1)
+    setGame(null)
+    setPreview(null)
+    setShowResult(false)
+    setScreen('play')
+  }
+
   const startDaily = () => {
     if (wallet.hearts <= 0) return
+    setStoryId(null)
     const day = dayKey(Date.now())
     startMusic()
     setReward(null)
@@ -398,6 +423,7 @@ function Game() {
     setCombo((o) => ({ ...o, n: 0 }))
     setKnife((k) => ({ ...k, armed: false }))
     setDailyDay(null)
+    setStoryId(null)
     setLevelIdx(idx)
     setSeed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
     setAttempt((a) => a + 1)
@@ -447,7 +473,8 @@ function Game() {
       const peak = comboRef.current.peak
       setFestival((f) => addTokens(f, dayKey(Date.now()), dailyRef.current.day ? 2 : 1))
       {
-        const cust = dailyRef.current.day ? customerFor(dailyNumber(dailyRef.current.day)) : customerFor(game.level.id)
+        const sl = storyRef.current ? storyFor(storyRef.current) : undefined
+        const cust = sl ? CUSTOMERS.find((c) => c.id === sl.customer)! : dailyRef.current.day ? customerFor(dailyNumber(dailyRef.current.day)) : customerFor(game.level.id)
         const before = regularsRef.current.pts[cust.id] ?? 0
         const gain = game.stars >= 3 ? 2 : 1
         setRegulars((r) => addPoints(r, cust.id, gain))
@@ -455,6 +482,19 @@ function Game() {
       }
       const bonus = comboCoins(peak)
       setComboBonus({ peak, coins: bonus })
+      if (storyRef.current) {
+        const sid = storyFor(storyRef.current)!.customer
+        const first = !storyCleared(regularsRef.current, sid)
+        const coins = (first ? STORY_COINS : 0) + bonus
+        if (first) setRegulars((r) => ({ ...addPoints(r, sid, STORY_POINTS), story: [...r.story, sid] }))
+        setReward(coins)
+        if (coins) {
+          setWallet((w) => earn(w, coins))
+          coinSound(2)
+        }
+        const t = setTimeout(() => setShowResult(true), 800)
+        return () => clearTimeout(t)
+      }
       const dc = dailyRef.current
       if (dc.day) {
         const { next, first } = recordWin(dc.rec, dc.day, game.stars, game.movesLeft)
@@ -677,7 +717,7 @@ function Game() {
         }}
       />
       {showSettings && <SettingsSheet prefs={prefs} onPref={togglePref} onClose={() => setShowSettings(false)} />}
-      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} regulars={regulars} onClaimRegular={claimRegular} festival={rollFestival(festival, dayKey(now))} boosters={boost} onClaimFestival={claimFestivalReward} onClose={() => setShowRewards(false)} />}
+      {showRewards && <Rewards ctx={goalCtx} now={now} onClaimDaily={claimDailyReward} onClaimGoal={claimGoalReward} onClaimWeekly={claimWeeklyReward} regulars={regulars} onClaimRegular={claimRegular} onStartStory={(id) => { setShowRewards(false); startStory(id) }} festival={rollFestival(festival, dayKey(now))} boosters={boost} onClaimFestival={claimFestivalReward} onClose={() => setShowRewards(false)} />}
     </>)
   }
 
@@ -801,10 +841,11 @@ function Game() {
 
   const status = game?.status ?? 'playing'
   const custMood: CustomerMood = status === 'won' ? 'happy' : status === 'lost' ? 'sad' : flash ? 'happy' : 'idle'
-  const custLine = status === 'won' ? customer.win : status === 'lost' ? customer.lose : customer.ask
-  const hasNext = !dailyDay && levelIdx + 1 < LEVELS.length
-  const again = () => (dailyDay ? startDaily() : start(levelIdx))
-  const label = dailyDay ? 'the Daily Challenge' : `level ${level.id}`
+  const custLine = storyLvl ? (status === 'won' ? storyLvl.outro : status === 'lost' ? customer.lose : storyLvl.intro) : status === 'won' ? customer.win : status === 'lost' ? customer.lose : customer.ask
+  const special = !!dailyDay || !!storyId
+  const hasNext = !special && levelIdx + 1 < LEVELS.length
+  const again = () => (storyId ? startStory(storyId) : dailyDay ? startDaily() : start(levelIdx))
+  const label = storyLvl ? 'this story' : dailyDay ? 'the Daily Challenge' : `level ${level.id}`
   const shareDaily = async () => {
     if (!dailyDay) return
     const text = shareText(dailyDay, dailyRec.stars, dailyRec.movesLeft, dailyRec.streak)
@@ -822,8 +863,8 @@ function Game() {
   return withCoach(
     <main className="screen play">
       <header className="hud">
-        <button className="btn ghost round" onClick={() => setScreen(dailyDay ? 'hub' : 'map')} aria-label="Leave level">✕</button>
-        <div className="levelname">{dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
+        <button className="btn ghost round" onClick={() => setScreen(special ? 'hub' : 'map')} aria-label="Leave level">✕</button>
+        <div className="levelname">{storyLvl ? '📖 Story' : dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
         <div className="mascot-wrap">
           <Mascot mood={mood} size={84} />
           {quip.text && <span key={quip.n} className="quip">{quip.text}</span>}
@@ -887,6 +928,21 @@ function Game() {
         <button className="chip" onClick={again} aria-label="Restart level">↻<span className="lbl"> Restart</span></button>
       </footer>
 
+      {storyIntro && storyLvl && (
+        <div className="overlay" role="dialog" aria-modal="true">
+          <div className="card">
+            <CustomerPortrait customer={customer} mood="idle" size={120} />
+            <p className="ask solo"><b>{customer.name}</b>{storyLvl.intro}</p>
+            <small className="storytag">📖 {customer.name}’s story</small>
+            <h2>{storyLvl.title}</h2>
+            <div className="actions">
+              <button className="btn primary" onClick={() => setStoryIntro(false)}>Let’s cook!</button>
+              <button className="btn ghost" onClick={() => { setStoryIntro(false); setScreen('hub') }}>Not now</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showResult && status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
           <div className="card">
@@ -905,6 +961,11 @@ function Game() {
                 <div className="actions">
                   {tut.step === 'win' ? (
                     <button className="btn primary" onClick={finishTutorialWin}>See your restaurant</button>
+                  ) : storyId ? (
+                    <>
+                      <button className="btn primary" onClick={() => setScreen('hub')}>Back to restaurant</button>
+                      <button className="btn" onClick={again}>Play it again</button>
+                    </>
                   ) : dailyDay ? (
                     <>
                       <button className="btn primary" onClick={shareDaily}>📤 Share result</button>
@@ -942,8 +1003,8 @@ function Game() {
                   </button>
                 )}
                 <div className="actions">
-                  <button className="btn" disabled={outOfHearts} onClick={again}>{outOfHearts ? 'Out of hearts' : dailyDay ? 'Try the Daily again' : `Play level ${level.id} again`}</button>
-                  <button className="btn ghost" onClick={() => setScreen(dailyDay ? 'hub' : 'map')}>{dailyDay ? 'Back to restaurant' : 'Level map'}</button>
+                  <button className="btn" disabled={outOfHearts} onClick={again}>{outOfHearts ? 'Out of hearts' : storyId ? 'Try the story again' : dailyDay ? 'Try the Daily again' : `Play level ${level.id} again`}</button>
+                  <button className="btn ghost" onClick={() => setScreen(special ? 'hub' : 'map')}>{special ? 'Back to restaurant' : 'Level map'}</button>
                 </div>
               </>
             )}
