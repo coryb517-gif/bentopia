@@ -59,7 +59,7 @@ describe('level solvability (greedy bot)', () => {
 
 /** Story levels are one-offs for the regulars: the dull bot should still clear each one most of the time. */
 describe('story levels (greedy bot)', () => {
-  it.each(STORY_LEVELS.map((l) => [l.customer, l] as const))('%s story is clearable', (_, lvl) => {
+  it.each(STORY_LEVELS.map((l) => [`${l.customer} ${l.chapter}`, l] as const))('%s story is clearable', (_, lvl) => {
     let wins = 0
     for (let seed = 1; seed <= 10; seed++) if (play(lvl, seed).status === 'won') wins++
     expect(wins).toBeGreaterThanOrEqual(6)

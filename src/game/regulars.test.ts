@@ -27,12 +27,17 @@ import { STORY_LEVELS } from '../sim/levels'
 import { storyCleared, storyUnlocked } from './regulars'
 describe('customer stories', () => {
   it('each regular has a story that opens at Regular', () => {
-    expect(STORY_LEVELS.map((s) => s.customer).sort()).toEqual(CUSTOMERS.map((c) => c.id).sort())
+    expect([...new Set(STORY_LEVELS.map((s) => s.customer))].sort()).toEqual(CUSTOMERS.map((c) => c.id).sort())
+    for (const c of CUSTOMERS) expect(STORY_LEVELS.filter((s) => s.customer === c.id).map((s) => s.chapter).sort()).toEqual([1, 2, 3])
+    expect(new Set(STORY_LEVELS.map((s) => s.id)).size).toBe(STORY_LEVELS.length)
     const r = addPoints(newRegulars(), 'obaa', 7)
     expect(storyUnlocked(r, 'obaa')).toBe(false)
     const r2 = addPoints(r, 'obaa', 1)
     expect(storyUnlocked(r2, 'obaa')).toBe(true)
     expect(storyCleared(r2, 'obaa')).toBe(false)
     expect(storyCleared({ ...r2, story: ['obaa'] }, 'obaa')).toBe(true)
+    expect(storyUnlocked(r2, 'obaa', 2)).toBe(false)
+    expect(storyUnlocked(addPoints(r2, 'obaa', 7), 'obaa', 2)).toBe(true)
+    expect(storyUnlocked(addPoints(r2, 'obaa', 17), 'obaa', 3)).toBe(true)
   })
 })

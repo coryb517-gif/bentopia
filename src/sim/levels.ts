@@ -133,6 +133,8 @@ export const chapterOf = (levelId: number) => CHAPTER_RANGES.findIndex((c) => le
 /** A one-off level for each regular customer, unlocked once you are good friends. Its id keeps it out of the story stars. */
 export interface StoryLevel extends LevelDef {
   customer: string
+  /** 1 to 3: later chapters open as the friendship grows. */
+  chapter: number
   title: string
   intro: string
   outro: string
@@ -141,6 +143,7 @@ export interface StoryLevel extends LevelDef {
 const story = (id: number, customer: string, title: string, intro: string, outro: string, shape: string[], kinds: number, order: OrderItem[], slack: number, extra: { ice?: number; luck?: number; sticky?: number } = {}): StoryLevel => ({
   id,
   customer,
+  chapter: Math.floor((id - 101) / 10) + 1,
   title,
   name: title,
   intro,
@@ -159,6 +162,28 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(104, 'rx9', 'Learning to feel', 'Request: help me understand joy. Method: serve two rainbow makis, even though the rice is sticky.', 'Joy detected. Warmth detected. I believe this is what humans call friendship.', DIAMOND, 6, [o(9, 2, 2)], 4.3, { ice: 2, sticky: 1 }),
   story(105, 'ronin', 'The warrior’s feast', 'My old comrades arrive at dusk. They must see a feast worthy of a samurai.', 'They wept, chef. Not from the cold. You have my sword.', BARS, 6, [o(7, 2, 2), o(8, 2, 1)], 3.9, { ice: 4 }),
   story(106, 'mochi', 'The midnight snack', 'Meow. Fish. Three plates. Do not ask why. Meow.', 'Purrrr. (Translation: you may keep your whiskers.)', CHAMFER, 6, [o(1, 2, 3)], 4.4, { luck: 0.1, ice: 2 }),
+
+  // Chapter 2: good friends
+  story(111, 'obaa', 'The festival pickles', 'The whole town is coming to the festival, dear, and everyone wants my pickles. Three dishes, and the cold has got into everything.', 'The queue went round the block! You made an old woman very proud.', WINDOW, 6, [o(6, 2, 1), o(2, 2, 1), o(0, 2, 1)], 4.0, { ice: 3 }),
+  story(112, 'hana', 'The school play', 'I am playing the TUNA in the school play! Please help me make a feast for the whole cast. A big one!', 'Standing ovation! The tuna got the loudest clap. I told you!', DIAMOND, 6, [o(8, 2, 1), o(9, 2, 1)], 4.0, { luck: 0.14, ice: 3 }),
+  story(113, 'tanaka', 'The big presentation', 'Tomorrow I present to the board. Tonight I need a meal that gives me courage. Two tempura, and something to settle the nerves.', 'The board loved me. Well, they loved the lunch I brought in. Close enough.', STAIRS, 6, [o(7, 2, 2), o(6, 2, 1)], 3.8, { ice: 4 }),
+  story(114, 'rx9', 'Error 404: appetite', 'Diagnostic: my hunger sensor has frozen over, and the rice is misbehaving. Please debug with two chirashi bowls.', 'Appetite restored. Also restored: the ability to say thank you. Thank you.', CENTER, 6, [o(6, 2, 2)], 4.2, { ice: 3, sticky: 1 }),
+  story(115, 'ronin', 'The rival chef', 'A rival sushi master has challenged me to a feast duel. I fight with a blade. You fight with a ladle. Do not fail me.', 'The rival bowed. Not to me. To you, chef. I have never seen that before.', CHAMFER, 6, [o(9, 2, 2), o(8, 2, 1)], 4.0, { ice: 4, sticky: 1 }),
+  story(116, 'mochi', 'The cat parade', 'Meow meow meow. (Translation: every cat in town is coming. Prepare the fish and the tempura. This is not a request.)', 'Purrrrrr. (Translation: you are now an honorary cat.)', BARS, 6, [o(1, 2, 2), o(7, 2, 1)], 4.0, { luck: 0.1, ice: 3 }),
+
+  // Chapter 3: family
+  story(121, 'obaa', 'Grandma’s last recipe', 'I have kept one recipe a secret all my life, dear. I want you to have it. Four dishes, and every one made with love.', 'Now it is yours. Teach it to someone you love. That is how recipes live forever.', FULL, 6, [o(6, 2, 2), o(7, 2, 1), o(9, 2, 1)], 3.9, { ice: 4, sticky: 1 }),
+  story(122, 'hana', 'Grown-up Hana', 'I am all grown up now! Well, taller. I came back to cook a feast for YOU this time. You sit, I order!', 'You always believed in me. I am going to be a chef someday. Or a dragon. Both!', STAIRS, 6, [o(9, 2, 2), o(0, 2, 2)], 4.0, { luck: 0.16, ice: 3, sticky: 1 }),
+  story(123, 'tanaka', 'The promotion party', 'They made me a director! The whole office is coming tonight. One of everything, if you please. This lunch is on me.', 'Best lunch break of my career. I am putting your restaurant in the company handbook.', WINDOW, 6, [o(6, 2, 1), o(7, 2, 1), o(8, 2, 1), o(9, 2, 1)], 3.9, { ice: 4 }),
+  story(124, 'rx9', 'Upgrade complete', 'I have prepared a speech. Statistically, it will cause tears. Three rainbow makis will help me deliver it.', 'Speech delivered. Tears detected: mine. Friendship firmware: permanently installed.', DIAMOND, 6, [o(9, 2, 3)], 4.3, { ice: 3, sticky: 2 }),
+  story(125, 'ronin', 'The last duel', 'One final feast duel, chef. Win or lose, I will remember this kitchen as my home. Prepare your finest.', 'I lay down my sword. A warrior who finds a home has already won.', CHAMFER, 6, [o(7, 2, 2), o(9, 2, 1)], 4.0, { ice: 5, sticky: 1 }),
+  story(126, 'mochi', 'Queen of the cats', 'Meow. (Translation: tonight I am crowned. The feast must be worthy. Fish, tempura and skewers. Make it royal.)', 'Purrrrrr. (Translation: all cats bow to you. Long live the chef.)', FULL, 6, [o(1, 2, 2), o(8, 2, 1), o(7, 2, 1)], 4.0, { luck: 0.12, ice: 4, sticky: 1 }),
 ]
 
-export const storyFor = (customerId: string): StoryLevel | undefined => STORY_LEVELS.find((s) => s.customer === customerId)
+/** The key a story is saved under: the customer, plus a chapter number after the first. */
+export const storyKey = (s: StoryLevel): string => (s.chapter === 1 ? s.customer : `${s.customer}:${s.chapter}`)
+
+export const storyFor = (key: string): StoryLevel | undefined => STORY_LEVELS.find((s) => storyKey(s) === key)
+
+/** All of a customer's stories, in order. */
+export const storiesOf = (customerId: string): StoryLevel[] => STORY_LEVELS.filter((s) => s.customer === customerId).sort((a, b) => a.chapter - b.chapter)

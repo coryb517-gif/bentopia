@@ -27,10 +27,10 @@ import CustomerPortrait, { CUSTOMERS, customerFor, type CustomerMood } from './g
 import Hearts from './game/Hearts'
 import Mascot, { type Mood } from './game/Mascot'
 import { addGift, takeGift, loadGifts, addBoosters, addTokens, anyMilestoneReady, claimMilestone, loadBoosters, loadFestival, save as saveFestival, rollFestival } from './game/festival'
-import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, STORY_COINS, STORY_POINTS, storyCleared, tierReached, TIERS } from './game/regulars'
+import { addPoints, anyClaimable, claimTier, loadRegulars, saveRegulars, storyCoins, STORY_POINTS, storyCleared, tierReached, TIERS } from './game/regulars'
 import { dailyLevel, dailyNumber, dailySeed } from './sim/daily'
 import { DAILY_COINS, loadDailyRecord, recordWin, saveDailyRecord, shareText, streakNow, wonToday } from './game/dailyChallenge'
-import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS, storyFor } from './sim/levels'
+import { CHAPTER_INTROS, CHAPTER_RANGES, chapterOf, isBoss, LEVELS, storyFor, storyKey } from './sim/levels'
 import LevelMap from './game/LevelMap'
 import { CHAINS, recipeFor } from './sim/items'
 import { isBomb, isWild } from './sim/engine'
@@ -483,10 +483,11 @@ function Game() {
       const bonus = comboCoins(peak)
       setComboBonus({ peak, coins: bonus })
       if (storyRef.current) {
-        const sid = storyFor(storyRef.current)!.customer
-        const first = !storyCleared(regularsRef.current, sid)
-        const coins = (first ? STORY_COINS : 0) + bonus
-        if (first) setRegulars((r) => ({ ...addPoints(r, sid, STORY_POINTS), story: [...r.story, sid] }))
+        const sl2 = storyFor(storyRef.current)!
+        const key = storyKey(sl2)
+        const first = !storyCleared(regularsRef.current, key)
+        const coins = (first ? storyCoins(sl2.chapter) : 0) + bonus
+        if (first) setRegulars((r) => ({ ...addPoints(r, sl2.customer, STORY_POINTS), story: [...r.story, key] }))
         setReward(coins)
         if (coins) {
           setWallet((w) => earn(w, coins))
@@ -864,7 +865,7 @@ function Game() {
     <main className="screen play">
       <header className="hud">
         <button className="btn ghost round" onClick={() => setScreen(special ? 'hub' : 'map')} aria-label="Leave level">✕</button>
-        <div className="levelname">{storyLvl ? '📖 Story' : dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
+        <div className="levelname">{storyLvl ? `📖 Story ${'I'.repeat(storyLvl.chapter)}` : dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
         <div className="mascot-wrap">
           <Mascot mood={mood} size={84} />
           {quip.text && <span key={quip.n} className="quip">{quip.text}</span>}

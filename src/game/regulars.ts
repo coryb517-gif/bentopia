@@ -60,13 +60,16 @@ const KEY = 'bentopia.regulars'
 export const newRegulars = (): Regulars => ({ pts: {}, claimed: {}, story: [] })
 
 /** Coins for the first clear of a story level, and the friendship it adds. */
-export const STORY_COINS = 150
+export const STORY_COINS = [150, 250, 400]
 export const STORY_POINTS = 5
-/** A customer's story opens once friendship reaches this level (Regular). */
-export const STORY_TIER = 2
+/** Friendship level needed for each chapter: Regular, Good friend, Family. */
+export const STORY_TIERS = [2, 3, 4]
 
-export const storyUnlocked = (r: Regulars, id: string) => tierReached(r.pts[id] ?? 0) >= STORY_TIER
-export const storyCleared = (r: Regulars, id: string) => r.story.includes(id)
+export const storyCoins = (chapter: number) => STORY_COINS[chapter - 1] ?? STORY_COINS[0]
+/** Whether a customer's friendship is high enough for a story chapter. */
+export const storyUnlocked = (r: Regulars, id: string, chapter = 1) => tierReached(r.pts[id] ?? 0) >= (STORY_TIERS[chapter - 1] ?? 99)
+/** Whether the story saved under this key (see storyKey) has been cleared. */
+export const storyCleared = (r: Regulars, key: string) => r.story.includes(key)
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0)
 
@@ -78,7 +81,7 @@ export function loadRegulars(): Regulars {
       r.pts[c.id] = num(raw?.pts?.[c.id])
       r.claimed[c.id] = Math.min(TIERS.length, num(raw?.claimed?.[c.id]))
     }
-    r.story = Array.isArray(raw?.story) ? raw.story.filter((x: unknown) => typeof x === 'string' && CUSTOMERS.some((c) => c.id === x)) : []
+    r.story = Array.isArray(raw?.story) ? raw.story.filter((x: unknown) => typeof x === 'string' && CUSTOMERS.some((c) => c.id === x.split(':')[0])) : []
     return r
   } catch {
     return newRegulars()

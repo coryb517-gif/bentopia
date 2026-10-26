@@ -2,8 +2,8 @@ import { useState } from 'react'
 import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
 import { anyMilestoneReady, festivalFor, prizeItem, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
 import { dayKey } from './progress'
-import { anyClaimable, claimable, POSTCARDS, STORY_COINS, storyCleared, storyUnlocked, tierReached, TIERS, type Regulars } from './regulars'
-import { storyFor } from '../sim/levels'
+import { anyClaimable, claimable, POSTCARDS, STORY_TIERS, storyCleared, storyCoins, storyUnlocked, tierReached, TIERS, type Regulars } from './regulars'
+import { storiesOf, storyKey } from '../sim/levels'
 import { floorArt } from './Room'
 import { ITEMS, itemDef, SETS, type ItemDef } from './restaurant'
 import { bonusClaimable, DAILY_REWARDS, dailyStatus, GOALS, goalClaimable, goalDone, goalValue, rollWeek, WEEKLY_BONUS, weeklyClaimable, weeklyTasks, type GoalContext, type Goal, type WeeklyKey } from './progress'
@@ -182,18 +182,25 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                 const next = TIERS[reached]
                 const prev = reached ? TIERS[reached - 1].at : 0
                 const ready = claimable(regulars, c.id)
+                const chapters = storiesOf(c.id)
+                const doneCount = chapters.filter((s) => storyCleared(regulars, storyKey(s))).length
+                const nextStory = chapters.find((s) => !storyCleared(regulars, storyKey(s)))
                 return (
                   <li key={c.id} className={ready ? 'ready' : ''}>
                     <CustomerPortrait customer={c} mood="happy" size={52} />
                     <div className="rinfo">
-                      <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small>{storyCleared(regulars, c.id) && <span className="storydone" title="Story cleared">📖 Story cleared ✓</span>}</b>
+                      <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small>{doneCount > 0 && <span className="storydone" title="Stories cleared">📖 {doneCount}/{chapters.length} ✓</span>}</b>
                       {next ? <span className="bar"><i style={{ width: `${((pts - prev) / (next.at - prev)) * 100}%` }} /></span> : <span className="bar"><i style={{ width: '100%' }} /></span>}
                       <small className="pc">{got ? `“${POSTCARDS[c.id][got - 1]}”` : ready ? 'Wants to say hello. Claim your gift!' : `${pts}/${TIERS[0].at} to say hello`}</small>
-                      {storyFor(c.id) && (storyUnlocked(regulars, c.id) ? (
-                        <button className="storybtn" onClick={() => onStartStory(c.id)}>📖 {storyCleared(regulars, c.id) ? 'Replay story' : `Story: ${storyFor(c.id)!.title} · +${STORY_COINS}`}</button>
+                      {nextStory ? (
+                        storyUnlocked(regulars, c.id, nextStory.chapter) ? (
+                          <button className="storybtn" onClick={() => onStartStory(storyKey(nextStory))}>📖 {nextStory.title} · +{storyCoins(nextStory.chapter)}</button>
+                        ) : (
+                          <small className="storylock">🔒 {nextStory.chapter === 1 ? 'First' : 'Next'} story opens at {TIERS[STORY_TIERS[nextStory.chapter - 1] - 1].name}</small>
+                        )
                       ) : (
-                        <small className="storylock">🔒 Story opens at Regular</small>
-                      ))}
+                        chapters.length > 0 && <button className="storybtn" onClick={() => onStartStory(storyKey(chapters[chapters.length - 1]))}>📖 Replay the last story</button>
+                      )}
                     </div>
                     {ready ? <button className="btn primary" onClick={() => onClaimRegular(c.id)}><Coin />{TIERS[got].coins}</button> : <span className="amt">{got}/{TIERS.length} ♥</span>}
                   </li>
