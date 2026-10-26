@@ -183,7 +183,7 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                   <li key={c.id} className={ready ? 'ready' : ''}>
                     <CustomerPortrait customer={c} mood="happy" size={52} />
                     <div className="rinfo">
-                      <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small></b>
+                      <b>{c.name} <small>{got ? TIERS[got - 1].name : 'New face'}</small>{storyCleared(regulars, c.id) && <span className="storydone" title="Story cleared">📖 Story cleared ✓</span>}</b>
                       {next ? <span className="bar"><i style={{ width: `${((pts - prev) / (next.at - prev)) * 100}%` }} /></span> : <span className="bar"><i style={{ width: '100%' }} /></span>}
                       <small className="pc">{got ? `“${POSTCARDS[c.id][got - 1]}”` : ready ? 'Wants to say hello. Claim your gift!' : `${pts}/${TIERS[0].at} to say hello`}</small>
                       {storyFor(c.id) && (storyUnlocked(regulars, c.id) ? (
