@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
-import { anyMilestoneReady, festivalFor, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
+import { anyMilestoneReady, festivalFor, prizeItem, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
 import { dayKey } from './progress'
 import { anyClaimable, claimable, POSTCARDS, STORY_COINS, storyCleared, storyUnlocked, tierReached, TIERS, type Regulars } from './regulars'
 import { storyFor } from '../sim/levels'
@@ -24,6 +24,8 @@ interface Props {
 }
 
 type Tab = 'daily' | 'event' | 'weekly' | 'goals' | 'regulars' | 'book'
+
+const ICON: Partial<Record<string, string>> = { festlantern: '🏮', mikoshi: '⛩️', snowman: '⛄', koinobori: '🎏', goldfish: '🐠', tsukimi: '🌕' }
 
 const Coin = () => <i className="coinicon" />
 
@@ -97,7 +99,8 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
                 {MILESTONES.map((m) => {
                   const ready = milestoneReady(festival, m)
                   const done = festival.claimed.includes(m.at)
-                  const prize = [m.item ? <span key="i">{m.item === 'mikoshi' ? '⛩️' : '🏮'} {itemDef(m.item).name}</span> : null, m.coins ? <span key="c"><Coin />{m.coins}</span> : null, m.knife ? <span key="k">🔪×{m.knife}</span> : null, m.shuffle ? <span key="s">🔀×{m.shuffle}</span> : null]
+                  const it = prizeItem(m, dayKey(now))
+                  const prize = [it ? <span key="i">{ICON[it] ?? '🎁'} {itemDef(it).name}</span> : null, m.coins ? <span key="c"><Coin />{m.coins}</span> : null, m.knife ? <span key="k">🔪×{m.knife}</span> : null, m.shuffle ? <span key="s">🔀×{m.shuffle}</span> : null]
                   return (
                     <li key={m.at} className={ready ? 'ready' : done ? 'done' : ''}>
                       <div>

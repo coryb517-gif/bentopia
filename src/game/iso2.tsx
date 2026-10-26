@@ -40,6 +40,97 @@ const paperLantern = (x: number, y: number, d: number) => (
 )
 
 export const DECOR_NEW: Partial<Record<ItemType, DecorArt>> = {
+  snowman: {
+    view: '-34 -86 68 120',
+    art: () => {
+      const [bx, by] = P(0.5, 0.5, 0)
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.55} />
+          {blob(bx, by - 14, 17, '#ffffff', '#cfe3f5', 'sn1')}
+          {blob(bx, by - 40, 12.5, '#ffffff', '#d6e8f8', 'sn2')}
+          <path d={`M${bx - 12} ${by - 31}q12 8 24 0l1 5q-13 9 -26 0z`} fill="#e4574a" stroke={OL} strokeWidth="1.6" strokeLinejoin="round" />
+          <circle cx={bx - 4.5} cy={by - 43} r="1.7" fill={OL} />
+          <circle cx={bx + 4.5} cy={by - 43} r="1.7" fill={OL} />
+          <path d={`M${bx} ${by - 40}l8 2.4l-8 1.6z`} fill="#ff9a3d" stroke={OL} strokeWidth="1.2" strokeLinejoin="round" />
+          <circle cx={bx} cy={by - 18} r="1.6" fill={OL} />
+          <circle cx={bx} cy={by - 11} r="1.6" fill={OL} />
+          <ellipse cx={bx - 8} cy={by - 38} rx="2.4" ry="1.6" fill="#ff9eb5" opacity="0.7" />
+          <ellipse cx={bx + 8} cy={by - 38} rx="2.4" ry="1.6" fill="#ff9eb5" opacity="0.7" />
+          <path d={`M${bx - 9} ${by - 51}h18l-3 -9h-12z`} fill="#2a2f6e" stroke={OL} strokeWidth="1.6" strokeLinejoin="round" />
+          <path d={`M${bx - 12} ${by - 51}h24`} stroke={OL} strokeWidth="2.4" strokeLinecap="round" />
+          <path d={`M${bx - 17} ${by - 22}l-9 -9`} stroke="#8a5a3a" strokeWidth="2.2" strokeLinecap="round" />
+          <path d={`M${bx + 17} ${by - 22}l9 -9`} stroke="#8a5a3a" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+      )
+    },
+  },
+  koinobori: {
+    view: '-44 -112 88 146',
+    art: () => {
+      const [bx, by] = P(0.5, 0.5, 0)
+      const carp = (y: number, body: string, d: number) => (
+        <g className="sway" style={{ animationDelay: `${d}s`, transformOrigin: `${bx}px ${y}px` }}>
+          <path d={`M${bx + 2} ${y - 7}q18 -3 32 3l8 -5v14l-8 -5q-14 6 -32 3z`} fill={body} stroke={OL} strokeWidth="1.6" strokeLinejoin="round" />
+          <circle cx={bx + 8} cy={y - 1} r="2.2" fill="#fff" stroke={OL} strokeWidth="1" />
+          <circle cx={bx + 8} cy={y - 1} r="0.9" fill={OL} />
+        </g>
+      )
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.45} />
+          <Box x={0.38} y={0.38} w={0.24} d={0.24} h={5} c={DWOOD} />
+          <Box x={0.46} y={0.46} w={0.08} d={0.08} h={86} z={5} c={DWOOD} />
+          <circle cx={bx} cy={by - 94} r="4.2" fill="#ffe58a" stroke={OL} strokeWidth="1.6" />
+          {carp(by - 84, '#2d2d3a', 0)}
+          {carp(by - 64, '#e4574a', -0.8)}
+          {carp(by - 44, '#58b6f0', -1.6)}
+        </g>
+      )
+    },
+  },
+  goldfish: {
+    view: '-40 -50 80 84',
+    art: () => {
+      const [cx, cy] = P(0.5, 0.5, 12)
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.7} />
+          <Box x={0.12} y={0.12} w={0.76} d={0.76} h={12} c={WOOD} />
+          <ellipse cx={cx} cy={cy} rx="21" ry="10.5" fill="#6fc8f0" stroke={OL} strokeWidth="1.8" />
+          <ellipse cx={cx - 5} cy={cy - 2} rx="8" ry="3" fill="#a8e4fa" opacity="0.7" />
+          <ellipse cx={cx - 9} cy={cy + 1} rx="5.2" ry="2.6" fill="#ff8a2a" stroke={OL} strokeWidth="1.2" />
+          <path d={`M${cx - 14} ${cy + 1}l-4 -3v6z`} fill="#ff8a2a" stroke={OL} strokeWidth="1" strokeLinejoin="round" />
+          <ellipse cx={cx + 8} cy={cy - 1} rx="4.6" ry="2.3" fill="#ffb347" stroke={OL} strokeWidth="1.2" />
+          <path d={`M${cx + 12} ${cy - 1}l4 -3v6z`} fill="#ffb347" stroke={OL} strokeWidth="1" strokeLinejoin="round" />
+          <circle cx={cx + 14} cy={cy - 14} r="9" fill="none" stroke={OL} strokeWidth="1.8" />
+          <circle cx={cx + 14} cy={cy - 14} r="8" fill="rgba(255,255,255,0.45)" />
+          <line x1={cx + 20} y1={cy - 8} x2={cx + 27} y2={cy + 4} stroke="#c99a5c" strokeWidth="2.4" strokeLinecap="round" />
+        </g>
+      )
+    },
+  },
+  tsukimi: {
+    view: '-42 -96 84 130',
+    glow: () => <ellipse cx={P(0.5, 0.5)[0]} cy={P(0.5, 0.5, 52)[1]} rx="46" ry="42" fill="url(#glowWarm)" className="flick" />,
+    art: () => {
+      const [bx, by] = P(0.5, 0.5, 8)
+      return (
+        <g>
+          <Shadow cx={0.5} cy={0.5} r={0.7} />
+          <circle cx={bx} cy={by - 52} r="22" fill="#fff6c4" stroke={OL} strokeWidth="2" opacity="0.95" />
+          <circle cx={bx - 6} cy={by - 56} r="3.4" fill="#f3e08f" opacity="0.8" />
+          <circle cx={bx + 7} cy={by - 46} r="2.4" fill="#f3e08f" opacity="0.8" />
+          <Box x={0.14} y={0.22} w={0.72} d={0.56} h={8} c={DWOOD} />
+          {[[-9, 1], [9, 1], [0, -3]].map(([dx, dy], i) => blob(bx + dx, by + dy - 2, 6.4, '#ffffff', '#e2e2ee', `d${i}`))}
+          {[[-5, -8], [5, -8]].map(([dx, dy], i) => blob(bx + dx, by + dy - 2, 5.6, '#ffffff', '#e2e2ee', `e${i}`))}
+          {blob(bx, by - 18, 5.2, '#ffffff', '#e2e2ee', 'f1')}
+          {[-26, -20].map((dx, i) => <path key={i} d={`M${bx + dx} ${by + 4}q${i ? 4 : -4} -26 ${i ? 10 : -6} -42`} fill="none" stroke="#d9c28a" strokeWidth="1.8" strokeLinecap="round" />)}
+          {[22, 28].map((dx, i) => <path key={i} d={`M${bx + dx} ${by + 4}q${i ? -4 : 4} -26 ${i ? -10 : 6} -40`} fill="none" stroke="#d9c28a" strokeWidth="1.8" strokeLinecap="round" />)}
+        </g>
+      )
+    },
+  },
   festlantern: {
     view: '-40 -104 80 138',
     glow: () => <ellipse cx={P(0.5, 0.5)[0]} cy={P(0.5, 0.5, 40)[1]} rx="56" ry="46" fill="url(#glowWarm)" className="flick" />,

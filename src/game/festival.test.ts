@@ -28,7 +28,7 @@ describe('festival', () => {
   })
 })
 
-import { addGift, takeGift, MILESTONES } from './festival'
+import { addGift, takeGift, MILESTONES, prizeItem, seasonOf } from './festival'
 describe('festival prizes', () => {
   it('stocks and spends one copy at a time', () => {
     let g = addGift({}, 'festlantern')
@@ -40,6 +40,9 @@ describe('festival prizes', () => {
     expect(addGift(g, undefined)).toBe(g)
   })
   it('the 22 and 50 token milestones carry a decor prize', () => {
-    expect(MILESTONES.filter((m) => m.item).map((m) => m.item)).toEqual(['festlantern', 'mikoshi'])
+    expect(MILESTONES.filter((m) => m.item).map((m) => m.item)).toEqual(['season', 'festlantern', 'mikoshi'])
+    const m22 = MILESTONES.find((m) => m.at === 22)!
+    expect([prizeItem(m22, '2026-01-10'), prizeItem(m22, '2026-04-10'), prizeItem(m22, '2026-07-10'), prizeItem(m22, '2026-10-10')]).toEqual(['snowman', 'koinobori', 'goldfish', 'tsukimi'])
+    expect(seasonOf('2026-12-01')).toBe('winter')
   })
 })

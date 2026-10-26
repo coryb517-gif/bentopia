@@ -8,7 +8,7 @@ export type FloorItem =
   | 'neko' | 'tank' | 'vending' | 'taiko' | 'statue' | 'torii' | 'screen' | 'clock' | 'arcade' | 'jukebox' | 'fox' | 'daruma'
   | 'bonsai' | 'sakura' | 'pond' | 'stonelantern' | 'maple' | 'bamboo' | 'fountain' | 'rockgarden'
   | 'lamp' | 'andon' | 'sign'
-  | 'festlantern' | 'mikoshi'
+  | 'festlantern' | 'mikoshi' | 'snowman' | 'koinobori' | 'goldfish' | 'tsukimi'
 export type RugItem = 'rugred' | 'rugwave' | 'rugsakura' | 'runner'
 export type WallItem = 'scroll' | 'mask' | 'shelf' | 'neonramen' | 'furin' | 'poster' | 'wallclock' | 'kokeshi'
 export type ItemType = FloorItem | RugItem | WallItem
@@ -84,6 +84,10 @@ const ROWS: Row[] = [
   // festival prizes: never sold in the shop, only won in the monthly Event
   ['festlantern', 'Festival lantern tower', 'Three lanterns that never go out.', 1, 1, 300, 100, 1, 0, 'floor', 'decor', 'shrine'],
   ['mikoshi', 'Portable shrine', 'Carried through the streets, now yours.', 1, 1, 520, 170, 1, 0, 'floor', 'decor', 'shrine'],
+  ['snowman', 'Snow daruma', 'Round, rosy and very patient.', 1, 1, 260, 88, 1, 0, 'floor', 'decor', 'shrine'],
+  ['koinobori', 'Carp streamers', 'Three koi swimming on the breeze.', 1, 1, 260, 88, 1, 0, 'floor', 'decor', 'shrine'],
+  ['goldfish', 'Goldfish scoop', 'Summer festival fun in a wooden tub.', 1, 1, 260, 88, 1, 0, 'floor', 'decor', 'shrine'],
+  ['tsukimi', 'Moon-viewing stand', 'Dango, pampas grass and a very big moon.', 1, 1, 260, 88, 1, 0, 'floor', 'decor', 'shrine'],
   // rugs
   ['rugred', 'Crimson rug', 'Gold-trimmed, softly worn.', 2, 2, 100, 34, 2, 0, 'rug', 'rugs', 'izakaya'],
   ['runner', 'Entry runner', 'A long welcome from the door.', 3, 1, 120, 40, 3, 0, 'rug', 'rugs', 'shrine'],
@@ -105,7 +109,7 @@ export const ITEMS: ItemDef[] = ROWS.map(([type, name, blurb, w, d, price, value
 }))
 
 /** Prizes from the monthly festival: kept out of the shop. */
-export const EXCLUSIVE: ItemType[] = ['festlantern', 'mikoshi']
+export const EXCLUSIVE: ItemType[] = ['festlantern', 'mikoshi', 'snowman', 'koinobori', 'goldfish', 'tsukimi']
 
 export const itemDef = (t: ItemType) => ITEMS.find((i) => i.type === t)!
 

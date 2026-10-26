@@ -4,6 +4,9 @@
  */
 import type { ItemType } from './restaurant'
 
+/** 'season' stands for the decor item of the current season. */
+export type PrizeSlot = ItemType | 'season'
+
 export interface Reward {
   item?: ItemType
   coins?: number
@@ -11,15 +14,32 @@ export interface Reward {
   shuffle?: number
 }
 
-export interface Milestone extends Reward {
+export interface Milestone {
   at: number
+  coins?: number
+  knife?: number
+  shuffle?: number
+  item?: PrizeSlot
 }
+
+export type Season = 'winter' | 'spring' | 'summer' | 'autumn'
+
+/** The season for a local day like 2026-10-26. */
+export const seasonOf = (day: string): Season => {
+  const m = Number(day.split('-')[1])
+  return m === 12 || m <= 2 ? 'winter' : m <= 5 ? 'spring' : m <= 8 ? 'summer' : 'autumn'
+}
+
+export const SEASON_ITEM: Record<Season, ItemType> = { winter: 'snowman', spring: 'koinobori', summer: 'goldfish', autumn: 'tsukimi' }
+
+/** The decor item a milestone pays on a given day. */
+export const prizeItem = (m: Milestone, day: string): ItemType | undefined => (m.item === 'season' ? SEASON_ITEM[seasonOf(day)] : m.item)
 
 export const MILESTONES: Milestone[] = [
   { at: 5, coins: 60 },
   { at: 12, knife: 2 },
-  { at: 22, coins: 150, item: 'festlantern' },
-  { at: 35, shuffle: 3 },
+  { at: 22, coins: 150, item: 'season' },
+  { at: 35, shuffle: 3, item: 'festlantern' },
   { at: 50, coins: 400, knife: 2, shuffle: 2, item: 'mikoshi' },
 ]
 
@@ -138,7 +158,7 @@ export function claimMilestone(f: FestivalState, day: string, at: number): { nex
   const cur = rollFestival(f, day)
   const m = MILESTONES.find((x) => x.at === at)
   if (!m || !milestoneReady(cur, m)) return null
-  return { next: { ...cur, claimed: [...cur.claimed, at] }, reward: { coins: m.coins, knife: m.knife, shuffle: m.shuffle, item: m.item } }
+  return { next: { ...cur, claimed: [...cur.claimed, at] }, reward: { coins: m.coins, knife: m.knife, shuffle: m.shuffle, item: prizeItem(m, day) } }
 }
 
 export const addBoosters = (b: Boosters, r: Reward): Boosters => ({ knife: b.knife + (r.knife ?? 0), shuffle: b.shuffle + (r.shuffle ?? 0) })
