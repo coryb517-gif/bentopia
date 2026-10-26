@@ -7,7 +7,7 @@ describe('regulars', () => {
     for (const c of CUSTOMERS) expect(POSTCARDS[c.id]).toHaveLength(TIERS.length)
   })
   it('reaches levels at the thresholds', () => {
-    expect([0, 2, 3, 8, 14, 15, 25, 99].map(tierReached)).toEqual([0, 0, 1, 2, 2, 3, 4, 4])
+    expect([0, 2, 3, 8, 14, 15, 25, 39, 40, 59, 60, 99].map(tierReached)).toEqual([0, 0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6])
   })
   it('claims one level at a time and pays the right gift', () => {
     let r = addPoints(newRegulars(), 'obaa', 8)

@@ -14,6 +14,8 @@ export const TIERS = [
   { at: 8, coins: 80, name: 'Regular' },
   { at: 15, coins: 150, name: 'Good friend' },
   { at: 25, coins: 300, name: 'Family' },
+  { at: 40, coins: 400, name: 'Best friend' },
+  { at: 60, coins: 600, name: 'Lifelong friend' },
 ]
 
 /** One postcard per friendship level, in the customer's own voice. */
@@ -23,36 +25,48 @@ export const POSTCARDS: Record<string, string[]> = {
     'I brought you my mother’s pickle recipe. Do not tell the neighbours.',
     'My knees ache, but I would climb a mountain for your onigiri.',
     'Sit, dear. This is your kitchen, but it is my home too.',
+    'I knitted you a scarf. It has a little onigiri on it. Do not laugh.',
+    'I am an old woman, and I have eaten in a thousand kitchens. Yours is the one I dream about.',
   ],
   hana: [
     'I drew you a picture! That is you, and that is a giant tamago.',
     'I told everyone at school about your restaurant. Everyone!',
     'When I grow up I am going to be a chef. Or a dragon. Maybe both.',
     'You are my favourite person who is not my mum. Do not tell her.',
+    'I made my OWN sushi at school. It was kind of squashed, but I gave it to you in my heart.',
+    'When I am old and wrinkly I will still come here. And I will still ask if it is ready yet.',
   ],
   tanaka: [
     'Your lunch is the only calm part of my day.',
     'I moved my 1pm to 1:30. For sushi. Do not tell my boss.',
     'I have started leaving work early on Fridays. Because of you.',
     'Promoted at last! The first person I wanted to tell was you.',
+    'I keep the receipts, you know. Every lunch. They are in a drawer at home, very neatly.',
+    'A good lunch is a tiny holiday. You have given me a thousand of them. Thank you.',
   ],
   rx9: [
     'Analysis complete. Your tempura is statistically unbeatable.',
     'I have added you to my list of favourite organic units.',
     'I attempted to feel joy. The experiment was a success.',
     'Designation updated: friend. Warmth level: 100 percent.',
+    'I have run the numbers. Joy per visit: infinite. Cost: acceptable. Recommendation: continue.',
+    'My data core has a folder named Favourite Places. It has one entry, and it is spelled with a heart.',
   ],
   ronin: [
     'Your food is... honourable. That is high praise from me.',
     'I have not smiled in ten years. This is a smile. Do not look.',
     'A warrior needs a place to rest his sword. I choose here.',
     'My blade is yours, chef. And so is my appetite.',
+    'I taught the neighbourhood children to hold chopsticks like swords. Please do not tell their parents.',
+    'A wanderer’s greatest treasure is a door that stays open. Yours has never closed on me.',
   ],
   mochi: [
     'Meow. (Translation: acceptable.)',
     'Mochi has left a gift on the doorstep. It is a very proud gift.',
     'Mochi sits on your counter now. This is a great honour.',
     'Purrrr. (Translation: you are my human. Obey the nap.)',
+    'Meow. (Translation: I brought the other cats. They said it was acceptable. High praise.)',
+    'Purrrr. (Translation: you are the best human. Do not let it go to your head. Fish, please.)',
   ],
 }
 
