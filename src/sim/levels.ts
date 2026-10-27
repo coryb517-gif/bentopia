@@ -133,7 +133,7 @@ export const chapterOf = (levelId: number) => CHAPTER_RANGES.findIndex((c) => le
 /** A one-off level for each regular customer, unlocked once you are good friends. Its id keeps it out of the story stars. */
 export interface StoryLevel extends LevelDef {
   customer: string
-  /** 1 to 3: later chapters open as the friendship grows. */
+  /** 1 to 4: later chapters open as the friendship grows. */
   chapter: number
   title: string
   intro: string
@@ -178,6 +178,14 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(124, 'rx9', 'Upgrade complete', 'I have prepared a speech. Statistically, it will cause tears. Three rainbow makis will help me deliver it.', 'Speech delivered. Tears detected: mine. Friendship firmware: permanently installed.', DIAMOND, 6, [o(9, 2, 3)], 4.3, { ice: 3, sticky: 2 }),
   story(125, 'ronin', 'The last duel', 'One final feast duel, chef. Win or lose, I will remember this kitchen as my home. Prepare your finest.', 'I lay down my sword. A warrior who finds a home has already won.', CHAMFER, 6, [o(7, 2, 2), o(9, 2, 1)], 4.0, { ice: 5, sticky: 1 }),
   story(126, 'mochi', 'Queen of the cats', 'Meow. (Translation: tonight I am crowned. The feast must be worthy. Fish, tempura and skewers. Make it royal.)', 'Purrrrrr. (Translation: all cats bow to you. Long live the chef.)', FULL, 6, [o(1, 2, 2), o(8, 2, 1), o(7, 2, 1)], 4.0, { luck: 0.12, ice: 4, sticky: 1 }),
+
+  // Chapter 4: lifelong friends
+  story(131, 'obaa', 'The pickle village', 'The whole village is coming for pickles, dear. Four dishes, and the cold is the thickest it has ever been. One last big batch together.', 'A hundred jars, and every one with your name on the lid. I am the luckiest old woman alive.', FULL, 6, [o(6, 2, 2), o(2, 2, 1), o(0, 2, 1)], 4.0, { ice: 5, sticky: 1 }),
+  story(132, 'hana', 'Hana’s restaurant', 'I opened my OWN restaurant! You are the guest of honour. I will cook, you sit. Rainbow makis for everybody!', 'Five stars, written on the door in marker pen. It is the second best restaurant in town!', WINDOW, 6, [o(9, 2, 2), o(8, 2, 1), o(0, 2, 1)], 4.0, { luck: 0.16, ice: 4, sticky: 1 }),
+  story(133, 'tanaka', 'The retirement lunch', 'My last day at the office. Thirty years of lunches, and I want this one to be perfect. One of everything, chef.', 'I leave with a full belly and a full heart. See you every day at noon, as a regular regular.', STAIRS, 6, [o(6, 2, 1), o(7, 2, 1), o(8, 2, 1), o(9, 2, 1)], 4.0, { ice: 5 }),
+  story(134, 'rx9', 'Friendship protocol', 'I have compiled everything we have cooked together. The output is beautiful. Please accept four rainbow makis as a thank you.', 'Final report: friendship detected, cannot be uninstalled. I have chosen not to try.', DIAMOND, 6, [o(9, 2, 3), o(6, 2, 1)], 4.3, { ice: 4, sticky: 2 }),
+  story(135, 'ronin', 'The wanderer’s door', 'I no longer wander, chef. But tonight, travellers will come to this door. Show them what a home tastes like.', 'The travellers will remember this kitchen forever. So will I.', CHAMFER, 6, [o(7, 2, 2), o(8, 2, 1), o(9, 2, 1)], 4.0, { ice: 5, sticky: 2 }),
+  story(136, 'mochi', 'The great cat banquet', 'Meow. (Translation: every cat in the world is coming. Fish, tempura, skewers, rainbow rolls. You have until moonrise.)', 'Purrrrrr. (Translation: you are family. This is the highest honour. Also, more fish.)', FULL, 6, [o(1, 2, 2), o(8, 2, 1), o(7, 2, 1), o(9, 2, 1)], 4.1, { luck: 0.12, ice: 5, sticky: 1 }),
 ]
 
 /** The key a story is saved under: the customer, plus a chapter number after the first. */

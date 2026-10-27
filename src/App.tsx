@@ -865,7 +865,7 @@ function Game() {
     <main className="screen play">
       <header className="hud">
         <button className="btn ghost round" onClick={() => setScreen(special ? 'hub' : 'map')} aria-label="Leave level">✕</button>
-        <div className="levelname">{storyLvl ? `📖 Story ${'I'.repeat(storyLvl.chapter)}` : dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
+        <div className="levelname">{storyLvl ? `📖 Story ${['I','II','III','IV'][storyLvl.chapter - 1]}` : dailyDay ? `Daily #${dailyNumber(dailyDay)}` : `Level ${level.id}`}<small>{level.name}</small></div>
         <div className="mascot-wrap">
           <Mascot mood={mood} size={84} />
           {quip.text && <span key={quip.n} className="quip">{quip.text}</span>}

@@ -28,7 +28,7 @@ import { storyCleared, storyUnlocked } from './regulars'
 describe('customer stories', () => {
   it('each regular has a story that opens at Regular', () => {
     expect([...new Set(STORY_LEVELS.map((s) => s.customer))].sort()).toEqual(CUSTOMERS.map((c) => c.id).sort())
-    for (const c of CUSTOMERS) expect(STORY_LEVELS.filter((s) => s.customer === c.id).map((s) => s.chapter).sort()).toEqual([1, 2, 3])
+    for (const c of CUSTOMERS) expect(STORY_LEVELS.filter((s) => s.customer === c.id).map((s) => s.chapter).sort()).toEqual([1, 2, 3, 4])
     expect(new Set(STORY_LEVELS.map((s) => s.id)).size).toBe(STORY_LEVELS.length)
     const r = addPoints(newRegulars(), 'obaa', 7)
     expect(storyUnlocked(r, 'obaa')).toBe(false)
@@ -39,5 +39,7 @@ describe('customer stories', () => {
     expect(storyUnlocked(r2, 'obaa', 2)).toBe(false)
     expect(storyUnlocked(addPoints(r2, 'obaa', 7), 'obaa', 2)).toBe(true)
     expect(storyUnlocked(addPoints(r2, 'obaa', 17), 'obaa', 3)).toBe(true)
+    expect(storyUnlocked(addPoints(r2, 'obaa', 51), 'obaa', 4)).toBe(false)
+    expect(storyUnlocked(addPoints(r2, 'obaa', 52), 'obaa', 4)).toBe(true)
   })
 })

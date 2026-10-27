@@ -74,10 +74,10 @@ const KEY = 'bentopia.regulars'
 export const newRegulars = (): Regulars => ({ pts: {}, claimed: {}, story: [] })
 
 /** Coins for the first clear of a story level, and the friendship it adds. */
-export const STORY_COINS = [150, 250, 400]
+export const STORY_COINS = [150, 250, 400, 600]
 export const STORY_POINTS = 5
-/** Friendship level needed for each chapter: Regular, Good friend, Family. */
-export const STORY_TIERS = [2, 3, 4]
+/** Friendship level needed for each chapter: Regular, Good friend, Family, Lifelong friend. */
+export const STORY_TIERS = [2, 3, 4, 6]
 
 export const storyCoins = (chapter: number) => STORY_COINS[chapter - 1] ?? STORY_COINS[0]
 /** Whether a customer's friendship is high enough for a story chapter. */
