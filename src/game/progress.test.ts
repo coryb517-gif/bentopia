@@ -132,3 +132,21 @@ describe('visiting neighbours', () => {
     expect(visitShop(p, 'b0', tomorrow).bonus).toBe(VISIT_BONUS)
   })
 })
+
+describe('festival-night guest', () => {
+  it('only arrives in the last seven days of a month', async () => {
+    const { festivalNight } = await import('./festival')
+    expect(festivalNight(new Date(2026, 9, 24))).toBe(false)
+    expect(festivalNight(new Date(2026, 9, 25))).toBe(true)
+    expect(festivalNight(new Date(2026, 9, 31))).toBe(true)
+    expect(festivalNight(new Date(2026, 1, 21))).toBe(false)
+    expect(festivalNight(new Date(2026, 1, 22))).toBe(true)
+    expect(festivalNight(new Date(2026, 9, 1))).toBe(false)
+  })
+  it('unlocks a secret goal the first time she visits', () => {
+    const goal = GOALS.find((g) => g.id === 'kit1')!
+    const base: GoalContext = { stars: {}, restaurant: newRestaurant(0), progress: newProgress() }
+    expect(goalClaimable(goal, base)).toBe(false)
+    expect(goalClaimable(goal, { ...base, progress: { ...base.progress, stats: { ...base.progress.stats, kitsune: 1 } } })).toBe(true)
+  })
+})

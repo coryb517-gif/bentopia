@@ -162,3 +162,9 @@ export function claimMilestone(f: FestivalState, day: string, at: number): { nex
 }
 
 export const addBoosters = (b: Boosters, r: Reward): Boosters => ({ knife: b.knife + (r.knife ?? 0), shuffle: b.shuffle + (r.shuffle ?? 0) })
+
+/** Festival nights are the last week of each month, when a rare guest might come to the restaurant. */
+export const festivalNight = (d: Date = new Date()): boolean => {
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  return d.getDate() > last - 7
+}

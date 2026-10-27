@@ -29,6 +29,15 @@ export const ASHLYNDIA: Customer = {
   lose: 'Courage, chef. The stars are with you.',
 }
 
+/** A festival-night guest: a fox spirit who only drops by in the last week of the month. */
+export const KITSUNE: Customer = {
+  id: 'kitsune',
+  name: 'Lady Kitsune',
+  ask: 'A lantern, a bowl, and a little mischief.',
+  win: 'Delicious. The moon approves.',
+  lose: 'Even spirits go hungry sometimes.',
+}
+
 export const customerFor = (levelId: number) => CUSTOMERS[(levelId - 1) % CUSTOMERS.length]
 
 const OL = '#2a0f2e'
@@ -213,6 +222,30 @@ function Umi({ mood }: { mood: CustomerMood }) {
   )
 }
 
+function Kitsune({ mood }: { mood: CustomerMood }) {
+  return (
+    <>
+      <path d="M10 100Q12 76 36 72H64Q88 76 90 100Z" fill="#fff6e8" {...stroked} />
+      <path d="M36 72L50 92L64 72" fill="none" stroke="#d9363e" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M44 62h12v12H44Z" fill={SKIN_SH} />
+      <path d="M20 40L16 8L42 26Z" fill="#f29a3a" {...stroked} />
+      <path d="M80 40L84 8L58 26Z" fill="#f29a3a" {...stroked} />
+      <path d="M22 34L20 16L34 27Z" fill="#fff6e8" />
+      <path d="M78 34L80 16L66 27Z" fill="#fff6e8" />
+      <ellipse cx="50" cy="48" rx="23" ry="24" fill="#fff6e8" {...stroked} />
+      <path d="M27 46Q26 22 50 22Q74 22 73 46Q64 34 50 38Q36 34 27 46Z" fill="#f29a3a" {...stroked} />
+      <path d="M40 58Q50 64 60 58" fill="none" stroke="#f29a3a" strokeWidth="2" opacity="0.6" />
+      <path d="M36 47l6-2M64 47l-6-2" stroke="#d9363e" strokeWidth="3" strokeLinecap="round" />
+      {eyes(mood, 50, 52, 10, 3, '#7a2a6e')}
+      <path d="M48 59h4l-2 2.4Z" fill={OL} />
+      {mouth(mood, 50, 65)}
+      <path d="M14 68q-10 8 -6 24q8 -4 10 -14" fill="#f29a3a" {...stroked} strokeWidth="2.4" />
+      <circle cx="86" cy="22" r="7" fill="#ffb347" {...stroked} strokeWidth="2.2" />
+      <path d="M86 15v-3M86 29v3" stroke={OL} strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  )
+}
+
 function Ashlyndia({ mood }: { mood: CustomerMood }) {
   return (
     <>
@@ -239,6 +272,7 @@ function Ashlyndia({ mood }: { mood: CustomerMood }) {
 
 const BODIES: Record<string, (p: { mood: CustomerMood }) => ReactNode> = {
   ashlyndia: Ashlyndia,
+  kitsune: Kitsune,
   obaa: Obaa,
   hana: Hana,
   tanaka: Tanaka,

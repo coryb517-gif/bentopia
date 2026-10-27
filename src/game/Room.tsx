@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
-import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
+import CustomerPortrait, { ASHLYNDIA, CUSTOMERS, KITSUNE } from './Customers'
+import { festivalNight } from './festival'
 import { DECOR } from './decor'
 import { Box, OL, P } from './iso'
 import Mascot from './Mascot'
@@ -45,7 +46,10 @@ const chefPoint = (p: Placed): [number, number] => {
 
 /** A diner index past the end of the list means the rare guest. */
 const ASH = CUSTOMERS.length
+const KIT = CUSTOMERS.length + 1
+const guestFor = (who: number) => (who === ASH ? ASHLYNDIA : who === KIT ? KITSUNE : CUSTOMERS[who])
 
+const KIT_LINES = ['Do you hear the festival drums?', 'Careful, I bite. Only fish, though.', 'Leave a lantern out for me.', 'Moonlight tastes better with rice.', 'Foxes keep their promises. Mostly.', 'This is my favourite night of the month.']
 const ASH_LINES = ['The tea here is divine.', 'Tell the chef: marvellous!', 'What a lovely little place.', 'I do adore a lantern.', 'Is that rice I smell? Bliss.', 'Keep shining, dear chef.']
 
 const WALL_H = 124
@@ -558,7 +562,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
   seatList.forEach((s, i) => {
     const k = seatKey(s)
     // Dev switch (/?ash): the rare guest is already seated, for checking how she looks.
-    if (!(k in diners.current)) diners.current[k] = i === 1 && new URLSearchParams(location.search).has('ash') ? ASH : i < 8 ? i % CUSTOMERS.length : null
+    if (!(k in diners.current)) diners.current[k] = i === 1 && new URLSearchParams(location.search).has('ash') ? ASH : i === 2 && new URLSearchParams(location.search).has('kit') ? KIT : i < 8 ? i % CUSTOMERS.length : null
   })
 
   useEffect(() => {
@@ -578,17 +582,19 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
           const spot = seatSpot(cur, s)
           const [px, py] = P(spot.x, spot.y, spot.z + 30)
           // Ashlyndia tips like royalty: a little shower of coins.
-          const burst = who === ASH ? [-16, 0, 16] : [0]
+          const burst = who >= ASH ? [-16, 0, 16] : [0]
           for (const dx of burst) {
             const cid = ++coinId.current
             setCoins((c) => [...c, { id: cid, x: px + dx, y: py - Math.abs(dx) * 0.4 }])
             setTimeout(() => setCoins((c) => c.filter((x) => x.id !== cid)), 2000)
           }
         } else if (who == null && occupied < 10 && Math.random() < 0.22) {
-          const here = Object.values(diners.current).includes(ASH)
-          const special = !here && Math.random() < 0.08
-          diners.current[k] = special ? ASH : Math.floor(Math.random() * CUSTOMERS.length)
+          const vals = Object.values(diners.current)
+          const special = !vals.includes(ASH) && Math.random() < 0.08
+          const fox = !special && !vals.includes(KIT) && festivalNight() && Math.random() < 0.14
+          diners.current[k] = special ? ASH : fox ? KIT : Math.floor(Math.random() * CUSTOMERS.length)
           if (special) guestRef.current?.('ashlyndia')
+          if (fox) guestRef.current?.('kitsune')
           occupied++
           changed = true
         }
@@ -664,12 +670,12 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         <g
           key={`c${k}-${who}`}
           transform={`translate(${px - 21} ${py - 40})`}
-          pointerEvents={who === ASH ? 'auto' : 'none'}
-          style={who === ASH ? { cursor: 'pointer' } : undefined}
-          onPointerUp={who === ASH ? (e) => {
+          pointerEvents={who >= ASH ? 'auto' : 'none'}
+          style={who >= ASH ? { cursor: 'pointer' } : undefined}
+          onPointerUp={who >= ASH ? (e) => {
             // Chatting with the rare guest, not walking: keep the tap to ourselves.
             e.stopPropagation()
-            const pool = ASH_LINES
+            const pool = who === KIT ? KIT_LINES : ASH_LINES
             const line = pool[(Math.floor(Math.random() * pool.length) + (chat ? 1 : 0)) % pool.length]
             setChat({ key: k, line })
             clearTimeout(chatTimer.current)
@@ -678,7 +684,7 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
         >
           <g className="arrive">
             <ellipse cx="21" cy="42" rx="15" ry="5" fill="rgba(18,4,36,0.3)" />
-            {who === ASH && chat?.key === k && (
+            {who >= ASH && chat?.key === k && (
               <g transform="translate(21 -6)">
                 <g className="emote">
                   <rect x="-58" y="-22" width="116" height="26" rx="9" fill="#fffdf7" stroke="#2a0f2e" strokeWidth="1.6" />
@@ -688,14 +694,14 @@ export default function Room({ r, grid, placing, wallGhost, onWall, selectedId, 
                 </g>
               </g>
             )}
-            {who === ASH && (
+            {who >= ASH && (
               <g className="ashaura" aria-hidden>
                 <path d="M-2 8l1.6 3.6 3.6 1.6-3.6 1.6L-2 18.4l-1.6-3.6L-7.2 13.2l3.6-1.6z" fill="#ffe27a" stroke="#2a0f2e" strokeWidth="0.8" className="twinkle" />
                 <path d="M44 2l1.4 3 3 1.4-3 1.4L44 10.8l-1.4-3-3-1.4 3-1.4z" fill="#fff" stroke="#2a0f2e" strokeWidth="0.8" className="twinkle" style={{ animationDelay: '-0.8s' }} />
                 <ellipse cx="21" cy="42" rx="22" ry="7" fill="#d29bff" opacity="0.45" />
               </g>
             )}
-            <CustomerPortrait customer={who === ASH ? ASHLYNDIA : CUSTOMERS[who]} mood="happy" size={42} />
+            <CustomerPortrait customer={guestFor(who)} mood="happy" size={42} />
             <path className="steam" style={{ animationDelay: `${-who * 0.7}s` }} d="M30 6q-3 -4 0 -8" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />
           </g>
         </g>

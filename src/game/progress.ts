@@ -9,6 +9,8 @@ export interface Stats {
   visits: number
   /** Times the rare guest has dropped by. */
   ashlyndia: number
+  /** Times the festival-night guest has dropped by. */
+  kitsune: number
 }
 
 export interface Weekly {
@@ -38,7 +40,7 @@ export interface Progress {
 
 export const newWeekly = (week = ''): Weekly => ({ week, clears: 0, placed: 0, bombs: 0, claimed: [] })
 
-export const newProgress = (): Progress => ({ visits: { day: '', ids: [] }, daily: { last: '', streak: 0 }, weekly: newWeekly(), claimed: [], stats: { bombs: 0, visits: 0, ashlyndia: 0 }, seen: [] })
+export const newProgress = (): Progress => ({ visits: { day: '', ids: [] }, daily: { last: '', streak: 0 }, weekly: newWeekly(), claimed: [], stats: { bombs: 0, visits: 0, ashlyndia: 0, kitsune: 0 }, seen: [] })
 
 // ---------- daily reward ----------
 export const DAILY_REWARDS = [30, 40, 50, 60, 80, 100, 200]
@@ -181,6 +183,7 @@ export const GOALS: Goal[] = [
   ...tiers('bombs', (t) => (t === 1 ? 'Boom!' : `${t} bombs`), (t) => `Set off ${t} Flavor Bomb${t > 1 ? 's' : ''}`, [1, 10, 30], [20, 80, 200], (c) => c.progress.stats.bombs),
   ...tiers('visit', (t) => (t === 1 ? 'Neighbourly' : `${t} visits`), (t) => `Visit ${t} neighbour shop${t > 1 ? 's' : ''}`, [1, 6], [30, 100], (c) => c.progress.stats.visits),
   { id: 'ash1', name: 'A familiar face', blurb: 'Someone special dropped by for a bite...', target: 1, reward: 150, value: (c) => c.progress.stats.ashlyndia },
+  { id: 'kit1', name: 'Fox in the lantern light', blurb: 'Someone mysterious came to the festival...', target: 1, reward: 250, value: (c) => c.progress.stats.kitsune },
   ...tiers('book', (t) => `${t} finds`, (t) => `Discover ${t} items for your collection book`, [10, 25, ITEMS.length], [40, 120, 400], (c) => c.progress.seen.length),
 ]
 
@@ -230,6 +233,7 @@ export function loadProgress(): Progress {
         bombs: Number.isFinite(raw.stats?.bombs) ? raw.stats.bombs : 0,
         visits: Number.isFinite(raw.stats?.visits) ? raw.stats.visits : 0,
         ashlyndia: Number.isFinite(raw.stats?.ashlyndia) ? raw.stats.ashlyndia : 0,
+        kitsune: Number.isFinite(raw.stats?.kitsune) ? raw.stats.kitsune : 0,
       },
       seen: Array.isArray(raw.seen) ? raw.seen.filter((x: unknown) => typeof x === 'string') : base.seen,
     }

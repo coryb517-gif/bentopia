@@ -80,7 +80,7 @@ export default function Hub({ r, wallet, now, tips, onCollect, onPlay, onDecorat
       <StoreyTabs r={r} outside active={view} onPick={onView} onLocked={onBuild} />
 
       <div className="stage hubstage">
-        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} onGuest={(id) => { onGuest?.(id); setGuestMsg('✨ Ashlyndia stopped by for a bite!'); setTimeout(() => setGuestMsg(''), 6000) }} />}</ZoomPan>
+        <ZoomPan resetKey={view}>{view === 'outside' ? <Exterior r={r} onEnter={() => onView('ground')} /> : <Room r={storeyView(r, view)} grid={sizeOf(r, view)} storey={view} avatar={avatar} emote={emote} onGuest={(id) => { onGuest?.(id); setGuestMsg(id === 'kitsune' ? '🦊 Lady Kitsune slipped in for the festival!' : '✨ Ashlyndia stopped by for a bite!'); setTimeout(() => setGuestMsg(''), 6000) }} />}</ZoomPan>
         {avatar && view !== 'outside' && (
           <>
             <button className={`emotetoggle${emoteOpen ? ' on' : ''}`} onClick={() => setEmoteOpen((o) => !o)} aria-label="Emotes" aria-expanded={emoteOpen}>😊</button>

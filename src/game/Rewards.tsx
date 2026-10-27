@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import CustomerPortrait, { ASHLYNDIA, CUSTOMERS } from './Customers'
+import CustomerPortrait, { ASHLYNDIA, CUSTOMERS, KITSUNE } from './Customers'
 import { anyMilestoneReady, festivalFor, prizeItem, MILESTONES, milestoneReady, type Boosters, type FestivalState } from './festival'
 import { dayKey } from './progress'
 import { anyClaimable, claimable, POSTCARDS, STORY_TIERS, storyCleared, storyCoins, storyUnlocked, tierReached, TIERS, type Regulars } from './regulars'
@@ -215,12 +215,19 @@ export default function Rewards({ ctx, now, onClaimDaily, onClaimGoal, onClaimWe
             <h2>Collection book</h2>
             <p>{seen.size} of {ITEMS.length} items found. Own it once and it is yours to see forever.</p>
             <section className="bookset">
-              <h3>Special guests <small>{ctx.progress.stats.ashlyndia > 0 ? 1 : 0}/1</small></h3>
+              <h3>Special guests <small>{(ctx.progress.stats.ashlyndia > 0 ? 1 : 0) + (ctx.progress.stats.kitsune > 0 ? 1 : 0)}/2</small></h3>
               <div className="guestcard">
                 <div className={`guestpic${ctx.progress.stats.ashlyndia > 0 ? ' found' : ''}`}><CustomerPortrait customer={ASHLYNDIA} mood="happy" size={64} /></div>
                 <div>
                   <b>{ctx.progress.stats.ashlyndia > 0 ? 'Ashlyndia' : '???'}</b>
                   <small>{ctx.progress.stats.ashlyndia > 0 ? `Dropped by ${ctx.progress.stats.ashlyndia} time${ctx.progress.stats.ashlyndia > 1 ? 's' : ''}. Tap her when she visits.` : 'Someone special may drop by for a bite. Keep your restaurant open and watch the seats.'}</small>
+                </div>
+              </div>
+              <div className="guestcard">
+                <div className={`guestpic${ctx.progress.stats.kitsune > 0 ? ' found' : ''}`}><CustomerPortrait customer={KITSUNE} mood="happy" size={64} /></div>
+                <div>
+                  <b>{ctx.progress.stats.kitsune > 0 ? 'Lady Kitsune' : '???'}</b>
+                  <small>{ctx.progress.stats.kitsune > 0 ? `Came to the festival ${ctx.progress.stats.kitsune} time${ctx.progress.stats.kitsune > 1 ? 's' : ''}. Tap her when she visits.` : 'Someone mysterious comes on festival nights: the last week of every month.'}</small>
                 </div>
               </div>
             </section>
