@@ -68,6 +68,14 @@ export const POSTCARDS: Record<string, string[]> = {
     'Meow. (Translation: I brought the other cats. They said it was acceptable. High praise.)',
     'Purrrr. (Translation: you are the best human. Do not let it go to your head. Fish, please.)',
   ],
+  umi: [
+    'You cook the fish the way my father taught me. I nearly cried into the tuna.',
+    'I saved you the best of the morning’s catch. Do not tell the other captains.',
+    'The sea is a hard master, but a good meal at your counter makes it kind.',
+    'Come aboard sometime, chef. The crew already calls you the Admiral of Rice.',
+    'I named my new boat after your restaurant. The harbour master was confused. I was not.',
+    'Forty years on the water, and the best harbour I ever found was a seat at your counter.',
+  ],
 }
 
 const KEY = 'bentopia.regulars'

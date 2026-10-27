@@ -17,6 +17,7 @@ export const CUSTOMERS: Customer[] = [
   { id: 'rx9', name: 'RX-9', ask: 'Hunger level: 100 percent.', win: 'Flavor data: excellent.', lose: 'Error. Meal not found.' },
   { id: 'ronin', name: 'Ronin', ask: 'An honorable meal. Now.', win: 'Your skill is... acceptable.', lose: 'This is a dishonor.' },
   { id: 'mochi', name: 'Mochi', ask: 'Meow. Fish. Immediately.', win: 'Purrrrr. You may live.', lose: 'Hmph. I am leaving.' },
+  { id: 'umi', name: 'Captain Umi', ask: 'Fresh off the boat, chef. Hungry!', win: 'Haha! Best catch of the season!', lose: 'Rough seas today, eh?' },
 ]
 
 /** A rare guest who is not in the order rotation: she only turns up as a diner. */
@@ -191,6 +192,27 @@ function Mochi({ mood }: { mood: CustomerMood }) {
   )
 }
 
+function Umi({ mood }: { mood: CustomerMood }) {
+  return (
+    <>
+      <path d="M10 100Q12 76 36 72H64Q88 76 90 100Z" fill="#f2b81f" {...stroked} />
+      <path d="M40 72L50 90L60 72Z" fill="#fff" {...stroked} />
+      <path d="M50 78v10M45 82h10" stroke="#2f5d9e" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M44 62h12v12H44Z" fill="#c98f62" />
+      <ellipse cx="50" cy="48" rx="22" ry="24" fill="#e0a678" {...stroked} />
+      <path d="M28 54Q30 80 50 82Q70 80 72 54Q64 62 50 62Q36 62 28 54Z" fill="#f4f4fa" {...stroked} />
+      <path d="M24 38Q26 18 50 18Q74 18 76 38Z" fill="#2f5d9e" {...stroked} />
+      <path d="M22 38H78" stroke={OL} strokeWidth="5" strokeLinecap="round" />
+      <path d="M22 38H78" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      <path d="M50 22v10M45 25h10M46 30q4 4 8 0" stroke="#ffd23a" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {eyes(mood, 50, 50, 10, 3)}
+      <path d="M38 45l8-2M62 45l-8-2" stroke="#f4f4fa" strokeWidth="3" strokeLinecap="round" />
+      <ellipse cx="50" cy="57" rx="5" ry="3" fill="#d98f6a" opacity="0.7" />
+      {mouth(mood, 50, 66)}
+    </>
+  )
+}
+
 function Ashlyndia({ mood }: { mood: CustomerMood }) {
   return (
     <>
@@ -223,6 +245,7 @@ const BODIES: Record<string, (p: { mood: CustomerMood }) => ReactNode> = {
   rx9: RX9,
   ronin: Ronin,
   mochi: Mochi,
+  umi: Umi,
 }
 
 export default function CustomerPortrait({ customer, mood, size = 72 }: { customer: Customer; mood: CustomerMood; size?: number }) {

@@ -163,6 +163,8 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(105, 'ronin', 'The warrior’s feast', 'My old comrades arrive at dusk. They must see a feast worthy of a samurai.', 'They wept, chef. Not from the cold. You have my sword.', BARS, 6, [o(7, 2, 2), o(8, 2, 1)], 3.9, { ice: 4 }),
   story(106, 'mochi', 'The midnight snack', 'Meow. Fish. Three plates. Do not ask why. Meow.', 'Purrrr. (Translation: you may keep your whiskers.)', CHAMFER, 6, [o(1, 2, 3)], 4.4, { luck: 0.1, ice: 2 }),
 
+  story(107, 'umi', 'The morning catch', 'Fresh off the boat, chef! The nets were full and the ice is thick. Two fish dishes, and be quick before the gulls arrive.', 'Not a scale wasted. The gulls are furious, and I could not be happier!', STAIRS, 6, [o(1, 2, 2), o(0, 2, 1)], 4.2, { ice: 2 }),
+
   // Chapter 2: good friends
   story(111, 'obaa', 'The festival pickles', 'The whole town is coming to the festival, dear, and everyone wants my pickles. Three dishes, and the cold has got into everything.', 'The queue went round the block! You made an old woman very proud.', WINDOW, 6, [o(6, 2, 1), o(2, 2, 1), o(0, 2, 1)], 4.0, { ice: 3 }),
   story(112, 'hana', 'The school play', 'I am playing the TUNA in the school play! Please help me make a feast for the whole cast. A big one!', 'Standing ovation! The tuna got the loudest clap. I told you!', DIAMOND, 6, [o(8, 2, 1), o(9, 2, 1)], 4.0, { luck: 0.14, ice: 3 }),
@@ -170,6 +172,8 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(114, 'rx9', 'Error 404: appetite', 'Diagnostic: my hunger sensor has frozen over, and the rice is misbehaving. Please debug with two chirashi bowls.', 'Appetite restored. Also restored: the ability to say thank you. Thank you.', CENTER, 6, [o(6, 2, 2)], 4.2, { ice: 3, sticky: 1 }),
   story(115, 'ronin', 'The rival chef', 'A rival sushi master has challenged me to a feast duel. I fight with a blade. You fight with a ladle. Do not fail me.', 'The rival bowed. Not to me. To you, chef. I have never seen that before.', CHAMFER, 6, [o(9, 2, 2), o(8, 2, 1)], 4.0, { ice: 4, sticky: 1 }),
   story(116, 'mochi', 'The cat parade', 'Meow meow meow. (Translation: every cat in town is coming. Prepare the fish and the tempura. This is not a request.)', 'Purrrrrr. (Translation: you are now an honorary cat.)', BARS, 6, [o(1, 2, 2), o(7, 2, 1)], 4.0, { luck: 0.1, ice: 3 }),
+
+  story(117, 'umi', 'The harbour festival', 'The whole harbour is celebrating the big catch! Fish, tempura and a rainbow roll to feed every sailor on the dock.', 'They are singing sea songs on the pier. You are the star of the harbour, chef!', WINDOW, 6, [o(1, 2, 2), o(7, 2, 1), o(9, 2, 1)], 4.0, { ice: 3, luck: 0.1 }),
 
   // Chapter 3: family
   story(121, 'obaa', 'Grandma’s last recipe', 'I have kept one recipe a secret all my life, dear. I want you to have it. Four dishes, and every one made with love.', 'Now it is yours. Teach it to someone you love. That is how recipes live forever.', FULL, 6, [o(6, 2, 2), o(7, 2, 1), o(9, 2, 1)], 3.9, { ice: 4, sticky: 1 }),
@@ -179,6 +183,8 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(125, 'ronin', 'The last duel', 'One final feast duel, chef. Win or lose, I will remember this kitchen as my home. Prepare your finest.', 'I lay down my sword. A warrior who finds a home has already won.', CHAMFER, 6, [o(7, 2, 2), o(9, 2, 1)], 4.0, { ice: 5, sticky: 1 }),
   story(126, 'mochi', 'Queen of the cats', 'Meow. (Translation: tonight I am crowned. The feast must be worthy. Fish, tempura and skewers. Make it royal.)', 'Purrrrrr. (Translation: all cats bow to you. Long live the chef.)', FULL, 6, [o(1, 2, 2), o(8, 2, 1), o(7, 2, 1)], 4.0, { luck: 0.12, ice: 4, sticky: 1 }),
 
+  story(127, 'umi', 'The storm supper', 'A storm is rolling in and the whole crew needs warming up. Hot dishes, quick hands, and mind the ice on the pass.', 'The storm blew itself out against these walls. A cook like you could steady any ship.', CHAMFER, 6, [o(1, 2, 2), o(6, 2, 2), o(7, 2, 1)], 4.0, { ice: 4, sticky: 1 }),
+
   // Chapter 4: lifelong friends
   story(131, 'obaa', 'The pickle village', 'The whole village is coming for pickles, dear. Four dishes, and the cold is the thickest it has ever been. One last big batch together.', 'A hundred jars, and every one with your name on the lid. I am the luckiest old woman alive.', FULL, 6, [o(6, 2, 2), o(2, 2, 1), o(0, 2, 1)], 4.0, { ice: 5, sticky: 1 }),
   story(132, 'hana', 'Hana’s restaurant', 'I opened my OWN restaurant! You are the guest of honour. I will cook, you sit. Rainbow makis for everybody!', 'Five stars, written on the door in marker pen. It is the second best restaurant in town!', WINDOW, 6, [o(9, 2, 2), o(8, 2, 1), o(0, 2, 1)], 4.0, { luck: 0.16, ice: 4, sticky: 1 }),
@@ -186,6 +192,7 @@ export const STORY_LEVELS: StoryLevel[] = [
   story(134, 'rx9', 'Friendship protocol', 'I have compiled everything we have cooked together. The output is beautiful. Please accept four rainbow makis as a thank you.', 'Final report: friendship detected, cannot be uninstalled. I have chosen not to try.', DIAMOND, 6, [o(9, 2, 3), o(6, 2, 1)], 4.3, { ice: 4, sticky: 2 }),
   story(135, 'ronin', 'The wanderer’s door', 'I no longer wander, chef. But tonight, travellers will come to this door. Show them what a home tastes like.', 'The travellers will remember this kitchen forever. So will I.', CHAMFER, 6, [o(7, 2, 2), o(8, 2, 1), o(9, 2, 1)], 4.0, { ice: 5, sticky: 2 }),
   story(136, 'mochi', 'The great cat banquet', 'Meow. (Translation: every cat in the world is coming. Fish, tempura, skewers, rainbow rolls. You have until moonrise.)', 'Purrrrrr. (Translation: you are family. This is the highest honour. Also, more fish.)', FULL, 6, [o(1, 2, 2), o(8, 2, 1), o(7, 2, 1), o(9, 2, 1)], 4.1, { luck: 0.12, ice: 5, sticky: 1 }),
+  story(137, 'umi', 'The last voyage', 'One last voyage, chef, and I want you at the helm. Feed the crew a feast worthy of every sea we ever sailed.', 'Land ho. We are home. Wherever your kitchen is, that is my harbour.', FULL, 6, [o(1, 2, 3), o(8, 2, 1), o(9, 2, 1)], 4.1, { ice: 5, sticky: 2, luck: 0.1 }),
 ]
 
 /** The key a story is saved under: the customer, plus a chapter number after the first. */
